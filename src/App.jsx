@@ -207,6 +207,7 @@ function PresalesTracker() {
   }, [user]);
 
   // FIX: Initialize phase form data when modal opens
+  // Initialize phase form data ONLY when modal opens (not when selectedEngagement changes)
   useEffect(() => {
     if (showPhaseModal && selectedEngagement) {
       const phaseData = selectedEngagement.phases[showPhaseModal];
@@ -215,7 +216,7 @@ function PresalesTracker() {
         notes: phaseData?.notes || ''
       });
     }
-  }, [showPhaseModal, selectedEngagement]);
+  }, [showPhaseModal]); // Only trigger when modal opens/closes, NOT on selectedEngagement changes
 
   const initializeUser = async () => {
     try {
