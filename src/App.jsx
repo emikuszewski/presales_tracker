@@ -165,43 +165,26 @@ const NotificationBadge = ({ count }) => {
 };
 
 // ========== LINK MODAL COMPONENT ==========
-const LinkModal = ({ isOpen, phaseLabel, onClose, onAdd }) => {
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const titleInputRef = React.useRef(null);
+const LinkModal = ({ isOpen, phaseId, phaseLabel, onClose, onAdd }) => {
+  const [title, setTitle] = React.useState('');
+  const [url, setUrl] = React.useState('');
 
-  // Focus the title input when modal opens
-  useEffect(() => {
-    if (isOpen && titleInputRef.current) {
-      setTimeout(() => {
-        titleInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!isOpen) {
+  // Reset form when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
       setTitle('');
       setUrl('');
     }
   }, [isOpen]);
 
-  const handleSubmit = () => {
-    if (title.trim() && url.trim()) {
-      onAdd({ title: title.trim(), url: url.trim() });
-      setTitle('');
-      setUrl('');
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && title.trim() && url.trim()) {
-      e.preventDefault();
-      handleSubmit();
-    }
-    if (e.key === 'Escape') {
-      onClose();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('LinkModal handleSubmit:', { phaseId, title, url });
+    if (title.trim() && url.trim() && phaseId) {
+      onAdd(phaseId, { title: title.trim(), url: url.trim() });
+    } else {
+      console.log('Missing data:', { phaseId, title: title.trim(), url: url.trim() });
     }
   };
 
@@ -209,12 +192,18 @@ const LinkModal = ({ isOpen, phaseLabel, onClose, onAdd }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onClose}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      style={{ zIndex: 9999 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
-      <div 
+      <form 
         className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
         onClick={e => e.stopPropagation()}
+        onSubmit={handleSubmit}
       >
         <h3 className="text-xl font-medium text-gray-900 mb-6">
           Add Link to {phaseLabel}
@@ -222,25 +211,25 @@ const LinkModal = ({ isOpen, phaseLabel, onClose, onAdd }) => {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label htmlFor="link-title-input" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
-              ref={titleInputRef}
+              id="link-title-input"
               type="text"
               value={title}
-              onChange={e => setTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="e.g., Architecture Diagram"
+              autoFocus
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+            <label htmlFor="link-url-input" className="block text-sm font-medium text-gray-700 mb-1">URL</label>
             <input
+              id="link-url-input"
               type="url"
               value={url}
-              onChange={e => setUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => setUrl(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="https://..."
             />
@@ -254,13 +243,12 @@ const LinkModal = ({ isOpen, phaseLabel, onClose, onAdd }) => {
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
           >Cancel</button>
           <button 
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={!title.trim() || !url.trim()}
             className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >Add Link</button>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
@@ -883,22 +871,37 @@ function PresalesTracker() {
   };
 
   const handleAddLink = async (phaseId, linkData) => {
-    if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) return;
+    console.log('handleAddLink called with:', { phaseId, linkData, selectedEngagement: selectedEngagement?.id });
+    
+    if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) {
+      console.log('handleAddLink early return - missing data:', { 
+        hasTitle: !!linkData?.title, 
+        hasUrl: !!linkData?.url, 
+        hasEngagement: !!selectedEngagement, 
+        hasPhaseId: !!phaseId 
+      });
+      return;
+    }
     
     const engagementId = selectedEngagement.id;
     const linkToAdd = { title: linkData.title, url: linkData.url };
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
+      console.log('Existing phase:', existingPhase);
+      
       const currentLinks = Array.isArray(existingPhase?.links) ? existingPhase.links : [];
       const updatedLinks = [...currentLinks, linkToAdd];
+      console.log('Updated links:', updatedLinks);
       
       if (existingPhase && existingPhase.id) {
+        console.log('Updating existing phase:', existingPhase.id);
         await client.models.Phase.update({
           id: existingPhase.id,
           links: updatedLinks
         });
       } else {
+        console.log('Creating new phase for:', phaseId);
         await client.models.Phase.create({
           engagementId: engagementId,
           phaseType: phaseId,
@@ -909,6 +912,8 @@ function PresalesTracker() {
         });
       }
       
+      console.log('Link saved successfully');
+      
       await logChange(
         engagementId,
         'LINK_ADDED',
@@ -918,11 +923,12 @@ function PresalesTracker() {
       // Close modal first
       setShowLinkModal(null);
       
-      // Refresh data
+      // Refresh data - the useEffect will sync selectedEngagement
       await fetchAllData(currentUser?.id);
       
     } catch (error) {
       console.error('Error adding link:', error);
+      alert('Error saving link: ' + error.message);
     }
   };
 
@@ -1829,9 +1835,10 @@ function PresalesTracker() {
             {/* Link Modal - Using separate component */}
             <LinkModal
               isOpen={showLinkModal !== null}
+              phaseId={showLinkModal}
               phaseLabel={phaseConfig.find(p => p.id === showLinkModal)?.label || ''}
               onClose={() => setShowLinkModal(null)}
-              onAdd={(linkData) => handleAddLink(showLinkModal, linkData)}
+              onAdd={(phaseId, linkData) => handleAddLink(phaseId, linkData)}
             />
 
             {/* Integrations Modal */}
