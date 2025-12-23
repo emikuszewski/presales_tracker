@@ -72,6 +72,8 @@ const schema = a.schema({
     // Relationships
     phases: a.hasMany('Phase', 'engagementId'),
     activities: a.hasMany('Activity', 'engagementId'),
+    // Phase 3: Change history
+    changeLogs: a.hasMany('ChangeLog', 'engagementId'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase model
@@ -122,6 +124,36 @@ const schema = a.schema({
     authorId: a.id().required(),
     author: a.belongsTo('TeamMember', 'authorId'),
     text: a.string().required(),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Phase 3: Change log for history tracking
+  ChangeLog: a.model({
+    engagementId: a.id().required(),
+    engagement: a.belongsTo('Engagement', 'engagementId'),
+    userId: a.id().required(),
+    user: a.belongsTo('TeamMember', 'userId'),
+    changeType: a.enum([
+      'CREATED',
+      'PHASE_UPDATE',
+      'ACTIVITY_ADDED',
+      'OWNER_ADDED',
+      'OWNER_REMOVED',
+      'COMMENT_ADDED',
+      'LINK_ADDED',
+      'INTEGRATION_UPDATE',
+      'ARCHIVED',
+      'RESTORED'
+    ]),
+    description: a.string().required(),
+    previousValue: a.string(),
+    newValue: a.string(),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Phase 3: Track last viewed time per user per engagement
+  EngagementView: a.model({
+    engagementId: a.id().required(),
+    visitorId: a.id().required(),
+    lastViewedAt: a.datetime().required(),
   }).authorization(allow => [allow.authenticated()]),
 });
 
