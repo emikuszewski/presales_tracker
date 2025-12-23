@@ -8,7 +8,23 @@ const schema = a.schema({
     initials: a.string().required(),
     isAdmin: a.boolean().default(false),
     isActive: a.boolean().default(true),
+    // Phase 1 legacy relationship (kept for backwards compatibility)
     engagements: a.hasMany('Engagement', 'ownerId'),
+    // Phase 2: Co-ownership relationship
+    engagementOwnerships: a.hasMany('EngagementOwner', 'teamMemberId'),
+    // Phase 2: Comments authored
+    comments: a.hasMany('Comment', 'authorId'),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Phase 2: Junction table for many-to-many engagement ownership
+  EngagementOwner: a.model({
+    engagementId: a.id().required(),
+    engagement: a.belongsTo('Engagement', 'engagementId'),
+    teamMemberId: a.id().required(),
+    teamMember: a.belongsTo('TeamMember', 'teamMemberId'),
+    // Role could be 'primary' or 'secondary' for future use
+    role: a.string(),
+    addedAt: a.datetime(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Engagement model
@@ -36,9 +52,12 @@ const schema = a.schema({
     startDate: a.date(),
     lastActivity: a.date(),
     
-    // Single owner for Phase 1 (co-owners in Phase 2)
-    ownerId: a.id().required(),
+    // Phase 1 legacy field (kept for backwards compatibility)
+    ownerId: a.id(),
     owner: a.belongsTo('TeamMember', 'ownerId'),
+    
+    // Phase 2: Co-ownership relationship
+    owners: a.hasMany('EngagementOwner', 'engagementId'),
     
     // Integration fields
     salesforceId: a.string(),
@@ -92,6 +111,17 @@ const schema = a.schema({
       'CALL'
     ]),
     description: a.string().required(),
+    // Phase 2: Comments on activities
+    comments: a.hasMany('Comment', 'activityId'),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Phase 2: Comment model
+  Comment: a.model({
+    activityId: a.id().required(),
+    activity: a.belongsTo('Activity', 'activityId'),
+    authorId: a.id().required(),
+    author: a.belongsTo('TeamMember', 'authorId'),
+    text: a.string().required(),
   }).authorization(allow => [allow.authenticated()]),
 });
 
