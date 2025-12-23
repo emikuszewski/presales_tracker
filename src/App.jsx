@@ -409,16 +409,34 @@ function PresalesTracker() {
           const phasesObj = {};
           phaseConfig.forEach(p => {
             const existingPhase = phases.find(ph => ph.phaseType === p.id);
-            if (existingPhase && existingPhase.links) {
-              console.log(`Phase ${p.id} links from DB:`, existingPhase.links);
+            if (existingPhase) {
+              // Parse links if stored as string
+              let parsedLinks = [];
+              if (existingPhase.links) {
+                if (typeof existingPhase.links === 'string') {
+                  try {
+                    parsedLinks = JSON.parse(existingPhase.links);
+                  } catch (e) {
+                    console.error('Error parsing links for phase:', p.id, e);
+                  }
+                } else if (Array.isArray(existingPhase.links)) {
+                  parsedLinks = existingPhase.links;
+                }
+              }
+              console.log(`Phase ${p.id} links:`, parsedLinks);
+              phasesObj[p.id] = {
+                ...existingPhase,
+                links: parsedLinks
+              };
+            } else {
+              phasesObj[p.id] = {
+                phaseType: p.id,
+                status: 'PENDING',
+                completedDate: null,
+                notes: '',
+                links: []
+              };
             }
-            phasesObj[p.id] = existingPhase || {
-              phaseType: p.id,
-              status: 'PENDING',
-              completedDate: null,
-              notes: '',
-              links: []
-            };
           });
           
           const ownerIds = ownershipRecords.map(o => o.teamMemberId);
@@ -898,7 +916,21 @@ function PresalesTracker() {
       
       console.log('Fresh phase from DB:', freshPhase);
       
-      const currentLinks = Array.isArray(freshPhase?.links) ? freshPhase.links : [];
+      // Parse links - they may be stored as a JSON string
+      let currentLinks = [];
+      if (freshPhase?.links) {
+        if (typeof freshPhase.links === 'string') {
+          try {
+            currentLinks = JSON.parse(freshPhase.links);
+          } catch (e) {
+            console.error('Error parsing links:', e);
+            currentLinks = [];
+          }
+        } else if (Array.isArray(freshPhase.links)) {
+          currentLinks = freshPhase.links;
+        }
+      }
+      
       const updatedLinks = [...currentLinks, linkToAdd];
       console.log('Updated links:', updatedLinks);
       
@@ -906,12 +938,20 @@ function PresalesTracker() {
         console.log('Updating existing phase:', freshPhase.id);
         console.log('Links to save:', JSON.stringify(updatedLinks));
         
+        // Amplify a.json() fields need to receive stringified JSON
         const updateResult = await client.models.Phase.update({
           id: freshPhase.id,
-          links: updatedLinks
+          links: JSON.stringify(updatedLinks)
         });
         
         console.log('Update result:', updateResult);
+        
+        // Check for errors
+        if (updateResult.errors && updateResult.errors.length > 0) {
+          console.error('Amplify update errors:', JSON.stringify(updateResult.errors, null, 2));
+          alert('Error updating phase: ' + updateResult.errors.map(e => e.message).join(', '));
+          return;
+        }
         
         // Verify the update by fetching the phase again
         const { data: verifyPhase } = await client.models.Phase.get({ id: freshPhase.id });
@@ -926,9 +966,15 @@ function PresalesTracker() {
           status: 'PENDING',
           completedDate: null,
           notes: null,
-          links: updatedLinks
+          links: JSON.stringify(updatedLinks)
         });
         console.log('Create result:', createResult);
+        
+        if (createResult.errors && createResult.errors.length > 0) {
+          console.error('Amplify create errors:', JSON.stringify(createResult.errors, null, 2));
+          alert('Error creating phase: ' + createResult.errors.map(e => e.message).join(', '));
+          return;
+        }
       }
       
       console.log('Link saved successfully');
@@ -956,13 +1002,27 @@ function PresalesTracker() {
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
-      const currentLinks = Array.isArray(existingPhase.links) ? existingPhase.links : [];
+      
+      // Parse links if needed
+      let currentLinks = [];
+      if (existingPhase?.links) {
+        if (typeof existingPhase.links === 'string') {
+          try {
+            currentLinks = JSON.parse(existingPhase.links);
+          } catch (e) {
+            currentLinks = [];
+          }
+        } else if (Array.isArray(existingPhase.links)) {
+          currentLinks = existingPhase.links;
+        }
+      }
+      
       const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
       
       if (existingPhase.id) {
         await client.models.Phase.update({
           id: existingPhase.id,
-          links: updatedLinks
+          links: JSON.stringify(updatedLinks)
         });
       }
       
