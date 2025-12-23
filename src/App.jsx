@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
@@ -80,11 +80,14 @@ function PresalesTracker() {
   const [showPhaseModal, setShowPhaseModal] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(null);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [newActivity, setNewActivity] = useState({ date: getTodayDate(), type: 'MEETING', description: '' });
   const [newLink, setNewLink] = useState({ title: '', url: '' });
+  const [newComment, setNewComment] = useState({});
+  const [expandedActivities, setExpandedActivities] = useState({});
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
-    industry: 'TECHNOLOGY', dealSize: '', ownerId: '',
+    industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
     salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: ''
   });
 
@@ -126,7 +129,7 @@ function PresalesTracker() {
       }
       
       setCurrentUser(member);
-      setNewEngagement(prev => ({ ...prev, ownerId: member.id }));
+      setNewEngagement(prev => ({ ...prev, ownerIds: [member.id] }));
       
       // Fetch all data
       await fetchAllData();
@@ -149,7 +152,7 @@ function PresalesTracker() {
       // Fetch all engagements with related data
       const { data: engagementData } = await client.models.Engagement.list();
       
-      // Fetch phases and activities for each engagement
+      // Fetch phases, activities, owners, and comments for each engagement
       const enrichedEngagements = await Promise.all(
         engagementData.map(async (eng) => {
           const { data: phases } = await client.models.Phase.list({
@@ -158,6 +161,24 @@ function PresalesTracker() {
           const { data: activities } = await client.models.Activity.list({
             filter: { engagementId: { eq: eng.id } }
           });
+          
+          // Fetch owners (Phase 2)
+          const { data: ownershipRecords } = await client.models.EngagementOwner.list({
+            filter: { engagementId: { eq: eng.id } }
+          });
+          
+          // Fetch comments for each activity (Phase 2)
+          const activitiesWithComments = await Promise.all(
+            activities.map(async (activity) => {
+              const { data: comments } = await client.models.Comment.list({
+                filter: { activityId: { eq: activity.id } }
+              });
+              return {
+                ...activity,
+                comments: comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+              };
+            })
+          );
           
           // Convert phases array to object keyed by phaseType
           const phasesObj = {};
@@ -172,10 +193,20 @@ function PresalesTracker() {
             };
           });
           
+          // Get owner IDs from ownership records
+          const ownerIds = ownershipRecords.map(o => o.teamMemberId);
+          
+          // Backwards compatibility: include legacy ownerId if no ownership records
+          if (ownerIds.length === 0 && eng.ownerId) {
+            ownerIds.push(eng.ownerId);
+          }
+          
           return {
             ...eng,
             phases: phasesObj,
-            activities: activities.sort((a, b) => new Date(b.date) - new Date(a.date))
+            activities: activitiesWithComments.sort((a, b) => new Date(b.date) - new Date(a.date)),
+            ownerIds: ownerIds,
+            ownershipRecords: ownershipRecords
           };
         })
       );
@@ -208,6 +239,11 @@ function PresalesTracker() {
     }
   };
 
+  // Check if current user is an owner of the engagement
+  const isCurrentUserOwner = (engagement) => {
+    return engagement.ownerIds?.includes(currentUser?.id) || engagement.ownerId === currentUser?.id;
+  };
+
   // Filter engagements
   const filteredEngagements = engagements
     .filter(e => {
@@ -217,9 +253,14 @@ function PresalesTracker() {
       // Phase filter
       if (filterPhase !== 'all' && e.currentPhase !== filterPhase) return false;
       
-      // Owner filter
-      if (filterOwner === 'mine' && e.ownerId !== currentUser?.id) return false;
-      if (filterOwner !== 'all' && filterOwner !== 'mine' && e.ownerId !== filterOwner) return false;
+      // Owner filter - check ownerIds array for co-owners
+      if (filterOwner === 'mine') {
+        const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
+        if (!isOwner) return false;
+      } else if (filterOwner !== 'all') {
+        const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
+        if (!isOwner) return false;
+      }
       
       // Search filter
       if (searchQuery) {
@@ -234,14 +275,15 @@ function PresalesTracker() {
     })
     .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
 
-  // Create new engagement
+  // Create new engagement with co-owners
   const handleCreateEngagement = async () => {
     if (!newEngagement.company || !newEngagement.contactName) return;
+    if (newEngagement.ownerIds.length === 0) return;
     
     try {
       const today = getTodayDate();
       
-      // Create engagement
+      // Create engagement (use first owner as legacy ownerId for backwards compatibility)
       const { data: engagement } = await client.models.Engagement.create({
         company: newEngagement.company,
         contactName: newEngagement.contactName,
@@ -252,7 +294,7 @@ function PresalesTracker() {
         currentPhase: 'DISCOVER',
         startDate: today,
         lastActivity: today,
-        ownerId: newEngagement.ownerId || currentUser.id,
+        ownerId: newEngagement.ownerIds[0], // Legacy field
         salesforceId: newEngagement.salesforceId || null,
         salesforceUrl: newEngagement.salesforceUrl || null,
         jiraTicket: newEngagement.jiraTicket || null,
@@ -260,6 +302,16 @@ function PresalesTracker() {
         slackChannel: newEngagement.slackChannel || null,
         isArchived: false
       });
+      
+      // Create ownership records for all owners (Phase 2)
+      for (const ownerId of newEngagement.ownerIds) {
+        await client.models.EngagementOwner.create({
+          engagementId: engagement.id,
+          teamMemberId: ownerId,
+          role: ownerId === newEngagement.ownerIds[0] ? 'primary' : 'secondary',
+          addedAt: new Date().toISOString()
+        });
+      }
       
       // Create initial phases
       for (const phase of phaseConfig) {
@@ -279,13 +331,71 @@ function PresalesTracker() {
       // Reset form
       setNewEngagement({
         company: '', contactName: '', contactEmail: '', contactPhone: '',
-        industry: 'TECHNOLOGY', dealSize: '', ownerId: currentUser?.id || '',
+        industry: 'TECHNOLOGY', dealSize: '', ownerIds: [currentUser?.id],
         salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: ''
       });
       setView('list');
       
     } catch (error) {
       console.error('Error creating engagement:', error);
+    }
+  };
+
+  // Add owner to engagement
+  const handleAddOwner = async (teamMemberId) => {
+    if (!selectedEngagement || selectedEngagement.ownerIds?.includes(teamMemberId)) return;
+    
+    try {
+      await client.models.EngagementOwner.create({
+        engagementId: selectedEngagement.id,
+        teamMemberId: teamMemberId,
+        role: 'secondary',
+        addedAt: new Date().toISOString()
+      });
+      
+      await fetchAllData();
+      
+      // Update selected engagement
+      setSelectedEngagement(prev => ({
+        ...prev,
+        ownerIds: [...(prev.ownerIds || []), teamMemberId]
+      }));
+      
+    } catch (error) {
+      console.error('Error adding owner:', error);
+    }
+  };
+
+  // Remove owner from engagement
+  const handleRemoveOwner = async (teamMemberId) => {
+    if (!selectedEngagement) return;
+    
+    // Don't allow removing the last owner
+    if (selectedEngagement.ownerIds?.length <= 1) {
+      alert('Cannot remove the last owner. Add another owner first.');
+      return;
+    }
+    
+    try {
+      // Find the ownership record
+      const ownershipRecord = selectedEngagement.ownershipRecords?.find(
+        o => o.teamMemberId === teamMemberId
+      );
+      
+      if (ownershipRecord) {
+        await client.models.EngagementOwner.delete({ id: ownershipRecord.id });
+      }
+      
+      await fetchAllData();
+      
+      // Update selected engagement
+      setSelectedEngagement(prev => ({
+        ...prev,
+        ownerIds: prev.ownerIds?.filter(id => id !== teamMemberId) || []
+      }));
+      
+    } catch (error) {
+      console.error('Error removing owner:', error);
     }
   };
 
@@ -310,35 +420,9 @@ function PresalesTracker() {
       await fetchAllData();
       
       // Update selected engagement
-      const { data: updatedEngagements } = await client.models.Engagement.list({
-        filter: { id: { eq: selectedEngagement.id } }
-      });
-      if (updatedEngagements.length > 0) {
-        const eng = updatedEngagements[0];
-        const { data: phases } = await client.models.Phase.list({
-          filter: { engagementId: { eq: eng.id } }
-        });
-        const { data: activities } = await client.models.Activity.list({
-          filter: { engagementId: { eq: eng.id } }
-        });
-        
-        const phasesObj = {};
-        phaseConfig.forEach(p => {
-          const existingPhase = phases.find(ph => ph.phaseType === p.id);
-          phasesObj[p.id] = existingPhase || {
-            phaseType: p.id,
-            status: 'PENDING',
-            completedDate: null,
-            notes: '',
-            links: []
-          };
-        });
-        
-        setSelectedEngagement({
-          ...eng,
-          phases: phasesObj,
-          activities: activities.sort((a, b) => new Date(b.date) - new Date(a.date))
-        });
+      const updated = engagements.find(e => e.id === selectedEngagement.id);
+      if (updated) {
+        setSelectedEngagement(updated);
       }
       
       setNewActivity({ date: getTodayDate(), type: 'MEETING', description: '' });
@@ -347,6 +431,58 @@ function PresalesTracker() {
     } catch (error) {
       console.error('Error adding activity:', error);
     }
+  };
+
+  // Add comment to activity (Phase 2)
+  const handleAddComment = async (activityId) => {
+    const commentText = newComment[activityId];
+    if (!commentText?.trim() || !currentUser) return;
+    
+    try {
+      await client.models.Comment.create({
+        activityId: activityId,
+        authorId: currentUser.id,
+        text: commentText.trim()
+      });
+      
+      await fetchAllData();
+      
+      // Clear comment input
+      setNewComment(prev => ({ ...prev, [activityId]: '' }));
+      
+      // Refresh selected engagement
+      const updated = engagements.find(e => e.id === selectedEngagement?.id);
+      if (updated) {
+        setSelectedEngagement(updated);
+      }
+      
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  // Delete comment (Phase 2)
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await client.models.Comment.delete({ id: commentId });
+      await fetchAllData();
+      
+      // Refresh selected engagement
+      const updated = engagements.find(e => e.id === selectedEngagement?.id);
+      if (updated) {
+        setSelectedEngagement(updated);
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+    }
+  };
+
+  // Toggle activity expansion for comments
+  const toggleActivityExpansion = (activityId) => {
+    setExpandedActivities(prev => ({
+      ...prev,
+      [activityId]: !prev[activityId]
+    }));
   };
 
   // Update phase
@@ -517,6 +653,38 @@ function PresalesTracker() {
     );
   }
 
+  // ========== OWNERS DISPLAY COMPONENT ==========
+  const OwnersDisplay = ({ ownerIds, size = 'md' }) => {
+    const sizeClasses = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm';
+    const overlapClass = size === 'sm' ? '-ml-2' : '-ml-3';
+    
+    return (
+      <div className="flex items-center">
+        {ownerIds?.slice(0, 3).map((ownerId, index) => {
+          const owner = getOwnerInfo(ownerId);
+          const isCurrentUser = ownerId === currentUser?.id;
+          return (
+            <div
+              key={ownerId}
+              className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${
+                isCurrentUser ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+              } ${index > 0 ? overlapClass : ''}`}
+              title={owner.name}
+              style={{ zIndex: 10 - index }}
+            >
+              {owner.initials}
+            </div>
+          );
+        })}
+        {ownerIds?.length > 3 && (
+          <div className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white bg-gray-200 text-gray-600 ${overlapClass}`}>
+            +{ownerIds.length - 3}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ========== LIST VIEW ==========
   const ListView = () => (
     <div>
@@ -644,79 +812,69 @@ function PresalesTracker() {
 
       {/* Engagement List */}
       <div className="space-y-3">
-        {filteredEngagements.map(engagement => {
-          const owner = getOwnerInfo(engagement.ownerId);
-          return (
-            <div
-              key={engagement.id}
-              onClick={() => { setSelectedEngagement(engagement); setView('detail'); }}
-              className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-3">
-                  <div 
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium ${
-                      engagement.ownerId === currentUser?.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-                    }`}
-                    title={owner.name}
-                  >
-                    {owner.initials}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
-                    <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
-                  <p className="text-xs text-gray-400">Last activity: {engagement.lastActivity || engagement.startDate}</p>
+        {filteredEngagements.map(engagement => (
+          <div
+            key={engagement.id}
+            onClick={() => { setSelectedEngagement(engagement); setView('detail'); }}
+            className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start gap-3">
+                <OwnersDisplay ownerIds={engagement.ownerIds} size="md" />
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
+                  <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
                 </div>
               </div>
-              
-              {/* Integration badges */}
-              {(engagement.salesforceId || engagement.jiraTicket) && (
-                <div className="flex gap-2 mb-3">
-                  {engagement.salesforceId && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                      SF
-                    </span>
-                  )}
-                  {engagement.jiraTicket && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                      {engagement.jiraTicket}
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {/* Phase Progress */}
-              <div className="flex items-center gap-1">
-                {phaseConfig.map((phase, index) => {
-                  const phaseData = engagement.phases[phase.id];
-                  const status = phaseData?.status || 'PENDING';
-                  return (
-                    <React.Fragment key={phase.id}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
-                        <span className={`text-xs font-medium ${
-                          status === 'COMPLETE' ? 'text-emerald-700' : 
-                          status === 'IN_PROGRESS' ? 'text-blue-700' : 'text-gray-400'
-                        }`}>
-                          {phase.label}
-                        </span>
-                      </div>
-                      {index < phaseConfig.length - 1 && (
-                        <div className={`flex-1 h-px mx-2 ${
-                          status === 'COMPLETE' ? 'bg-emerald-300' : 'bg-gray-200'
-                        }`} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+              <div className="text-right">
+                <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
+                <p className="text-xs text-gray-400">Last activity: {engagement.lastActivity || engagement.startDate}</p>
               </div>
             </div>
-          );
-        })}
+            
+            {/* Integration badges */}
+            {(engagement.salesforceId || engagement.jiraTicket) && (
+              <div className="flex gap-2 mb-3">
+                {engagement.salesforceId && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                    SF
+                  </span>
+                )}
+                {engagement.jiraTicket && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                    {engagement.jiraTicket}
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {/* Phase Progress */}
+            <div className="flex items-center gap-1">
+              {phaseConfig.map((phase, index) => {
+                const phaseData = engagement.phases[phase.id];
+                const status = phaseData?.status || 'PENDING';
+                return (
+                  <React.Fragment key={phase.id}>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
+                      <span className={`text-xs font-medium ${
+                        status === 'COMPLETE' ? 'text-emerald-700' : 
+                        status === 'IN_PROGRESS' ? 'text-blue-700' : 'text-gray-400'
+                      }`}>
+                        {phase.label}
+                      </span>
+                    </div>
+                    {index < phaseConfig.length - 1 && (
+                      <div className={`flex-1 h-px mx-2 ${
+                        status === 'COMPLETE' ? 'bg-emerald-300' : 'bg-gray-200'
+                      }`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        ))}
         
         {filteredEngagements.length === 0 && (
           <div className="text-center py-12 text-gray-400">
@@ -730,7 +888,14 @@ function PresalesTracker() {
   // ========== DETAIL VIEW ==========
   const DetailView = () => {
     if (!selectedEngagement) return null;
-    const owner = getOwnerInfo(selectedEngagement.ownerId);
+    
+    // Refresh selected engagement from state when engagements update
+    useEffect(() => {
+      const updated = engagements.find(e => e.id === selectedEngagement.id);
+      if (updated) {
+        setSelectedEngagement(updated);
+      }
+    }, [engagements]);
     
     return (
       <div>
@@ -747,13 +912,7 @@ function PresalesTracker() {
 
         <div className="flex items-start justify-between mb-8">
           <div className="flex items-start gap-4">
-            <div 
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${
-                selectedEngagement.ownerId === currentUser?.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {owner.initials}
-            </div>
+            <OwnersDisplay ownerIds={selectedEngagement.ownerIds} size="md" />
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-3xl font-medium text-gray-900">{selectedEngagement.company}</h2>
@@ -761,9 +920,18 @@ function PresalesTracker() {
                   <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded">Archived</span>
                 )}
               </div>
-              <p className="text-gray-500 mt-1">
-                {industryLabels[selectedEngagement.industry] || selectedEngagement.industry} · Started {selectedEngagement.startDate} · Owner: {owner.name}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-gray-500">
+                  {industryLabels[selectedEngagement.industry] || selectedEngagement.industry} · Started {selectedEngagement.startDate}
+                </p>
+                <span className="text-gray-300">·</span>
+                <button
+                  onClick={() => setShowOwnersModal(true)}
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Manage Owners ({selectedEngagement.ownerIds?.length || 1})
+                </button>
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -936,17 +1104,106 @@ function PresalesTracker() {
           </div>
           
           <div className="space-y-3">
-            {selectedEngagement.activities.map((activity, index) => (
-              <div key={activity.id || index} className="flex gap-4 p-4 bg-white border border-gray-200 rounded-xl">
-                <div className="text-sm text-gray-400 w-24 flex-shrink-0">{activity.date}</div>
-                <div>
-                  <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded mb-1">
-                    {activityTypeLabels[activity.type] || activity.type}
-                  </span>
-                  <p className="text-gray-900">{activity.description}</p>
+            {selectedEngagement.activities.map((activity) => {
+              const isExpanded = expandedActivities[activity.id];
+              const commentCount = activity.comments?.length || 0;
+              
+              return (
+                <div key={activity.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="flex gap-4 p-4">
+                    <div className="text-sm text-gray-400 w-24 flex-shrink-0">{activity.date}</div>
+                    <div className="flex-1">
+                      <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded mb-1">
+                        {activityTypeLabels[activity.type] || activity.type}
+                      </span>
+                      <p className="text-gray-900">{activity.description}</p>
+                      
+                      {/* Comments toggle */}
+                      <button
+                        onClick={() => toggleActivityExpansion(activity.id)}
+                        className="mt-2 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                      >
+                        <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {commentCount} comment{commentCount !== 1 ? 's' : ''}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Comments Section */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 bg-gray-50 p-4">
+                      {/* Existing comments */}
+                      {activity.comments?.length > 0 && (
+                        <div className="space-y-3 mb-4">
+                          {activity.comments.map((comment) => {
+                            const author = getOwnerInfo(comment.authorId);
+                            const isOwnComment = comment.authorId === currentUser?.id;
+                            
+                            return (
+                              <div key={comment.id} className="flex gap-3">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                                  isOwnComment ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
+                                }`}>
+                                  {author.initials}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-gray-900">{author.name}</span>
+                                    <span className="text-xs text-gray-400">
+                                      {new Date(comment.createdAt).toLocaleDateString()}
+                                    </span>
+                                    {isOwnComment && (
+                                      <button
+                                        onClick={() => handleDeleteComment(comment.id)}
+                                        className="text-xs text-gray-400 hover:text-red-500"
+                                      >
+                                        Delete
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Add comment input */}
+                      <div className="flex gap-3">
+                        <div className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-medium flex-shrink-0">
+                          {currentUser?.initials}
+                        </div>
+                        <div className="flex-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={newComment[activity.id] || ''}
+                            onChange={(e) => setNewComment(prev => ({ ...prev, [activity.id]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment(activity.id);
+                              }
+                            }}
+                            placeholder="Add a comment..."
+                            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          />
+                          <button
+                            onClick={() => handleAddComment(activity.id)}
+                            disabled={!newComment[activity.id]?.trim()}
+                            className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Post
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {selectedEngagement.activities.length === 0 && (
               <p className="text-gray-400 text-center py-8">No activities logged yet</p>
             )}
@@ -1202,6 +1459,85 @@ function PresalesTracker() {
             </div>
           </div>
         )}
+
+        {/* Owners Modal (Phase 2) */}
+        {showOwnersModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowOwnersModal(false)}>
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-xl font-medium text-gray-900 mb-6">Manage Owners</h3>
+              
+              {/* Current Owners */}
+              <div className="mb-6">
+                <p className="text-sm font-medium text-gray-700 mb-3">Current Owners</p>
+                <div className="space-y-2">
+                  {selectedEngagement.ownerIds?.map(ownerId => {
+                    const owner = getOwnerInfo(ownerId);
+                    const isOnlyOwner = selectedEngagement.ownerIds?.length === 1;
+                    
+                    return (
+                      <div key={ownerId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            ownerId === currentUser?.id ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {owner.initials}
+                          </div>
+                          <span className="font-medium text-gray-900">{owner.name}</span>
+                        </div>
+                        {!isOnlyOwner && (
+                          <button
+                            onClick={() => handleRemoveOwner(ownerId)}
+                            className="text-sm text-red-500 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Add Owner */}
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-3">Add Owner</p>
+                <div className="space-y-2">
+                  {teamMembers
+                    .filter(m => !selectedEngagement.ownerIds?.includes(m.id))
+                    .map(member => (
+                      <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-medium">
+                            {member.initials}
+                          </div>
+                          <span className="text-gray-900">{member.name}</span>
+                        </div>
+                        <button
+                          onClick={() => handleAddOwner(member.id)}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    ))
+                  }
+                  {teamMembers.filter(m => !selectedEngagement.ownerIds?.includes(m.id)).length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-2">All team members are already owners</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => setShowOwnersModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1293,20 +1629,61 @@ function PresalesTracker() {
                 placeholder="$100K"
               />
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-              <select
-                value={newEngagement.ownerId}
-                onChange={e => setNewEngagement(prev => ({ ...prev, ownerId: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              >
-                {teamMembers.map(member => (
-                  <option key={member.id} value={member.id}>{member.name}</option>
-                ))}
-              </select>
-            </div>
           </div>
+        </div>
+
+        {/* Owners (Phase 2) */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Owners</h3>
+          <div className="space-y-2">
+            {teamMembers.map(member => {
+              const isSelected = newEngagement.ownerIds.includes(member.id);
+              return (
+                <label 
+                  key={member.id}
+                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
+                    isSelected ? 'bg-gray-900 text-white' : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      isSelected ? 'bg-white text-gray-900' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {member.initials}
+                    </div>
+                    <span className="font-medium">{member.name}</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setNewEngagement(prev => ({ ...prev, ownerIds: [...prev.ownerIds, member.id] }));
+                      } else {
+                        // Don't allow unchecking if it's the last owner
+                        if (newEngagement.ownerIds.length > 1) {
+                          setNewEngagement(prev => ({ ...prev, ownerIds: prev.ownerIds.filter(id => id !== member.id) }));
+                        }
+                      }
+                    }}
+                    className="sr-only"
+                  />
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    isSelected ? 'border-white bg-white' : 'border-gray-300'
+                  }`}>
+                    {isSelected && (
+                      <svg className="w-3 h-3 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          {newEngagement.ownerIds.length === 0 && (
+            <p className="text-sm text-red-500 mt-2">At least one owner is required</p>
+          )}
         </div>
 
         {/* Integrations */}
@@ -1372,7 +1749,8 @@ function PresalesTracker() {
 
         <button 
           onClick={handleCreateEngagement}
-          className="w-full px-4 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors"
+          disabled={!newEngagement.company || !newEngagement.contactName || newEngagement.ownerIds.length === 0}
+          className="w-full px-4 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Create Engagement
         </button>
