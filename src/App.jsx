@@ -904,13 +904,23 @@ function PresalesTracker() {
       
       if (freshPhase && freshPhase.id) {
         console.log('Updating existing phase:', freshPhase.id);
-        await client.models.Phase.update({
+        console.log('Links to save:', JSON.stringify(updatedLinks));
+        
+        const updateResult = await client.models.Phase.update({
           id: freshPhase.id,
           links: updatedLinks
         });
+        
+        console.log('Update result:', updateResult);
+        
+        // Verify the update by fetching the phase again
+        const { data: verifyPhase } = await client.models.Phase.get({ id: freshPhase.id });
+        console.log('Verified phase after update:', verifyPhase);
+        console.log('Verified links:', verifyPhase?.links);
+        
       } else {
         console.log('Creating new phase for:', phaseId);
-        await client.models.Phase.create({
+        const createResult = await client.models.Phase.create({
           engagementId: engagementId,
           phaseType: phaseId,
           status: 'PENDING',
@@ -918,6 +928,7 @@ function PresalesTracker() {
           notes: null,
           links: updatedLinks
         });
+        console.log('Create result:', createResult);
       }
       
       console.log('Link saved successfully');
