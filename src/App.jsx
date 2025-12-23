@@ -1727,10 +1727,17 @@ function PresalesTracker() {
               </div>
             )}
 
-            {/* Link Modal */}
+            {/* FIXED Link Modal - with proper event handling for inputs */}
             {showLinkModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowLinkModal(null)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+              <div 
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" 
+                onClick={() => { setShowLinkModal(null); setNewLink({ title: '', url: '' }); }}
+              >
+                <div 
+                  className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" 
+                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                >
                   <h3 className="text-xl font-medium text-gray-900 mb-6">
                     Add Link to {phaseConfig.find(p => p.id === showLinkModal)?.label}
                   </h3>
@@ -1742,8 +1749,13 @@ function PresalesTracker() {
                         type="text"
                         value={newLink.title}
                         onChange={e => setNewLink(prev => ({ ...prev, title: e.target.value }))}
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
+                        onFocus={e => e.stopPropagation()}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         placeholder="e.g., Architecture Diagram"
+                        autoComplete="off"
+                        autoFocus
                       />
                     </div>
                     
@@ -1753,8 +1765,12 @@ function PresalesTracker() {
                         type="url"
                         value={newLink.url}
                         onChange={e => setNewLink(prev => ({ ...prev, url: e.target.value }))}
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
+                        onFocus={e => e.stopPropagation()}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         placeholder="https://..."
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -1766,7 +1782,8 @@ function PresalesTracker() {
                     >Cancel</button>
                     <button 
                       onClick={() => handleAddLink(showLinkModal)}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+                      disabled={!newLink.title || !newLink.url}
+                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >Add Link</button>
                   </div>
                 </div>
