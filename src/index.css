@@ -1,12 +1,21 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pre-Sales Engagement Tracker</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Amplify UI customizations */
+[data-amplify-authenticator] {
+  --amplify-components-button-primary-background-color: #111827;
+  --amplify-components-button-primary-hover-background-color: #1f2937;
+  --amplify-components-button-primary-focus-background-color: #1f2937;
+  --amplify-components-button-primary-active-background-color: #374151;
+  --amplify-components-fieldcontrol-focus-border-color: #111827;
+  --amplify-components-tabs-item-active-color: #111827;
+  --amplify-components-tabs-item-active-border-color: #111827;
+  --amplify-components-authenticator-router-border-width: 0;
+  --amplify-components-authenticator-router-box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+[data-amplify-authenticator] [data-amplify-router] {
+  border-radius: 1rem;
+  padding: 2rem;
+}
