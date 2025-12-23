@@ -409,6 +409,9 @@ function PresalesTracker() {
           const phasesObj = {};
           phaseConfig.forEach(p => {
             const existingPhase = phases.find(ph => ph.phaseType === p.id);
+            if (existingPhase && existingPhase.links) {
+              console.log(`Phase ${p.id} links from DB:`, existingPhase.links);
+            }
             phasesObj[p.id] = existingPhase || {
               phaseType: p.id,
               status: 'PENDING',
@@ -887,17 +890,22 @@ function PresalesTracker() {
     const linkToAdd = { title: linkData.title, url: linkData.url };
     
     try {
-      const existingPhase = selectedEngagement.phases[phaseId];
-      console.log('Existing phase:', existingPhase);
+      // Fetch fresh phase data from database to get current links
+      const { data: freshPhases } = await client.models.Phase.list({
+        filter: { engagementId: { eq: engagementId } }
+      });
+      const freshPhase = freshPhases.find(p => p.phaseType === phaseId);
       
-      const currentLinks = Array.isArray(existingPhase?.links) ? existingPhase.links : [];
+      console.log('Fresh phase from DB:', freshPhase);
+      
+      const currentLinks = Array.isArray(freshPhase?.links) ? freshPhase.links : [];
       const updatedLinks = [...currentLinks, linkToAdd];
       console.log('Updated links:', updatedLinks);
       
-      if (existingPhase && existingPhase.id) {
-        console.log('Updating existing phase:', existingPhase.id);
+      if (freshPhase && freshPhase.id) {
+        console.log('Updating existing phase:', freshPhase.id);
         await client.models.Phase.update({
-          id: existingPhase.id,
+          id: freshPhase.id,
           links: updatedLinks
         });
       } else {
@@ -923,7 +931,7 @@ function PresalesTracker() {
       // Close modal first
       setShowLinkModal(null);
       
-      // Refresh data - the useEffect will sync selectedEngagement
+      // Refresh all data
       await fetchAllData(currentUser?.id);
       
     } catch (error) {
@@ -1021,7 +1029,8 @@ function PresalesTracker() {
   useEffect(() => {
     if (selectedEngagement && engagements.length > 0) {
       const updated = engagements.find(e => e.id === selectedEngagement.id);
-      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedEngagement)) {
+      if (updated) {
+        // Always update to ensure we have fresh data
         setSelectedEngagement(updated);
       }
     }
