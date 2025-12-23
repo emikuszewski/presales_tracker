@@ -14,6 +14,8 @@ const schema = a.schema({
     engagementOwnerships: a.hasMany('EngagementOwner', 'teamMemberId'),
     // Phase 2: Comments authored
     comments: a.hasMany('Comment', 'authorId'),
+    // Phase 3: Change logs authored
+    changeLogs: a.hasMany('ChangeLog', 'userId'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase 2: Junction table for many-to-many engagement ownership
