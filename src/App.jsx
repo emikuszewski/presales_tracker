@@ -725,13 +725,19 @@ function PresalesTracker() {
     if (!selectedEngagement || !showPhaseModal) return;
     
     const phaseId = showPhaseModal;
-    const updates = phaseFormData;
+    const updates = { status: phaseFormData.status, notes: phaseFormData.notes };
+    const engagementId = selectedEngagement.id;
+    
+    console.log('handleSavePhase called:', { phaseId, updates, engagementId });
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
       const previousStatus = existingPhase?.status || 'PENDING';
       
-      if (existingPhase.id) {
+      console.log('existingPhase:', existingPhase);
+      
+      if (existingPhase && existingPhase.id) {
+        console.log('Updating existing phase with id:', existingPhase.id);
         await client.models.Phase.update({
           id: existingPhase.id,
           status: updates.status,
@@ -739,8 +745,9 @@ function PresalesTracker() {
           completedDate: updates.status === 'COMPLETE' ? getTodayDate() : existingPhase.completedDate
         });
       } else {
+        console.log('Creating new phase record');
         await client.models.Phase.create({
-          engagementId: selectedEngagement.id,
+          engagementId: engagementId,
           phaseType: phaseId,
           status: updates.status || 'PENDING',
           completedDate: updates.status === 'COMPLETE' ? getTodayDate() : null,
@@ -753,7 +760,7 @@ function PresalesTracker() {
         const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
         if (phaseIndex < phaseConfig.length - 1) {
           await client.models.Engagement.update({
-            id: selectedEngagement.id,
+            id: engagementId,
             currentPhase: phaseConfig[phaseIndex + 1].id
           });
         }
@@ -761,7 +768,7 @@ function PresalesTracker() {
       
       if (updates.status !== previousStatus) {
         await logChange(
-          selectedEngagement.id,
+          engagementId,
           'PHASE_UPDATE',
           `${phaseLabels[phaseId]} phase changed to ${updates.status.toLowerCase().replace('_', ' ')}`,
           previousStatus,
@@ -769,14 +776,11 @@ function PresalesTracker() {
         );
       }
       
-      await fetchAllData(currentUser?.id);
-      
-      const refreshed = engagements.find(e => e.id === selectedEngagement.id);
-      if (refreshed) {
-        setSelectedEngagement(refreshed);
-      }
-      
+      // Close modal first to prevent re-initialization of form data
       setShowPhaseModal(null);
+      
+      // Refresh data
+      await fetchAllData(currentUser?.id);
       
     } catch (error) {
       console.error('Error updating phase:', error);
@@ -784,21 +788,37 @@ function PresalesTracker() {
   };
 
   const handleAddLink = async (phaseId) => {
-    if (!newLink.title || !newLink.url || !selectedEngagement) return;
+    console.log('handleAddLink called:', { phaseId, newLink });
+    
+    if (!newLink.title || !newLink.url || !selectedEngagement) {
+      console.log('handleAddLink validation failed:', { 
+        hasTitle: !!newLink.title, 
+        hasUrl: !!newLink.url, 
+        hasEngagement: !!selectedEngagement 
+      });
+      return;
+    }
+    
+    const engagementId = selectedEngagement.id;
+    const linkToAdd = { title: newLink.title, url: newLink.url };
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
-      const currentLinks = Array.isArray(existingPhase.links) ? existingPhase.links : [];
-      const updatedLinks = [...currentLinks, { title: newLink.title, url: newLink.url }];
+      const currentLinks = Array.isArray(existingPhase?.links) ? existingPhase.links : [];
+      const updatedLinks = [...currentLinks, linkToAdd];
       
-      if (existingPhase.id) {
+      console.log('Adding link:', { existingPhase, currentLinks, updatedLinks });
+      
+      if (existingPhase && existingPhase.id) {
+        console.log('Updating existing phase with id:', existingPhase.id);
         await client.models.Phase.update({
           id: existingPhase.id,
           links: updatedLinks
         });
       } else {
+        console.log('Creating new phase record with link');
         await client.models.Phase.create({
-          engagementId: selectedEngagement.id,
+          engagementId: engagementId,
           phaseType: phaseId,
           status: 'PENDING',
           completedDate: null,
@@ -808,20 +828,17 @@ function PresalesTracker() {
       }
       
       await logChange(
-        selectedEngagement.id,
+        engagementId,
         'LINK_ADDED',
-        `Added link "${newLink.title}" to ${phaseLabels[phaseId]} phase`
+        `Added link "${linkToAdd.title}" to ${phaseLabels[phaseId]} phase`
       );
       
-      await fetchAllData(currentUser?.id);
-      
-      const refreshed = engagements.find(e => e.id === selectedEngagement.id);
-      if (refreshed) {
-        setSelectedEngagement(refreshed);
-      }
-      
+      // Reset form and close modal first
       setNewLink({ title: '', url: '' });
       setShowLinkModal(null);
+      
+      // Refresh data
+      await fetchAllData(currentUser?.id);
       
     } catch (error) {
       console.error('Error adding link:', error);
@@ -913,10 +930,12 @@ function PresalesTracker() {
     }
   };
 
+  // Refresh selected engagement when engagements update
   useEffect(() => {
-    if (selectedEngagement) {
+    if (selectedEngagement && engagements.length > 0) {
       const updated = engagements.find(e => e.id === selectedEngagement.id);
-      if (updated) {
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedEngagement)) {
+        console.log('Syncing selectedEngagement with updated engagements');
         setSelectedEngagement(updated);
       }
     }
