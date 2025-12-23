@@ -548,14 +548,20 @@ function PresalesTracker() {
       }
       
       for (const phase of phaseConfig) {
-        await client.models.Phase.create({
-          engagementId: engagement.id,
-          phaseType: phase.id,
-          status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
-          completedDate: null,
-          notes: '',
-          links: []
-        });
+        console.log('Creating phase:', phase.id, 'for engagement:', engagement.id);
+        try {
+          const result = await client.models.Phase.create({
+            engagementId: engagement.id,
+            phaseType: phase.id,
+            status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
+            completedDate: null,
+            notes: '',
+            links: []
+          });
+          console.log('Phase created result:', result);
+        } catch (phaseError) {
+          console.error('Failed to create phase:', phase.id, phaseError);
+        }
       }
       
       await logChange(engagement.id, 'CREATED', `Created engagement for ${newEngagement.company}`);
@@ -747,14 +753,19 @@ function PresalesTracker() {
         });
       } else {
         console.log('Creating new phase record');
-        await client.models.Phase.create({
-          engagementId: engagementId,
-          phaseType: phaseId,
-          status: updates.status || 'PENDING',
-          completedDate: updates.status === 'COMPLETE' ? getTodayDate() : null,
-          notes: updates.notes || '',
-          links: []
-        });
+        try {
+          const result = await client.models.Phase.create({
+            engagementId: engagementId,
+            phaseType: phaseId,
+            status: updates.status || 'PENDING',
+            completedDate: updates.status === 'COMPLETE' ? getTodayDate() : null,
+            notes: updates.notes || '',
+            links: []
+          });
+          console.log('Phase.create result:', result);
+        } catch (createError) {
+          console.error('Phase.create FAILED:', createError);
+        }
       }
       
       if (updates.status === 'COMPLETE') {
