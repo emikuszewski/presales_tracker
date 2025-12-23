@@ -117,6 +117,7 @@ function PresalesTracker() {
   // State
   const [currentUser, setCurrentUser] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [allTeamMembers, setAllTeamMembers] = useState([]); // Phase 4: includes inactive
   const [engagements, setEngagements] = useState([]);
   const [selectedEngagement, setSelectedEngagement] = useState(null);
   const [view, setView] = useState('list');
@@ -137,6 +138,7 @@ function PresalesTracker() {
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
   const [engagementViews, setEngagementViews] = useState({});
+  const [adminShowInactive, setAdminShowInactive] = useState(false); // Phase 4
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
@@ -195,11 +197,13 @@ function PresalesTracker() {
 
   const fetchAllData = async (userId) => {
     try {
-      // Fetch team members
-      const { data: members } = await client.models.TeamMember.list({
-        filter: { isActive: { eq: true } }
-      });
-      setTeamMembers(members);
+      // Fetch all team members (Phase 4: including inactive for admin)
+      const { data: allMembers } = await client.models.TeamMember.list();
+      setAllTeamMembers(allMembers);
+      
+      // Active members only for regular use
+      const activeMembers = allMembers.filter(m => m.isActive !== false);
+      setTeamMembers(activeMembers);
       
       // Fetch all engagements with related data
       const { data: engagementData } = await client.models.Engagement.list();
@@ -369,8 +373,53 @@ function PresalesTracker() {
     }
   };
 
+  // Phase 4: Toggle user active status (admin only)
+  const handleToggleUserActive = async (memberId, currentStatus) => {
+    if (!currentUser?.isAdmin) return;
+    
+    // Prevent deactivating yourself
+    if (memberId === currentUser.id) {
+      alert('You cannot deactivate yourself.');
+      return;
+    }
+    
+    try {
+      await client.models.TeamMember.update({
+        id: memberId,
+        isActive: !currentStatus
+      });
+      
+      await fetchAllData(currentUser?.id);
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+    }
+  };
+
+  // Phase 4: Toggle user admin status (admin only)
+  const handleToggleUserAdmin = async (memberId, currentStatus) => {
+    if (!currentUser?.isAdmin) return;
+    
+    // Prevent removing your own admin status
+    if (memberId === currentUser.id) {
+      alert('You cannot remove your own admin status.');
+      return;
+    }
+    
+    try {
+      await client.models.TeamMember.update({
+        id: memberId,
+        isAdmin: !currentStatus
+      });
+      
+      await fetchAllData(currentUser?.id);
+    } catch (error) {
+      console.error('Error toggling admin status:', error);
+    }
+  };
+
   const getOwnerInfo = (ownerId) => {
-    const member = teamMembers.find(m => m.id === ownerId);
+    // Check all members (including inactive) for display purposes
+    const member = allTeamMembers.find(m => m.id === ownerId);
     return member || { name: 'Unknown', initials: '?' };
   };
 
@@ -876,13 +925,15 @@ function PresalesTracker() {
         {ownerIds?.slice(0, 3).map((ownerId, index) => {
           const owner = getOwnerInfo(ownerId);
           const isCurrentUser = ownerId === currentUser?.id;
+          const isInactive = owner.isActive === false;
           return (
             <div
               key={ownerId}
               className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${
+                isInactive ? 'bg-gray-300 text-gray-500' :
                 isCurrentUser ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
               } ${index > 0 ? overlapClass : ''}`}
-              title={owner.name}
+              title={`${owner.name}${isInactive ? ' (Inactive)' : ''}`}
               style={{ zIndex: 10 - index }}
             >
               {owner.initials}
@@ -915,6 +966,155 @@ function PresalesTracker() {
       <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white text-xs font-bold rounded-full">
         {count > 9 ? '9+' : count}
       </span>
+    );
+  };
+
+  // ========== PHASE 4: ADMIN VIEW ==========
+  const AdminView = () => {
+    const displayedMembers = adminShowInactive 
+      ? allTeamMembers 
+      : allTeamMembers.filter(m => m.isActive !== false);
+    
+    const activeCount = allTeamMembers.filter(m => m.isActive !== false).length;
+    const inactiveCount = allTeamMembers.filter(m => m.isActive === false).length;
+    
+    return (
+      <div>
+        <button 
+          onClick={() => setView('list')}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Engagements
+        </button>
+
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-medium text-gray-900">Team Management</h2>
+            <p className="text-gray-500 mt-1">
+              {activeCount} active · {inactiveCount} inactive
+            </p>
+          </div>
+        </div>
+
+        {/* Active/Inactive Toggle */}
+        <div className="mb-6">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAdminShowInactive(false)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                !adminShowInactive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Active Users
+            </button>
+            <button
+              onClick={() => setAdminShowInactive(true)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                adminShowInactive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All Users
+            </button>
+          </div>
+        </div>
+
+        {/* Team Member List */}
+        <div className="space-y-3">
+          {displayedMembers.map(member => {
+            const isInactive = member.isActive === false;
+            const isSelf = member.id === currentUser?.id;
+            
+            // Count engagements owned by this member
+            const ownedEngagements = engagements.filter(e => 
+              e.ownerIds?.includes(member.id) || e.ownerId === member.id
+            ).length;
+            
+            return (
+              <div
+                key={member.id}
+                className={`bg-white border rounded-xl p-5 ${
+                  isInactive ? 'border-gray-200 bg-gray-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${
+                      isInactive ? 'bg-gray-300 text-gray-500' :
+                      isSelf ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {member.initials}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`text-lg font-medium ${isInactive ? 'text-gray-500' : 'text-gray-900'}`}>
+                          {member.name}
+                        </h3>
+                        {member.isAdmin && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                            Admin
+                          </span>
+                        )}
+                        {isInactive && (
+                          <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-medium rounded">
+                            Inactive
+                          </span>
+                        )}
+                        {isSelf && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">{member.email}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {ownedEngagements} engagement{ownedEngagements !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {!isSelf && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleUserAdmin(member.id, member.isAdmin)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                          member.isAdmin 
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {member.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleUserActive(member.id, member.isActive !== false)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                          isInactive
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-red-50 text-red-600 hover:bg-red-100'
+                        }`}
+                      >
+                        {isInactive ? 'Reactivate' : 'Deactivate'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-8 p-4 bg-blue-50 rounded-xl">
+          <h4 className="text-sm font-medium text-blue-900 mb-2">About User Management</h4>
+          <ul className="text-sm text-blue-700 space-y-1">
+            <li>• <strong>Deactivated users</strong> cannot be assigned as owners but their existing engagements remain.</li>
+            <li>• <strong>Admins</strong> can manage team members and access this panel.</li>
+            <li>• Users automatically join when they sign up with a @plainid.com email.</li>
+          </ul>
+        </div>
+      </div>
     );
   };
 
@@ -1757,16 +1957,23 @@ function PresalesTracker() {
                   {selectedEngagement.ownerIds?.map(ownerId => {
                     const owner = getOwnerInfo(ownerId);
                     const isOnlyOwner = selectedEngagement.ownerIds?.length === 1;
+                    const isInactive = owner.isActive === false;
                     
                     return (
                       <div key={ownerId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            isInactive ? 'bg-gray-300 text-gray-500' :
                             ownerId === currentUser?.id ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
                           }`}>
                             {owner.initials}
                           </div>
-                          <span className="font-medium text-gray-900">{owner.name}</span>
+                          <div>
+                            <span className="font-medium text-gray-900">{owner.name}</span>
+                            {isInactive && (
+                              <span className="ml-2 text-xs text-gray-500">(Inactive)</span>
+                            )}
+                          </div>
                         </div>
                         {!isOnlyOwner && (
                           <button
@@ -1782,7 +1989,7 @@ function PresalesTracker() {
                 </div>
               </div>
               
-              {/* Add Owner */}
+              {/* Add Owner - only show active members */}
               <div>
                 <p className="text-sm font-medium text-gray-700 mb-3">Add Owner</p>
                 <div className="space-y-2">
@@ -1806,7 +2013,7 @@ function PresalesTracker() {
                     ))
                   }
                   {teamMembers.filter(m => !selectedEngagement.ownerIds?.includes(m.id)).length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-2">All team members are already owners</p>
+                    <p className="text-sm text-gray-400 text-center py-2">All active team members are already owners</p>
                   )}
                 </div>
               </div>
@@ -1967,7 +2174,7 @@ function PresalesTracker() {
           </div>
         </div>
 
-        {/* Owners (Phase 2) */}
+        {/* Owners (Phase 2) - only show active members */}
         <div>
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Owners</h3>
           <div className="space-y-2">
@@ -2104,9 +2311,34 @@ function PresalesTracker() {
             <p className="font-medium text-gray-900">Engagement Tracker</p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Phase 4: Admin link */}
+            {currentUser?.isAdmin && (
+              <button
+                onClick={() => setView('admin')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  view === 'admin' 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  Team
+                </span>
+              </button>
+            )}
             <span className="text-sm text-gray-500">{currentUser?.name}</span>
-            <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
-              {currentUser?.initials}
+            <div className="flex items-center gap-1">
+              <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
+                {currentUser?.initials}
+              </div>
+              {currentUser?.isAdmin && (
+                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                  Admin
+                </span>
+              )}
             </div>
             <button
               onClick={handleSignOut}
@@ -2123,6 +2355,7 @@ function PresalesTracker() {
         {view === 'list' && <ListView />}
         {view === 'detail' && <DetailView />}
         {view === 'new' && <NewEngagementView />}
+        {view === 'admin' && <AdminView />}
       </main>
     </div>
   );
