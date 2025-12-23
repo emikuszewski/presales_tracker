@@ -6,6 +6,22 @@ import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 // Generate typed client
 const client = generateClient();
 
+// Utility function to safely parse links from Amplify JSON field
+const parseLinks = (links) => {
+  if (!links) return [];
+  if (Array.isArray(links)) return links;
+  if (typeof links === 'string') {
+    try {
+      const parsed = JSON.parse(links);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('Error parsing links:', e);
+      return [];
+    }
+  }
+  return [];
+};
+
 // Industry display mapping
 const industryLabels = {
   FINANCIAL_SERVICES: 'Financial Services',
@@ -410,19 +426,7 @@ function PresalesTracker() {
           phaseConfig.forEach(p => {
             const existingPhase = phases.find(ph => ph.phaseType === p.id);
             if (existingPhase) {
-              // Parse links if stored as string
-              let parsedLinks = [];
-              if (existingPhase.links) {
-                if (typeof existingPhase.links === 'string') {
-                  try {
-                    parsedLinks = JSON.parse(existingPhase.links);
-                  } catch (e) {
-                    console.error('Error parsing links for phase:', p.id, e);
-                  }
-                } else if (Array.isArray(existingPhase.links)) {
-                  parsedLinks = existingPhase.links;
-                }
-              }
+              const parsedLinks = parseLinks(existingPhase.links);
               console.log(`Phase ${p.id} links:`, parsedLinks);
               phasesObj[p.id] = {
                 ...existingPhase,
@@ -916,21 +920,7 @@ function PresalesTracker() {
       
       console.log('Fresh phase from DB:', freshPhase);
       
-      // Parse links - they may be stored as a JSON string
-      let currentLinks = [];
-      if (freshPhase?.links) {
-        if (typeof freshPhase.links === 'string') {
-          try {
-            currentLinks = JSON.parse(freshPhase.links);
-          } catch (e) {
-            console.error('Error parsing links:', e);
-            currentLinks = [];
-          }
-        } else if (Array.isArray(freshPhase.links)) {
-          currentLinks = freshPhase.links;
-        }
-      }
-      
+      const currentLinks = parseLinks(freshPhase?.links);
       const updatedLinks = [...currentLinks, linkToAdd];
       console.log('Updated links:', updatedLinks);
       
@@ -1002,21 +992,7 @@ function PresalesTracker() {
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
-      
-      // Parse links if needed
-      let currentLinks = [];
-      if (existingPhase?.links) {
-        if (typeof existingPhase.links === 'string') {
-          try {
-            currentLinks = JSON.parse(existingPhase.links);
-          } catch (e) {
-            currentLinks = [];
-          }
-        } else if (Array.isArray(existingPhase.links)) {
-          currentLinks = existingPhase.links;
-        }
-      }
-      
+      const currentLinks = parseLinks(existingPhase?.links);
       const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
       
       if (existingPhase.id) {
@@ -1635,7 +1611,7 @@ function PresalesTracker() {
                 {phaseConfig.map((phase, index) => {
                   const phaseData = selectedEngagement.phases[phase.id] || { status: 'PENDING', notes: '', links: [] };
                   const statusBadge = getStatusBadge(phaseData.status);
-                  const links = Array.isArray(phaseData.links) ? phaseData.links : [];
+                  const links = parseLinks(phaseData.links);
                   
                   return (
                     <div 
