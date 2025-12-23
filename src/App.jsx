@@ -164,6 +164,107 @@ const NotificationBadge = ({ count }) => {
   );
 };
 
+// ========== LINK MODAL COMPONENT ==========
+const LinkModal = ({ isOpen, phaseLabel, onClose, onAdd }) => {
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const titleInputRef = React.useRef(null);
+
+  // Focus the title input when modal opens
+  useEffect(() => {
+    if (isOpen && titleInputRef.current) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setTitle('');
+      setUrl('');
+    }
+  }, [isOpen]);
+
+  const handleSubmit = () => {
+    if (title.trim() && url.trim()) {
+      onAdd({ title: title.trim(), url: url.trim() });
+      setTitle('');
+      setUrl('');
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && title.trim() && url.trim()) {
+      e.preventDefault();
+      handleSubmit();
+    }
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 className="text-xl font-medium text-gray-900 mb-6">
+          Add Link to {phaseLabel}
+        </h3>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="e.g., Architecture Diagram"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+            <input
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://..."
+            />
+          </div>
+        </div>
+        
+        <div className="flex gap-3 mt-6">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+          >Cancel</button>
+          <button 
+            type="button"
+            onClick={handleSubmit}
+            disabled={!title.trim() || !url.trim()}
+            className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >Add Link</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component (inside Authenticator)
 function PresalesTracker() {
   const { user } = useAuthenticator((context) => [context.user]);
@@ -188,7 +289,6 @@ function PresalesTracker() {
   const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [newActivity, setNewActivity] = useState({ date: getTodayDate(), type: 'MEETING', description: '' });
-  const [newLink, setNewLink] = useState({ title: '', url: '' });
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
   const [engagementViews, setEngagementViews] = useState({});
@@ -782,11 +882,11 @@ function PresalesTracker() {
     }
   };
 
-  const handleAddLink = async (phaseId) => {
-    if (!newLink.title || !newLink.url || !selectedEngagement) return;
+  const handleAddLink = async (phaseId, linkData) => {
+    if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) return;
     
     const engagementId = selectedEngagement.id;
-    const linkToAdd = { title: newLink.title, url: newLink.url };
+    const linkToAdd = { title: linkData.title, url: linkData.url };
     
     try {
       const existingPhase = selectedEngagement.phases[phaseId];
@@ -815,8 +915,7 @@ function PresalesTracker() {
         `Added link "${linkToAdd.title}" to ${phaseLabels[phaseId]} phase`
       );
       
-      // Reset form and close modal first
-      setNewLink({ title: '', url: '' });
+      // Close modal first
       setShowLinkModal(null);
       
       // Refresh data
@@ -1727,68 +1826,13 @@ function PresalesTracker() {
               </div>
             )}
 
-            {/* FIXED Link Modal - with proper event handling for inputs */}
-            {showLinkModal && (
-              <div 
-                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" 
-                onClick={() => { setShowLinkModal(null); setNewLink({ title: '', url: '' }); }}
-              >
-                <div 
-                  className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" 
-                  onClick={e => e.stopPropagation()}
-                  onMouseDown={e => e.stopPropagation()}
-                >
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">
-                    Add Link to {phaseConfig.find(p => p.id === showLinkModal)?.label}
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={newLink.title}
-                        onChange={e => setNewLink(prev => ({ ...prev, title: e.target.value }))}
-                        onMouseDown={e => e.stopPropagation()}
-                        onClick={e => e.stopPropagation()}
-                        onFocus={e => e.stopPropagation()}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                        placeholder="e.g., Architecture Diagram"
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-                      <input
-                        type="url"
-                        value={newLink.url}
-                        onChange={e => setNewLink(prev => ({ ...prev, url: e.target.value }))}
-                        onMouseDown={e => e.stopPropagation()}
-                        onClick={e => e.stopPropagation()}
-                        onFocus={e => e.stopPropagation()}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                        placeholder="https://..."
-                        autoComplete="off"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 mt-6">
-                    <button 
-                      onClick={() => { setShowLinkModal(null); setNewLink({ title: '', url: '' }); }}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                    >Cancel</button>
-                    <button 
-                      onClick={() => handleAddLink(showLinkModal)}
-                      disabled={!newLink.title || !newLink.url}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >Add Link</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Link Modal - Using separate component */}
+            <LinkModal
+              isOpen={showLinkModal !== null}
+              phaseLabel={phaseConfig.find(p => p.id === showLinkModal)?.label || ''}
+              onClose={() => setShowLinkModal(null)}
+              onAdd={(linkData) => handleAddLink(showLinkModal, linkData)}
+            />
 
             {/* Integrations Modal */}
             {showIntegrationsModal && (
