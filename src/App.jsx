@@ -555,8 +555,8 @@ function PresalesTracker() {
             phaseType: phase.id,
             status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
             completedDate: null,
-            notes: '',
-            links: []
+            notes: null,
+            links: null
           });
           console.log('Phase created result:', result);
         } catch (phaseError) {
@@ -759,8 +759,8 @@ function PresalesTracker() {
             phaseType: phaseId,
             status: updates.status || 'PENDING',
             completedDate: updates.status === 'COMPLETE' ? getTodayDate() : null,
-            notes: updates.notes || '',
-            links: []
+            notes: updates.notes || null,
+            links: null
           });
           console.log('Phase.create result:', result);
         } catch (createError) {
@@ -834,7 +834,7 @@ function PresalesTracker() {
           phaseType: phaseId,
           status: 'PENDING',
           completedDate: null,
-          notes: '',
+          notes: null,
           links: updatedLinks
         });
       }
