@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   OwnersDisplay,
   StaleBadge,
+  SlackIcon,
   ActivityModal,
   PhaseEditModal,
   LinkModal,
@@ -212,8 +213,25 @@ const DetailView = ({
             ) : (
               <p className="text-sm text-gray-400">No Jira ticket linked</p>
             )}
-            {engagement.slackChannel && (
-              <p className="flex items-center gap-2 text-sm text-gray-700">{engagement.slackChannel}</p>
+            {engagement.slackChannel ? (
+              engagement.slackUrl ? (
+                <a 
+                  href={engagement.slackUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <SlackIcon className="w-4 h-4" />
+                  {engagement.slackChannel}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <SlackIcon className="w-4 h-4" />
+                  {engagement.slackChannel}
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-400">No Slack channel linked</p>
             )}
           </div>
         </div>
