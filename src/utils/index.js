@@ -3,7 +3,8 @@ export {
   groupBy,
   generateInitials,
   getTodayDate,
-  generateTempId
+  generateTempId,
+  formatDealSize
 } from './helpers';
 
 export {
