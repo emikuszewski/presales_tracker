@@ -1,10 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 
 // Generate typed client
 const client = generateClient();
+
+// Helper function to group array items by a key (for batch processing)
+const groupBy = (arr, key) => arr.reduce((acc, item) => {
+  const keyValue = item[key];
+  if (keyValue) {
+    (acc[keyValue] = acc[keyValue] || []).push(item);
+  }
+  return acc;
+}, {});
 
 // Utility function to safely parse links from Amplify JSON field
 const parseLinks = (links) => {
@@ -129,8 +138,10 @@ const getDaysSinceActivity = (engagement) => {
 // Helper to generate a temporary ID for optimistic updates
 const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-// ========== OWNERS DISPLAY COMPONENT ==========
-const OwnersDisplay = ({ ownerIds, size = 'md', getOwnerInfo, currentUser }) => {
+// ========== MEMOIZED COMPONENTS ==========
+
+// Memoized OwnersDisplay component
+const OwnersDisplay = React.memo(({ ownerIds, size = 'md', getOwnerInfo, currentUserId }) => {
   const sizeClasses = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm';
   const overlapClass = size === 'sm' ? '-ml-2' : '-ml-3';
   
@@ -138,7 +149,7 @@ const OwnersDisplay = ({ ownerIds, size = 'md', getOwnerInfo, currentUser }) => 
     <div className="flex items-center">
       {ownerIds?.slice(0, 3).map((ownerId, index) => {
         const owner = getOwnerInfo(ownerId);
-        const isCurrentUser = ownerId === currentUser?.id;
+        const isCurrentUser = ownerId === currentUserId;
         const isInactive = owner.isActive === false;
         return (
           <div
@@ -161,27 +172,27 @@ const OwnersDisplay = ({ ownerIds, size = 'md', getOwnerInfo, currentUser }) => 
       )}
     </div>
   );
-};
+});
 
-// ========== STALE BADGE COMPONENT ==========
-const StaleBadge = ({ daysSinceActivity }) => (
+// Memoized StaleBadge component
+const StaleBadge = React.memo(({ daysSinceActivity }) => (
   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
     {daysSinceActivity}d stale
   </span>
-);
+));
 
-// ========== NOTIFICATION BADGE COMPONENT ==========
-const NotificationBadge = ({ count }) => {
+// Memoized NotificationBadge component
+const NotificationBadge = React.memo(({ count }) => {
   if (!count || count <= 0) return null;
   return (
     <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white text-xs font-bold rounded-full">
       {count > 9 ? '9+' : count}
     </span>
   );
-};
+});
 
 // ========== LINK MODAL COMPONENT ==========
 const LinkModal = ({ isOpen, phaseId, phaseLabel, onClose, onAdd }) => {
@@ -380,118 +391,139 @@ function PresalesTracker() {
     }
   };
 
+  // OPTIMIZED: Batch fetch all data in parallel to solve N+1 query problem
   const fetchAllData = async (userId) => {
     try {
-      const { data: allMembers } = await client.models.TeamMember.list();
-      setAllTeamMembers(allMembers);
+      // Parallel fetch ALL data in one batch - this is the key optimization
+      const [
+        membersResult,
+        engagementsResult,
+        phasesResult,
+        activitiesResult,
+        ownershipResult,
+        commentsResult,
+        changeLogsResult,
+        viewsResult
+      ] = await Promise.all([
+        client.models.TeamMember.list(),
+        client.models.Engagement.list(),
+        client.models.Phase.list(),
+        client.models.Activity.list(),
+        client.models.EngagementOwner.list(),
+        client.models.Comment.list(),
+        client.models.ChangeLog.list(),
+        userId 
+          ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } })
+              .catch(() => ({ data: [] })) // Handle if EngagementView not available
+          : Promise.resolve({ data: [] })
+      ]);
+
+      const allMembers = membersResult.data;
+      const engagementData = engagementsResult.data;
+      const allPhases = phasesResult.data;
+      const allActivities = activitiesResult.data;
+      const allOwnershipRecords = ownershipResult.data;
+      const allComments = commentsResult.data;
+      const allChangeLogs = changeLogsResult.data;
+      const allViews = viewsResult.data;
+
+      // Create lookup maps for O(1) access instead of filtering per engagement
+      const phasesByEngagement = groupBy(allPhases, 'engagementId');
+      const activitiesByEngagement = groupBy(allActivities, 'engagementId');
+      const ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
+      const commentsByActivity = groupBy(allComments, 'activityId');
+      const changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
       
+      // Create views map
+      const viewsMap = {};
+      allViews.forEach(v => {
+        viewsMap[v.engagementId] = v;
+      });
+      setEngagementViews(viewsMap);
+
+      // Set team members
+      setAllTeamMembers(allMembers);
       const activeMembers = allMembers.filter(m => m.isActive !== false);
       setTeamMembers(activeMembers);
-      
-      const { data: engagementData } = await client.models.Engagement.list();
-      
-      const viewerId = userId || currentUser?.id;
-      let viewsMap = {};
-      if (viewerId) {
-        try {
-          const { data: views } = await client.models.EngagementView.list({
-            filter: { visitorId: { eq: viewerId } }
-          });
-          views.forEach(v => {
-            viewsMap[v.engagementId] = v;
-          });
-        } catch (e) {
-          console.log('EngagementView not available yet');
+
+      // Enrich engagements WITHOUT additional queries - all data is already loaded
+      const enrichedEngagements = engagementData.map((eng) => {
+        // Get phases for this engagement from our lookup map
+        const phases = phasesByEngagement[eng.id] || [];
+        
+        // Get activities for this engagement from our lookup map
+        const activities = activitiesByEngagement[eng.id] || [];
+        
+        // Get ownership records for this engagement from our lookup map
+        const ownershipRecords = ownershipByEngagement[eng.id] || [];
+        
+        // Get change logs for this engagement from our lookup map
+        const changeLogs = (changeLogsByEngagement[eng.id] || [])
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Enrich activities with their comments from our lookup map
+        const activitiesWithComments = activities
+          .map((activity) => ({
+            ...activity,
+            comments: (commentsByActivity[activity.id] || [])
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          }))
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // Build phases object
+        const phasesObj = {};
+        phaseConfig.forEach(p => {
+          const existingPhase = phases.find(ph => ph.phaseType === p.id);
+          if (existingPhase) {
+            const parsedLinks = parseLinks(existingPhase.links);
+            phasesObj[p.id] = {
+              ...existingPhase,
+              links: parsedLinks
+            };
+          } else {
+            phasesObj[p.id] = {
+              phaseType: p.id,
+              status: 'PENDING',
+              completedDate: null,
+              notes: '',
+              links: []
+            };
+          }
+        });
+
+        // Build owner IDs list
+        const ownerIds = ownershipRecords.map(o => o.teamMemberId);
+        if (ownerIds.length === 0 && eng.ownerId) {
+          ownerIds.push(eng.ownerId);
         }
-      }
-      setEngagementViews(viewsMap);
-      
-      const enrichedEngagements = await Promise.all(
-        engagementData.map(async (eng) => {
-          const { data: phases } = await client.models.Phase.list({
-            filter: { engagementId: { eq: eng.id } }
-          });
-          const { data: activities } = await client.models.Activity.list({
-            filter: { engagementId: { eq: eng.id } }
-          });
-          
-          const { data: ownershipRecords } = await client.models.EngagementOwner.list({
-            filter: { engagementId: { eq: eng.id } }
-          });
-          
-          const activitiesWithComments = await Promise.all(
-            activities.map(async (activity) => {
-              const { data: comments } = await client.models.Comment.list({
-                filter: { activityId: { eq: activity.id } }
-              });
-              return {
-                ...activity,
-                comments: comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-              };
-            })
-          );
-          
-          let changeLogs = [];
-          try {
-            const { data: logs } = await client.models.ChangeLog.list({
-              filter: { engagementId: { eq: eng.id } }
-            });
-            changeLogs = logs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          } catch (e) {}
-          
-          const phasesObj = {};
-          phaseConfig.forEach(p => {
-            const existingPhase = phases.find(ph => ph.phaseType === p.id);
-            if (existingPhase) {
-              const parsedLinks = parseLinks(existingPhase.links);
-              phasesObj[p.id] = {
-                ...existingPhase,
-                links: parsedLinks
-              };
-            } else {
-              phasesObj[p.id] = {
-                phaseType: p.id,
-                status: 'PENDING',
-                completedDate: null,
-                notes: '',
-                links: []
-              };
-            }
-          });
-          
-          const ownerIds = ownershipRecords.map(o => o.teamMemberId);
-          
-          if (ownerIds.length === 0 && eng.ownerId) {
-            ownerIds.push(eng.ownerId);
-          }
-          
-          const userView = viewsMap[eng.id];
-          let unreadChanges = 0;
-          if (userView && viewerId) {
-            const lastViewed = new Date(userView.lastViewedAt);
-            unreadChanges = changeLogs.filter(log => 
-              new Date(log.createdAt) > lastViewed && log.userId !== viewerId
-            ).length;
-          } else if (changeLogs.length > 0 && viewerId) {
-            unreadChanges = changeLogs.filter(log => log.userId !== viewerId).length;
-          }
-          
-          return {
-            ...eng,
-            phases: phasesObj,
-            activities: activitiesWithComments.sort((a, b) => new Date(b.date) - new Date(a.date)),
-            ownerIds: ownerIds,
-            ownershipRecords: ownershipRecords,
-            changeLogs: changeLogs,
-            unreadChanges: unreadChanges,
-            isStale: isEngagementStale(eng),
-            daysSinceActivity: getDaysSinceActivity(eng)
-          };
-        })
-      );
-      
+
+        // Calculate unread changes
+        const userView = viewsMap[eng.id];
+        let unreadChanges = 0;
+        if (userView && userId) {
+          const lastViewed = new Date(userView.lastViewedAt);
+          unreadChanges = changeLogs.filter(log => 
+            new Date(log.createdAt) > lastViewed && log.userId !== userId
+          ).length;
+        } else if (changeLogs.length > 0 && userId) {
+          unreadChanges = changeLogs.filter(log => log.userId !== userId).length;
+        }
+
+        return {
+          ...eng,
+          phases: phasesObj,
+          activities: activitiesWithComments,
+          ownerIds: ownerIds,
+          ownershipRecords: ownershipRecords,
+          changeLogs: changeLogs,
+          unreadChanges: unreadChanges,
+          isStale: isEngagementStale(eng),
+          daysSinceActivity: getDaysSinceActivity(eng)
+        };
+      });
+
       setEngagements(enrichedEngagements);
-      
+
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -611,6 +643,7 @@ function PresalesTracker() {
     }
   };
 
+  // Memoized owner info lookup function
   const getOwnerInfo = useCallback((ownerId) => {
     const member = allTeamMembers.find(m => m.id === ownerId);
     return member || { name: 'Unknown', initials: '?' };
@@ -636,35 +669,42 @@ function PresalesTracker() {
     return engagement.ownerIds?.includes(currentUser?.id) || engagement.ownerId === currentUser?.id;
   };
 
-  const filteredEngagements = engagements
-    .filter(e => {
-      if (showArchived !== (e.isArchived || false)) return false;
-      if (filterPhase !== 'all' && e.currentPhase !== filterPhase) return false;
-      if (filterStale && !e.isStale) return false;
-      
-      if (filterOwner === 'mine') {
-        const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-        if (!isOwner) return false;
-      } else if (filterOwner !== 'all') {
-        const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
-        if (!isOwner) return false;
-      }
-      
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesCompany = e.company.toLowerCase().includes(query);
-        const matchesContact = e.contactName.toLowerCase().includes(query);
-        const matchesIndustry = (industryLabels[e.industry] || '').toLowerCase().includes(query);
-        if (!matchesCompany && !matchesContact && !matchesIndustry) return false;
-      }
-      
-      return true;
-    })
-    .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
+  // MEMOIZED: Filtered engagements - only recalculates when dependencies change
+  const filteredEngagements = useMemo(() => {
+    return engagements
+      .filter(e => {
+        if (showArchived !== (e.isArchived || false)) return false;
+        if (filterPhase !== 'all' && e.currentPhase !== filterPhase) return false;
+        if (filterStale && !e.isStale) return false;
+        
+        if (filterOwner === 'mine') {
+          const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
+          if (!isOwner) return false;
+        } else if (filterOwner !== 'all') {
+          const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
+          if (!isOwner) return false;
+        }
+        
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          const matchesCompany = e.company.toLowerCase().includes(query);
+          const matchesContact = e.contactName.toLowerCase().includes(query);
+          const matchesIndustry = (industryLabels[e.industry] || '').toLowerCase().includes(query);
+          if (!matchesCompany && !matchesContact && !matchesIndustry) return false;
+        }
+        
+        return true;
+      })
+      .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
+  }, [engagements, showArchived, filterPhase, filterStale, filterOwner, currentUser?.id, searchQuery]);
 
-  const staleCount = engagements.filter(e => !e.isArchived && e.isStale && 
-    (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
-  ).length;
+  // MEMOIZED: Stale count - only recalculates when dependencies change
+  const staleCount = useMemo(() => {
+    return engagements.filter(e => 
+      !e.isArchived && e.isStale && 
+      (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
+    ).length;
+  }, [engagements, filterOwner, currentUser?.id]);
 
   // Create engagement still uses fetchAllData since we need server-generated IDs
   const handleCreateEngagement = async () => {
@@ -1620,7 +1660,7 @@ function PresalesTracker() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3">
-                      <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUser={currentUser} />
+                      <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
@@ -1708,7 +1748,7 @@ function PresalesTracker() {
 
             <div className="flex items-start justify-between mb-8">
               <div className="flex items-start gap-4">
-                <OwnersDisplay ownerIds={selectedEngagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUser={currentUser} />
+                <OwnersDisplay ownerIds={selectedEngagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
                 <div>
                   <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-medium text-gray-900">{selectedEngagement.company}</h2>
