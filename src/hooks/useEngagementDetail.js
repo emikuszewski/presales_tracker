@@ -515,7 +515,8 @@ const useEngagementDetail = ({
       salesforceUrl: selectedEngagement.salesforceUrl,
       jiraTicket: selectedEngagement.jiraTicket,
       jiraUrl: selectedEngagement.jiraUrl,
-      slackChannel: selectedEngagement.slackChannel
+      slackChannel: selectedEngagement.slackChannel,
+      slackUrl: selectedEngagement.slackUrl
     };
     
     // Optimistic update
