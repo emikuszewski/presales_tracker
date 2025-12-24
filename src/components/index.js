@@ -6,7 +6,8 @@ export {
   OwnersDisplay, 
   StaleBadge, 
   NotificationBadge,
-  SlackIcon
+  SlackIcon,
+  LinkifyText
 } from './ui';
 
 // Modal components
