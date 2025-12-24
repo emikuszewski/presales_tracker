@@ -147,6 +147,7 @@ const useEngagementList = ({
         jiraTicket: newEngagement.jiraTicket || null,
         jiraUrl: newEngagement.jiraUrl || null,
         slackChannel: newEngagement.slackChannel || null,
+        slackUrl: newEngagement.slackUrl || null,
         isArchived: false
       });
       
@@ -177,7 +178,7 @@ const useEngagementList = ({
       setNewEngagement({
         company: '', contactName: '', contactEmail: '', contactPhone: '',
         industry: 'TECHNOLOGY', dealSize: '', ownerIds: [currentUser?.id],
-        salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: ''
+        salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: '', slackUrl: ''
       });
       setView('list');
       
