@@ -245,27 +245,72 @@ const ListView = ({
               {/* Integration badges: SF → Jira → Drive → Slack */}
               {(engagement.salesforceId || engagement.jiraTicket || engagement.driveFolderUrl || engagement.slackUrl) && (
                 <div className="flex gap-2 mb-3">
+                  {/* Salesforce badge - clickable if URL exists */}
                   {engagement.salesforceId && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">SF</span>
+                    engagement.salesforceUrl ? (
+                      <a
+                        href={engagement.salesforceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition-colors"
+                        title="Open in Salesforce"
+                      >
+                        SF
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                        SF
+                      </span>
+                    )
                   )}
+                  
+                  {/* Jira badge - clickable if URL exists */}
                   {engagement.jiraTicket && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">{engagement.jiraTicket}</span>
+                    engagement.jiraUrl ? (
+                      <a
+                        href={engagement.jiraUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition-colors"
+                        title="Open in Jira"
+                      >
+                        {engagement.jiraTicket}
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
+                        {engagement.jiraTicket}
+                      </span>
+                    )
                   )}
+                  
+                  {/* Drive icon - always clickable (only shows if URL exists) */}
                   {engagement.driveFolderUrl && (
-                    <span 
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded"
-                      title={engagement.driveFolderName || 'Google Drive'}
+                    <a
+                      href={engagement.driveFolderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded hover:bg-green-100 transition-colors"
+                      title={engagement.driveFolderName || 'Open Google Drive'}
                     >
                       <DriveIcon className="w-3.5 h-3.5" />
-                    </span>
+                    </a>
                   )}
+                  
+                  {/* Slack icon - always clickable (only shows if URL exists) */}
                   {engagement.slackUrl && (
-                    <span 
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded"
-                      title={engagement.slackChannel || 'Slack'}
+                    <a
+                      href={engagement.slackUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded hover:bg-purple-100 transition-colors"
+                      title={engagement.slackChannel || 'Open Slack'}
                     >
                       <SlackIcon className="w-3.5 h-3.5" />
-                    </span>
+                    </a>
                   )}
                 </div>
               )}
