@@ -3,140 +3,32 @@ import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 
+// Import constants
+import {
+  industryLabels,
+  phaseLabels,
+  activityTypeLabels,
+  changeTypeLabels,
+  phaseConfig,
+  activityTypes,
+  industries,
+  ADMIN_EMAIL,
+  ALLOWED_DOMAIN
+} from './constants';
+
+// Import utilities
+import {
+  groupBy,
+  generateInitials,
+  getTodayDate,
+  generateTempId,
+  parseLinks,
+  isEngagementStale,
+  getDaysSinceActivity
+} from './utils';
+
 // Generate typed client
 const client = generateClient();
-
-// Helper function to group array items by a key (for batch processing)
-const groupBy = (arr, key) => arr.reduce((acc, item) => {
-  const keyValue = item[key];
-  if (keyValue) {
-    (acc[keyValue] = acc[keyValue] || []).push(item);
-  }
-  return acc;
-}, {});
-
-// Utility function to safely parse links from Amplify JSON field
-const parseLinks = (links) => {
-  if (!links) return [];
-  if (Array.isArray(links)) return links;
-  if (typeof links === 'string') {
-    try {
-      const parsed = JSON.parse(links);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      console.error('Error parsing links:', e);
-      return [];
-    }
-  }
-  return [];
-};
-
-// Industry display mapping
-const industryLabels = {
-  FINANCIAL_SERVICES: 'Financial Services',
-  HEALTHCARE: 'Healthcare',
-  TECHNOLOGY: 'Technology',
-  RETAIL: 'Retail',
-  MANUFACTURING: 'Manufacturing',
-  GOVERNMENT: 'Government'
-};
-
-const phaseLabels = {
-  DISCOVER: 'Discover',
-  DESIGN: 'Design',
-  DEMONSTRATE: 'Demonstrate',
-  VALIDATE: 'Validate',
-  ENABLE: 'Enable'
-};
-
-const activityTypeLabels = {
-  MEETING: 'Meeting',
-  DEMO: 'Demo',
-  DOCUMENT: 'Document',
-  EMAIL: 'Email',
-  SUPPORT: 'Support',
-  WORKSHOP: 'Workshop',
-  CALL: 'Call'
-};
-
-const changeTypeLabels = {
-  CREATED: 'Created engagement',
-  PHASE_UPDATE: 'Updated phase',
-  ACTIVITY_ADDED: 'Added activity',
-  OWNER_ADDED: 'Added owner',
-  OWNER_REMOVED: 'Removed owner',
-  COMMENT_ADDED: 'Added comment',
-  LINK_ADDED: 'Added link',
-  INTEGRATION_UPDATE: 'Updated integrations',
-  ARCHIVED: 'Archived',
-  RESTORED: 'Restored'
-};
-
-const phaseConfig = [
-  { id: "DISCOVER", label: "Discover", description: "Technical qualification & requirements gathering" },
-  { id: "DESIGN", label: "Design", description: "Solution architecture & POC scoping" },
-  { id: "DEMONSTRATE", label: "Demonstrate", description: "Demos, workshops & technical deep-dives" },
-  { id: "VALIDATE", label: "Validate", description: "POC execution & technical proof" },
-  { id: "ENABLE", label: "Enable", description: "Handoff, training & success planning" }
-];
-
-const activityTypes = ['MEETING', 'DEMO', 'DOCUMENT', 'EMAIL', 'SUPPORT', 'WORKSHOP', 'CALL'];
-const industries = ['FINANCIAL_SERVICES', 'HEALTHCARE', 'TECHNOLOGY', 'RETAIL', 'MANUFACTURING', 'GOVERNMENT'];
-
-// Admin email - hardcoded for Phase 1
-const ADMIN_EMAIL = 'edward.mikuszewski@plainid.com';
-const ALLOWED_DOMAIN = 'plainid.com';
-
-// Phase 3: Stale threshold in business days
-const STALE_THRESHOLD_BUSINESS_DAYS = 14;
-
-// Helper to generate initials from name
-const generateInitials = (name) => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-};
-
-// Helper to get today's date in YYYY-MM-DD format
-const getTodayDate = () => new Date().toISOString().split('T')[0];
-
-// Phase 3: Calculate business days between two dates
-const getBusinessDaysDiff = (fromDate, toDate) => {
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  let count = 0;
-  const current = new Date(from);
-  
-  while (current < to) {
-    current.setDate(current.getDate() + 1);
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-  }
-  return count;
-};
-
-// Phase 3: Check if engagement is stale
-const isEngagementStale = (engagement) => {
-  if (engagement.isArchived) return false;
-  const lastDate = engagement.lastActivity || engagement.startDate;
-  if (!lastDate) return false;
-  const businessDays = getBusinessDaysDiff(lastDate, new Date());
-  return businessDays >= STALE_THRESHOLD_BUSINESS_DAYS;
-};
-
-// Phase 3: Get days since last activity
-const getDaysSinceActivity = (engagement) => {
-  const lastDate = engagement.lastActivity || engagement.startDate;
-  if (!lastDate) return 0;
-  return getBusinessDaysDiff(lastDate, new Date());
-};
-
-// Helper to generate a temporary ID for optimistic updates
-const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 // ========== MEMOIZED COMPONENTS ==========
 
