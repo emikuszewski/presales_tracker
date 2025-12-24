@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { industries, industryLabels } from '../../constants';
+import { formatDealSize } from '../../utils';
 
 /**
  * Modal for editing engagement details (company, contact, industry, deal size)
@@ -40,12 +41,19 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
       contactEmail: formData.contactEmail.trim() || null,
       contactPhone: formData.contactPhone.trim() || null,
       industry: formData.industry,
-      dealSize: formData.dealSize.trim() || null
+      dealSize: formatDealSize(formData.dealSize) || null
     });
   };
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDealSizeBlur = () => {
+    const formatted = formatDealSize(formData.dealSize);
+    if (formatted !== formData.dealSize) {
+      updateField('dealSize', formatted);
+    }
   };
 
   return (
@@ -124,6 +132,7 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
               type="text" 
               value={formData.dealSize}
               onChange={e => updateField('dealSize', e.target.value)}
+              onBlur={handleDealSizeBlur}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="$100K" 
             />
