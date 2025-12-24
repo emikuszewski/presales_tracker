@@ -1,5 +1,6 @@
 import React from 'react';
 import { industries, industryLabels } from '../constants';
+import { formatDealSize } from '../utils';
 
 /**
  * Form view for creating a new engagement
@@ -13,6 +14,13 @@ const NewEngagementView = ({
 }) => {
   const updateField = (field, value) => {
     setNewEngagement(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDealSizeBlur = () => {
+    const formatted = formatDealSize(newEngagement.dealSize);
+    if (formatted !== newEngagement.dealSize) {
+      updateField('dealSize', formatted);
+    }
   };
 
   const toggleOwner = (memberId, isSelected) => {
@@ -110,6 +118,7 @@ const NewEngagementView = ({
                 type="text" 
                 value={newEngagement.dealSize}
                 onChange={e => updateField('dealSize', e.target.value)}
+                onBlur={handleDealSizeBlur}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 placeholder="$100K" 
               />
