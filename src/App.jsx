@@ -195,7 +195,7 @@ const NotificationBadge = React.memo(({ count }) => {
 });
 
 // ========== AVATAR MENU COMPONENT ==========
-const AvatarMenu = ({ currentUser, onTeamClick, onSignOut }) => {
+const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSignOut }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -261,23 +261,43 @@ const AvatarMenu = ({ currentUser, onTeamClick, onSignOut }) => {
           <div className="py-1">
             {/* Team Management - Only for Admins */}
             {currentUser?.isAdmin && (
-              <button
-                onClick={() => {
-                  onTeamClick();
-                  setIsOpen(false);
-                }}
-                className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Team Management</p>
-                  <p className="text-xs text-gray-500">Manage users & permissions</p>
-                </div>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    onTeamClick();
+                    setIsOpen(false);
+                  }}
+                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Team Management</p>
+                    <p className="text-xs text-gray-500">Manage users & permissions</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onEngagementsClick();
+                    setIsOpen(false);
+                  }}
+                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Engagement Management</p>
+                    <p className="text-xs text-gray-500">Delete engagements</p>
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Divider before Sign Out */}
@@ -407,6 +427,98 @@ const LinkModal = ({ isOpen, phaseId, phaseLabel, onClose, onAdd }) => {
   );
 };
 
+// ========== DELETE CONFIRMATION MODAL ==========
+const DeleteEngagementModal = ({ isOpen, engagement, cascadeInfo, onClose, onConfirm, isDeleting }) => {
+  const [confirmText, setConfirmText] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmText('');
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !engagement) return null;
+
+  const canDelete = confirmText.toLowerCase() === engagement.company.toLowerCase();
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isDeleting) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-medium text-gray-900">Delete Engagement</h3>
+        </div>
+
+        <p className="text-gray-600 mb-4">
+          You are about to permanently delete <strong>{engagement.company}</strong>. This action cannot be undone.
+        </p>
+
+        {/* Cascade Impact */}
+        <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
+          <p className="text-sm font-medium text-red-800 mb-2">The following will be permanently deleted:</p>
+          <ul className="text-sm text-red-700 space-y-1">
+            <li>• {cascadeInfo.phases} phase record{cascadeInfo.phases !== 1 ? 's' : ''}</li>
+            <li>• {cascadeInfo.activities} activit{cascadeInfo.activities !== 1 ? 'ies' : 'y'}</li>
+            <li>• {cascadeInfo.comments} comment{cascadeInfo.comments !== 1 ? 's' : ''}</li>
+            <li>• {cascadeInfo.changeLogs} change log entr{cascadeInfo.changeLogs !== 1 ? 'ies' : 'y'}</li>
+            <li>• {cascadeInfo.owners} owner assignment{cascadeInfo.owners !== 1 ? 's' : ''}</li>
+          </ul>
+        </div>
+
+        {/* Confirmation Input */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Type <strong>{engagement.company}</strong> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            disabled={isDeleting}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100"
+            placeholder="Type company name..."
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button 
+            onClick={onClose}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            disabled={!canDelete || isDeleting}
+            className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isDeleting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Deleting...
+              </>
+            ) : (
+              'Delete Permanently'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component (inside Authenticator)
 function PresalesTracker() {
   const { user } = useAuthenticator((context) => [context.user]);
@@ -435,6 +547,11 @@ function PresalesTracker() {
   const [expandedActivities, setExpandedActivities] = useState({});
   const [engagementViews, setEngagementViews] = useState({});
   const [adminShowInactive, setAdminShowInactive] = useState(false);
+  // Engagement Management state
+  const [engagementAdminFilter, setEngagementAdminFilter] = useState('all');
+  const [engagementAdminSearch, setEngagementAdminSearch] = useState('');
+  const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Local form state for phase modal
   const [phaseFormData, setPhaseFormData] = useState({ status: 'PENDING', notes: '' });
   const [newEngagement, setNewEngagement] = useState({
@@ -822,6 +939,27 @@ function PresalesTracker() {
       .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
   }, [engagements, showArchived, filterPhase, filterStale, filterOwner, currentUser?.id, searchQuery]);
 
+  // MEMOIZED: Filtered engagements for admin view
+  const filteredEngagementsAdmin = useMemo(() => {
+    return engagements
+      .filter(e => {
+        // Filter by status
+        if (engagementAdminFilter === 'active' && e.isArchived) return false;
+        if (engagementAdminFilter === 'archived' && !e.isArchived) return false;
+        
+        // Search filter
+        if (engagementAdminSearch) {
+          const query = engagementAdminSearch.toLowerCase();
+          const matchesCompany = e.company.toLowerCase().includes(query);
+          const matchesContact = e.contactName.toLowerCase().includes(query);
+          if (!matchesCompany && !matchesContact) return false;
+        }
+        
+        return true;
+      })
+      .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+  }, [engagements, engagementAdminFilter, engagementAdminSearch]);
+
   // MEMOIZED: Stale count - only recalculates when dependencies change
   const staleCount = useMemo(() => {
     return engagements.filter(e => 
@@ -829,6 +967,87 @@ function PresalesTracker() {
       (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
     ).length;
   }, [engagements, filterOwner, currentUser?.id]);
+
+  // Get cascade info for an engagement
+  const getCascadeInfo = useCallback((engagement) => {
+    if (!engagement) return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0 };
+    
+    const phaseCount = Object.keys(engagement.phases || {}).filter(k => engagement.phases[k]?.id).length;
+    const activityCount = engagement.activities?.length || 0;
+    const commentCount = engagement.activities?.reduce((sum, a) => sum + (a.comments?.length || 0), 0) || 0;
+    const changeLogCount = engagement.changeLogs?.length || 0;
+    const ownerCount = engagement.ownershipRecords?.length || engagement.ownerIds?.length || 0;
+    
+    return {
+      phases: phaseCount,
+      activities: activityCount,
+      comments: commentCount,
+      changeLogs: changeLogCount,
+      owners: ownerCount
+    };
+  }, []);
+
+  // Delete engagement with cascade
+  const handleDeleteEngagement = async () => {
+    if (!deleteModalEngagement || !currentUser?.isAdmin) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      const engagementId = deleteModalEngagement.id;
+      
+      // 1. Delete all comments for all activities
+      for (const activity of (deleteModalEngagement.activities || [])) {
+        for (const comment of (activity.comments || [])) {
+          await client.models.Comment.delete({ id: comment.id });
+        }
+      }
+      
+      // 2. Delete all activities
+      for (const activity of (deleteModalEngagement.activities || [])) {
+        await client.models.Activity.delete({ id: activity.id });
+      }
+      
+      // 3. Delete all phases
+      for (const phaseKey of Object.keys(deleteModalEngagement.phases || {})) {
+        const phase = deleteModalEngagement.phases[phaseKey];
+        if (phase?.id) {
+          await client.models.Phase.delete({ id: phase.id });
+        }
+      }
+      
+      // 4. Delete all ownership records
+      for (const ownership of (deleteModalEngagement.ownershipRecords || [])) {
+        await client.models.EngagementOwner.delete({ id: ownership.id });
+      }
+      
+      // 5. Delete all change logs
+      for (const log of (deleteModalEngagement.changeLogs || [])) {
+        await client.models.ChangeLog.delete({ id: log.id });
+      }
+      
+      // 6. Delete engagement views
+      const { data: views } = await client.models.EngagementView.list({
+        filter: { engagementId: { eq: engagementId } }
+      });
+      for (const view of views) {
+        await client.models.EngagementView.delete({ id: view.id });
+      }
+      
+      // 7. Finally, delete the engagement itself
+      await client.models.Engagement.delete({ id: engagementId });
+      
+      // Update local state
+      setEngagements(prev => prev.filter(e => e.id !== engagementId));
+      setDeleteModalEngagement(null);
+      
+    } catch (error) {
+      console.error('Error deleting engagement:', error);
+      alert('Error deleting engagement: ' + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Create engagement still uses fetchAllData since we need server-generated IDs
   const handleCreateEngagement = async () => {
@@ -1469,6 +1688,7 @@ function PresalesTracker() {
           <AvatarMenu 
             currentUser={currentUser}
             onTeamClick={() => setView('admin')}
+            onEngagementsClick={() => setView('engagements-admin')}
             onSignOut={handleSignOut}
           />
         </div>
@@ -1598,6 +1818,153 @@ function PresalesTracker() {
                 <li>• <strong>Deactivated users</strong> cannot be assigned as owners but their existing engagements remain.</li>
                 <li>• <strong>Admins</strong> can manage team members and access this panel.</li>
                 <li>• Users automatically join when they sign up with a @plainid.com email.</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* ENGAGEMENT MANAGEMENT VIEW */}
+        {view === 'engagements-admin' && (
+          <div>
+            <button 
+              onClick={() => setView('list')}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Engagements
+            </button>
+
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-medium text-gray-900">Engagement Management</h2>
+                <p className="text-gray-500 mt-1">
+                  {engagements.filter(e => !e.isArchived).length} active · {engagements.filter(e => e.isArchived).length} archived · {engagements.length} total
+                </p>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="mb-6">
+              <input
+                type="text"
+                placeholder="Search by company or contact..."
+                value={engagementAdminSearch}
+                onChange={(e) => setEngagementAdminSearch(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="mb-6">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEngagementAdminFilter('all')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    engagementAdminFilter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  All ({engagements.length})
+                </button>
+                <button
+                  onClick={() => setEngagementAdminFilter('active')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    engagementAdminFilter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Active ({engagements.filter(e => !e.isArchived).length})
+                </button>
+                <button
+                  onClick={() => setEngagementAdminFilter('archived')}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    engagementAdminFilter === 'archived' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Archived ({engagements.filter(e => e.isArchived).length})
+                </button>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredEngagementsAdmin.map(engagement => (
+                    <tr key={engagement.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{engagement.company}</p>
+                          <p className="text-sm text-gray-500">{engagement.contactName}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <OwnersDisplay 
+                          ownerIds={engagement.ownerIds} 
+                          size="sm" 
+                          getOwnerInfo={getOwnerInfo} 
+                          currentUserId={currentUser?.id} 
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-gray-700">
+                          {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-gray-500">{engagement.startDate}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        {engagement.isArchived ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                            Archived
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        <button
+                          onClick={() => setDeleteModalEngagement(engagement)}
+                          className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {filteredEngagementsAdmin.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  No engagements found
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 p-4 bg-red-50 rounded-xl">
+              <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
+              <ul className="text-sm text-red-700 space-y-1">
+                <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
+                <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
+                <li>• Consider archiving engagements instead if you may need the data later.</li>
               </ul>
             </div>
           </div>
@@ -2577,6 +2944,16 @@ function PresalesTracker() {
           </div>
         )}
       </main>
+
+      {/* Delete Engagement Modal */}
+      <DeleteEngagementModal
+        isOpen={deleteModalEngagement !== null}
+        engagement={deleteModalEngagement}
+        cascadeInfo={getCascadeInfo(deleteModalEngagement)}
+        onClose={() => setDeleteModalEngagement(null)}
+        onConfirm={handleDeleteEngagement}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
