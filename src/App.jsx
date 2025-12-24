@@ -201,9 +201,9 @@ function PresalesTracker() {
       <header className="border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <p className="text-sm font-medium text-gray-400 tracking-widest uppercase">Pre-Sales Engineering</p>
+            <p className="text-sm font-medium text-gray-400 tracking-widest uppercase">PLAINID SALES ENGINEERING</p>
             <span className="text-gray-300">|</span>
-            <p className="font-medium text-gray-900">Engagement Tracker</p>
+            <p className="font-medium text-gray-900">SE Tracker</p>
           </div>
           
           <AvatarMenu 
