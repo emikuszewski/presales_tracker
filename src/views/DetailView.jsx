@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   OwnersDisplay,
   StaleBadge,
@@ -24,6 +24,8 @@ const DetailView = ({
   currentUser,
   getOwnerInfo,
   detail, // Namespaced hook object: detail.phase.save, detail.activity.add, etc.
+  navigationOptions,
+  onClearNavigationOptions,
   onToggleArchive,
   onBack
 }) => {
@@ -39,6 +41,41 @@ const DetailView = ({
   // Local UI state
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
+  const [highlightedActivityId, setHighlightedActivityId] = useState(null);
+
+  // Handle navigation options (scroll to activity)
+  useEffect(() => {
+    if (navigationOptions?.scrollToActivityId) {
+      const activityId = navigationOptions.scrollToActivityId;
+      
+      // Auto-expand the activity
+      setExpandedActivities(prev => ({
+        ...prev,
+        [activityId]: true
+      }));
+      
+      // Set highlight
+      setHighlightedActivityId(activityId);
+      
+      // Scroll to the activity after DOM updates
+      requestAnimationFrame(() => {
+        const element = document.getElementById(`activity-${activityId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      
+      // Clear highlight after animation completes (2 seconds)
+      const highlightTimer = setTimeout(() => {
+        setHighlightedActivityId(null);
+      }, 2000);
+      
+      // Clear navigation options
+      onClearNavigationOptions();
+      
+      return () => clearTimeout(highlightTimer);
+    }
+  }, [navigationOptions, onClearNavigationOptions]);
 
   const toggleActivityExpansion = (activityId) => {
     setExpandedActivities(prev => ({
@@ -327,10 +364,17 @@ const DetailView = ({
         <div className="space-y-3">
           {engagement.activities.map((activity) => {
             const isExpanded = expandedActivities[activity.id];
+            const isHighlighted = highlightedActivityId === activity.id;
             const commentCount = activity.comments?.length || 0;
             
             return (
-              <div key={activity.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div 
+                key={activity.id} 
+                id={`activity-${activity.id}`}
+                className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-all duration-500 ${
+                  isHighlighted ? 'activity-highlight' : ''
+                }`}
+              >
                 <div className="flex gap-4 p-4">
                   <div className="text-sm text-gray-400 w-24 flex-shrink-0">{activity.date}</div>
                   <div className="flex-1">
@@ -472,6 +516,22 @@ const DetailView = ({
         currentUserId={currentUser?.id}
         getOwnerInfo={getOwnerInfo}
       />
+
+      {/* Highlight animation styles */}
+      <style>{`
+        @keyframes activityHighlight {
+          0% {
+            background-color: rgb(251 191 36 / 0.3);
+          }
+          100% {
+            background-color: white;
+          }
+        }
+        
+        .activity-highlight {
+          animation: activityHighlight 2s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
