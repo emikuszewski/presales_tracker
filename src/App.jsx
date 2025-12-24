@@ -45,7 +45,9 @@ function PresalesTracker() {
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
-    salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: '', slackUrl: ''
+    salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
+    driveFolderName: '', driveFolderUrl: '',
+    slackChannel: '', slackUrl: ''
   });
 
   // ============================================
