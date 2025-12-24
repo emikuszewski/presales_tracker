@@ -173,6 +173,7 @@ const NewEngagementView = ({
         <div>
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Integrations (Optional)</h3>
           <div className="grid grid-cols-2 gap-4">
+            {/* Tracking: Salesforce */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Salesforce Opportunity ID</label>
               <input 
@@ -195,6 +196,7 @@ const NewEngagementView = ({
               />
             </div>
             
+            {/* Tracking: Jira */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Jira Ticket</label>
               <input 
@@ -216,7 +218,37 @@ const NewEngagementView = ({
                 placeholder="https://..." 
               />
             </div>
+
+            {/* Visual spacing row */}
+            <div className="col-span-2 pt-2"></div>
             
+            {/* Documents: Google Drive */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Drive Folder Name</label>
+              <input 
+                type="text" 
+                value={newEngagement.driveFolderName}
+                onChange={e => updateField('driveFolderName', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="Acme Corp POC Docs" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Drive Folder URL</label>
+              <input 
+                type="url" 
+                value={newEngagement.driveFolderUrl}
+                onChange={e => updateField('driveFolderUrl', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="https://drive.google.com/drive/folders/..." 
+              />
+            </div>
+
+            {/* Visual spacing row */}
+            <div className="col-span-2 pt-2"></div>
+            
+            {/* Communication: Slack */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel</label>
               <input 
