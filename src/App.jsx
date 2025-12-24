@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
@@ -27,389 +27,24 @@ import {
   getDaysSinceActivity
 } from './utils';
 
+// Import components
+import {
+  OwnersDisplay,
+  StaleBadge,
+  NotificationBadge,
+  AvatarMenu,
+  LinkModal,
+  DeleteEngagementModal,
+  ActivityModal,
+  PhaseEditModal,
+  IntegrationsModal,
+  EditDetailsModal,
+  OwnersModal,
+  HistoryModal
+} from './components';
+
 // Generate typed client
 const client = generateClient();
-
-// ========== MEMOIZED COMPONENTS ==========
-
-// Memoized OwnersDisplay component
-const OwnersDisplay = React.memo(({ ownerIds, size = 'md', getOwnerInfo, currentUserId }) => {
-  const sizeClasses = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm';
-  const overlapClass = size === 'sm' ? '-ml-2' : '-ml-3';
-  
-  return (
-    <div className="flex items-center">
-      {ownerIds?.slice(0, 3).map((ownerId, index) => {
-        const owner = getOwnerInfo(ownerId);
-        const isCurrentUser = ownerId === currentUserId;
-        const isInactive = owner.isActive === false;
-        return (
-          <div
-            key={ownerId}
-            className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${
-              isInactive ? 'bg-gray-300 text-gray-500' :
-              isCurrentUser ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-            } ${index > 0 ? overlapClass : ''}`}
-            title={`${owner.name}${isInactive ? ' (Inactive)' : ''}`}
-            style={{ zIndex: 10 - index }}
-          >
-            {owner.initials}
-          </div>
-        );
-      })}
-      {ownerIds?.length > 3 && (
-        <div className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white bg-gray-200 text-gray-600 ${overlapClass}`}>
-          +{ownerIds.length - 3}
-        </div>
-      )}
-    </div>
-  );
-});
-
-// Memoized StaleBadge component
-const StaleBadge = React.memo(({ daysSinceActivity }) => (
-  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    {daysSinceActivity}d stale
-  </span>
-));
-
-// Memoized NotificationBadge component
-const NotificationBadge = React.memo(({ count }) => {
-  if (!count || count <= 0) return null;
-  return (
-    <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white text-xs font-bold rounded-full">
-      {count > 9 ? '9+' : count}
-    </span>
-  );
-});
-
-// ========== AVATAR MENU COMPONENT ==========
-const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSignOut }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  // Click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Escape to close
-  useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') setIsOpen(false);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  return (
-    <div className="relative" ref={menuRef}>
-      {/* Avatar Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
-        aria-expanded={isOpen}
-        aria-haspopup="true"
-      >
-        <div className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
-          {currentUser?.initials}
-        </div>
-        <svg 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div 
-          className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50"
-          style={{ animation: 'avatarMenuFadeIn 0.15s ease-out' }}
-        >
-          {/* User Info Section */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
-                {currentUser?.initials}
-              </div>
-              <p className="font-medium text-gray-900">{currentUser?.name}</p>
-            </div>
-          </div>
-
-          {/* Menu Items */}
-          <div className="py-1">
-            {/* Team Management - Only for Admins */}
-            {currentUser?.isAdmin && (
-              <>
-                <button
-                  onClick={() => {
-                    onTeamClick();
-                    setIsOpen(false);
-                  }}
-                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Team Management</p>
-                    <p className="text-xs text-gray-500">Manage users & permissions</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    onEngagementsClick();
-                    setIsOpen(false);
-                  }}
-                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Engagement Management</p>
-                    <p className="text-xs text-gray-500">Delete engagements</p>
-                  </div>
-                </button>
-              </>
-            )}
-
-            {/* Divider before Sign Out */}
-            <div className="my-1 border-t border-gray-100" />
-
-            {/* Sign Out */}
-            <button
-              onClick={() => {
-                onSignOut();
-                setIsOpen(false);
-              }}
-              className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-700">Sign Out</p>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes avatarMenuFadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-    </div>
-  );
-};
-
-// ========== LINK MODAL COMPONENT ==========
-const LinkModal = ({ isOpen, phaseId, phaseLabel, onClose, onAdd }) => {
-  const [title, setTitle] = React.useState('');
-  const [url, setUrl] = React.useState('');
-
-  // Reset form when modal opens/closes
-  React.useEffect(() => {
-    if (isOpen) {
-      setTitle('');
-      setUrl('');
-    }
-  }, [isOpen]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('LinkModal handleSubmit:', { phaseId, title, url });
-    if (title.trim() && url.trim() && phaseId) {
-      onAdd(phaseId, { title: title.trim(), url: url.trim() });
-    } else {
-      console.log('Missing data:', { phaseId, title: title.trim(), url: url.trim() });
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
-      style={{ zIndex: 9999 }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <form 
-        className="bg-white rounded-2xl p-6 w-full max-w-md mx-4"
-        onClick={e => e.stopPropagation()}
-        onSubmit={handleSubmit}
-      >
-        <h3 className="text-xl font-medium text-gray-900 mb-6">
-          Add Link to {phaseLabel}
-        </h3>
-        
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="link-title-input" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input
-              id="link-title-input"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="e.g., Architecture Diagram"
-              autoFocus
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="link-url-input" className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-            <input
-              id="link-url-input"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="https://..."
-            />
-          </div>
-        </div>
-        
-        <div className="flex gap-3 mt-6">
-          <button 
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-          >Cancel</button>
-          <button 
-            type="submit"
-            disabled={!title.trim() || !url.trim()}
-            className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >Add Link</button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
-// ========== DELETE CONFIRMATION MODAL ==========
-const DeleteEngagementModal = ({ isOpen, engagement, cascadeInfo, onClose, onConfirm, isDeleting }) => {
-  const [confirmText, setConfirmText] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      setConfirmText('');
-    }
-  }, [isOpen]);
-
-  if (!isOpen || !engagement) return null;
-
-  const canDelete = confirmText.toLowerCase() === engagement.company.toLowerCase();
-
-  return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isDeleting) {
-          onClose();
-        }
-      }}
-    >
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-medium text-gray-900">Delete Engagement</h3>
-        </div>
-
-        <p className="text-gray-600 mb-4">
-          You are about to permanently delete <strong>{engagement.company}</strong>. This action cannot be undone.
-        </p>
-
-        {/* Cascade Impact */}
-        <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
-          <p className="text-sm font-medium text-red-800 mb-2">The following will be permanently deleted:</p>
-          <ul className="text-sm text-red-700 space-y-1">
-            <li>• {cascadeInfo.phases} phase record{cascadeInfo.phases !== 1 ? 's' : ''}</li>
-            <li>• {cascadeInfo.activities} activit{cascadeInfo.activities !== 1 ? 'ies' : 'y'}</li>
-            <li>• {cascadeInfo.comments} comment{cascadeInfo.comments !== 1 ? 's' : ''}</li>
-            <li>• {cascadeInfo.changeLogs} change log entr{cascadeInfo.changeLogs !== 1 ? 'ies' : 'y'}</li>
-            <li>• {cascadeInfo.owners} owner assignment{cascadeInfo.owners !== 1 ? 's' : ''}</li>
-          </ul>
-        </div>
-
-        {/* Confirmation Input */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Type <strong>{engagement.company}</strong> to confirm
-          </label>
-          <input
-            type="text"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            disabled={isDeleting}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100"
-            placeholder="Type company name..."
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button 
-            onClick={onClose}
-            disabled={isDeleting}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={onConfirm}
-            disabled={!canDelete || isDeleting}
-            className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isDeleting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Deleting...
-              </>
-            ) : (
-              'Delete Permanently'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Main App Component (inside Authenticator)
 function PresalesTracker() {
@@ -435,7 +70,6 @@ function PresalesTracker() {
   const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
-  const [newActivity, setNewActivity] = useState({ date: getTodayDate(), type: 'MEETING', description: '' });
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
   const [engagementViews, setEngagementViews] = useState({});
@@ -445,8 +79,6 @@ function PresalesTracker() {
   const [engagementAdminSearch, setEngagementAdminSearch] = useState('');
   const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  // Local form state for phase modal
-  const [phaseFormData, setPhaseFormData] = useState({ status: 'PENDING', notes: '' });
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
@@ -457,17 +89,6 @@ function PresalesTracker() {
   useEffect(() => {
     initializeUser();
   }, [user]);
-
-  // Initialize phase form data ONLY when modal opens (not when selectedEngagement changes)
-  useEffect(() => {
-    if (showPhaseModal && selectedEngagement) {
-      const phaseData = selectedEngagement.phases[showPhaseModal];
-      setPhaseFormData({
-        status: phaseData?.status || 'PENDING',
-        notes: phaseData?.notes || ''
-      });
-    }
-  }, [showPhaseModal]); // Only trigger when modal opens/closes, NOT on selectedEngagement changes
 
   // Helper to update a single engagement in state
   const updateEngagementInState = useCallback((engagementId, updater) => {
@@ -799,10 +420,6 @@ function PresalesTracker() {
     }
   };
 
-  const isCurrentUserOwner = (engagement) => {
-    return engagement.ownerIds?.includes(currentUser?.id) || engagement.ownerId === currentUser?.id;
-  };
-
   // MEMOIZED: Filtered engagements - only recalculates when dependencies change
   const filteredEngagements = useMemo(() => {
     return engagements
@@ -1098,16 +715,17 @@ function PresalesTracker() {
     }
   };
 
-  const handleAddActivity = async () => {
-    if (!newActivity.date || !newActivity.description || !selectedEngagement) return;
+  // Updated to receive activity data from modal
+  const handleAddActivity = async (activityData) => {
+    if (!activityData.date || !activityData.description || !selectedEngagement) return;
     
     const tempId = generateTempId();
     const tempActivity = {
       id: tempId,
       engagementId: selectedEngagement.id,
-      date: newActivity.date,
-      type: newActivity.type,
-      description: newActivity.description,
+      date: activityData.date,
+      type: activityData.type,
+      description: activityData.description,
       comments: [],
       createdAt: new Date().toISOString()
     };
@@ -1116,25 +734,24 @@ function PresalesTracker() {
     updateEngagementInState(selectedEngagement.id, (eng) => ({
       ...eng,
       activities: [tempActivity, ...eng.activities],
-      lastActivity: newActivity.date,
+      lastActivity: activityData.date,
       isStale: false,
       daysSinceActivity: 0
     }));
     
-    setNewActivity({ date: getTodayDate(), type: 'MEETING', description: '' });
     setShowActivityModal(false);
     
     try {
       const { data: createdActivity } = await client.models.Activity.create({
         engagementId: selectedEngagement.id,
-        date: newActivity.date,
-        type: newActivity.type,
-        description: newActivity.description
+        date: activityData.date,
+        type: activityData.type,
+        description: activityData.description
       });
       
       await client.models.Engagement.update({
         id: selectedEngagement.id,
-        lastActivity: newActivity.date
+        lastActivity: activityData.date
       });
       
       // Replace temp with real
@@ -1148,7 +765,7 @@ function PresalesTracker() {
       logChangeAsync(
         selectedEngagement.id, 
         'ACTIVITY_ADDED', 
-        `Added ${activityTypeLabels[newActivity.type]}: ${newActivity.description.substring(0, 50)}${newActivity.description.length > 50 ? '...' : ''}`
+        `Added ${activityTypeLabels[activityData.type]}: ${activityData.description.substring(0, 50)}${activityData.description.length > 50 ? '...' : ''}`
       );
       
     } catch (error) {
@@ -1274,12 +891,11 @@ function PresalesTracker() {
     }));
   };
 
-  // Save phase changes
-  const handleSavePhase = async () => {
+  // Updated to receive phase data from modal
+  const handleSavePhase = async (phaseData) => {
     if (!selectedEngagement || !showPhaseModal) return;
     
     const phaseId = showPhaseModal;
-    const updates = { status: phaseFormData.status, notes: phaseFormData.notes };
     const engagementId = selectedEngagement.id;
     
     const existingPhase = selectedEngagement.phases[phaseId];
@@ -1288,7 +904,7 @@ function PresalesTracker() {
     
     // Calculate new current phase if completing
     let newCurrentPhase = selectedEngagement.currentPhase;
-    if (updates.status === 'COMPLETE') {
+    if (phaseData.status === 'COMPLETE') {
       const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
       if (phaseIndex < phaseConfig.length - 1) {
         newCurrentPhase = phaseConfig[phaseIndex + 1].id;
@@ -1303,9 +919,9 @@ function PresalesTracker() {
         ...eng.phases,
         [phaseId]: {
           ...eng.phases[phaseId],
-          status: updates.status,
-          notes: updates.notes,
-          completedDate: updates.status === 'COMPLETE' ? getTodayDate() : eng.phases[phaseId]?.completedDate
+          status: phaseData.status,
+          notes: phaseData.notes,
+          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : eng.phases[phaseId]?.completedDate
         }
       }
     }));
@@ -1316,17 +932,17 @@ function PresalesTracker() {
       if (existingPhase && existingPhase.id) {
         await client.models.Phase.update({
           id: existingPhase.id,
-          status: updates.status,
-          notes: updates.notes,
-          completedDate: updates.status === 'COMPLETE' ? getTodayDate() : existingPhase.completedDate
+          status: phaseData.status,
+          notes: phaseData.notes,
+          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : existingPhase.completedDate
         });
       } else {
         await client.models.Phase.create({
           engagementId: engagementId,
           phaseType: phaseId,
-          status: updates.status || 'PENDING',
-          completedDate: updates.status === 'COMPLETE' ? getTodayDate() : null,
-          notes: updates.notes || null,
+          status: phaseData.status || 'PENDING',
+          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : null,
+          notes: phaseData.notes || null,
           links: null
         });
       }
@@ -1338,13 +954,13 @@ function PresalesTracker() {
         });
       }
       
-      if (updates.status !== previousStatus) {
+      if (phaseData.status !== previousStatus) {
         logChangeAsync(
           engagementId,
           'PHASE_UPDATE',
-          `${phaseLabels[phaseId]} phase changed to ${updates.status.toLowerCase().replace('_', ' ')}`,
+          `${phaseLabels[phaseId]} phase changed to ${phaseData.status.toLowerCase().replace('_', ' ')}`,
           previousStatus,
-          updates.status
+          phaseData.status
         );
       }
       
@@ -1366,11 +982,12 @@ function PresalesTracker() {
     }
   };
 
-  const handleAddLink = async (phaseId, linkData) => {
-    if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) {
+  const handleAddLink = async (linkData) => {
+    if (!linkData?.title || !linkData?.url || !selectedEngagement || !showLinkModal) {
       return;
     }
     
+    const phaseId = showLinkModal;
     const engagementId = selectedEngagement.id;
     const linkToAdd = { title: linkData.title, url: linkData.url };
     const existingPhase = selectedEngagement.phases[phaseId];
@@ -1444,7 +1061,6 @@ function PresalesTracker() {
     
     const existingPhase = selectedEngagement.phases[phaseId];
     const currentLinks = parseLinks(existingPhase?.links);
-    const removedLink = currentLinks[linkIndex];
     
     // Optimistic update
     updateEngagementInState(selectedEngagement.id, (eng) => ({
@@ -2430,369 +2046,61 @@ function PresalesTracker() {
               </div>
             </div>
 
-            {/* Activity Modal */}
-            {showActivityModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowActivityModal(false)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">Log Activity</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                      <input
-                        type="date"
-                        value={newActivity.date}
-                        onChange={e => setNewActivity(prev => ({ ...prev, date: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                      <select
-                        value={newActivity.type}
-                        onChange={e => setNewActivity(prev => ({ ...prev, type: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                      >
-                        {activityTypes.map(type => (
-                          <option key={type} value={type}>{activityTypeLabels[type]}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <textarea
-                        value={newActivity.description}
-                        onChange={e => setNewActivity(prev => ({ ...prev, description: e.target.value }))}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
-                        placeholder="What happened?"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 mt-6">
-                    <button 
-                      onClick={() => setShowActivityModal(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                    >Cancel</button>
-                    <button 
-                      onClick={handleAddActivity}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                    >Save Activity</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* FIXED Phase Edit Modal - Now uses local form state */}
-            {showPhaseModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPhaseModal(null)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">
-                    Update {phaseConfig.find(p => p.id === showPhaseModal)?.label} Phase
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select
-                        value={phaseFormData.status}
-                        onChange={e => setPhaseFormData(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="COMPLETE">Complete</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                      <textarea
-                        value={phaseFormData.notes}
-                        onChange={e => setPhaseFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        rows={4}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent resize-none"
-                        placeholder="Key findings, decisions, blockers..."
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 mt-6">
-                    <button 
-                      onClick={() => setShowPhaseModal(null)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                    >Cancel</button>
-                    <button 
-                      onClick={handleSavePhase}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                    >Save Changes</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Link Modal - Using separate component */}
-            <LinkModal
-              isOpen={showLinkModal !== null}
-              phaseId={showLinkModal}
-              phaseLabel={phaseConfig.find(p => p.id === showLinkModal)?.label || ''}
-              onClose={() => setShowLinkModal(null)}
-              onAdd={(phaseId, linkData) => handleAddLink(phaseId, linkData)}
+            {/* Modals */}
+            <ActivityModal
+              isOpen={showActivityModal}
+              onClose={() => setShowActivityModal(false)}
+              onSave={handleAddActivity}
             />
 
-            {/* Integrations Modal */}
-            {showIntegrationsModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowIntegrationsModal(false)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">Edit Integrations</h3>
-                  
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    handleUpdateIntegrations({
-                      salesforceId: formData.get('salesforceId') || null,
-                      salesforceUrl: formData.get('salesforceUrl') || null,
-                      jiraTicket: formData.get('jiraTicket') || null,
-                      jiraUrl: formData.get('jiraUrl') || null,
-                      slackChannel: formData.get('slackChannel') || null
-                    });
-                  }}>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Salesforce Opportunity ID</label>
-                        <input type="text" name="salesforceId" defaultValue={selectedEngagement.salesforceId || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="006Dn000004XXXX" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Salesforce URL</label>
-                        <input type="url" name="salesforceUrl" defaultValue={selectedEngagement.salesforceUrl || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="https://plainid.lightning.force.com/..." />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Jira Ticket</label>
-                        <input type="text" name="jiraTicket" defaultValue={selectedEngagement.jiraTicket || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="SE-1234" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Jira URL</label>
-                        <input type="url" name="jiraUrl" defaultValue={selectedEngagement.jiraUrl || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="https://plainid.atlassian.net/browse/..." />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel</label>
-                        <input type="text" name="slackChannel" defaultValue={selectedEngagement.slackChannel || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="#customer-poc" />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 mt-6">
-                      <button type="button" onClick={() => setShowIntegrationsModal(false)}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                      >Cancel</button>
-                      <button type="submit"
-                        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                      >Save</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
+            <PhaseEditModal
+              isOpen={showPhaseModal !== null}
+              onClose={() => setShowPhaseModal(null)}
+              phaseId={showPhaseModal}
+              initialStatus={selectedEngagement.phases[showPhaseModal]?.status}
+              initialNotes={selectedEngagement.phases[showPhaseModal]?.notes}
+              onSave={handleSavePhase}
+            />
 
-            {/* Edit Details Modal */}
-            {showEditDetailsModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditDetailsModal(false)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">Edit Engagement Details</h3>
-                  
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    handleUpdateDetails({
-                      company: formData.get('company') || selectedEngagement.company,
-                      contactName: formData.get('contactName') || selectedEngagement.contactName,
-                      contactEmail: formData.get('contactEmail') || null,
-                      contactPhone: formData.get('contactPhone') || null,
-                      industry: formData.get('industry') || selectedEngagement.industry,
-                      dealSize: formData.get('dealSize') || null
-                    });
-                  }}>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-                        <input type="text" name="company" defaultValue={selectedEngagement.company}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="Acme Corporation" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
-                        <input type="text" name="contactName" defaultValue={selectedEngagement.contactName}
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="John Smith" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
-                        <input type="email" name="contactEmail" defaultValue={selectedEngagement.contactEmail || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="john@acme.com" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
-                        <input type="tel" name="contactPhone" defaultValue={selectedEngagement.contactPhone || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="+1 (555) 123-4567" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                        <select name="industry" defaultValue={selectedEngagement.industry}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent">
-                          {industries.map(ind => (
-                            <option key={ind} value={ind}>{industryLabels[ind]}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deal Size</label>
-                        <input type="text" name="dealSize" defaultValue={selectedEngagement.dealSize || ''}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                          placeholder="$100K" />
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-3 mt-6">
-                      <button type="button" onClick={() => setShowEditDetailsModal(false)}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-                      >Cancel</button>
-                      <button type="submit"
-                        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                      >Save Changes</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
+            <LinkModal
+              isOpen={showLinkModal !== null}
+              onClose={() => setShowLinkModal(null)}
+              phaseLabel={phaseConfig.find(p => p.id === showLinkModal)?.label || ''}
+              onAdd={handleAddLink}
+            />
 
-            {/* Owners Modal */}
-            {showOwnersModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowOwnersModal(false)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">Manage Owners</h3>
-                  
-                  <div className="mb-6">
-                    <p className="text-sm font-medium text-gray-700 mb-3">Current Owners</p>
-                    <div className="space-y-2">
-                      {selectedEngagement.ownerIds?.map(ownerId => {
-                        const owner = getOwnerInfo(ownerId);
-                        const isOnlyOwner = selectedEngagement.ownerIds?.length === 1;
-                        const isInactive = owner.isActive === false;
-                        
-                        return (
-                          <div key={ownerId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                isInactive ? 'bg-gray-300 text-gray-500' :
-                                ownerId === currentUser?.id ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
-                              }`}>{owner.initials}</div>
-                              <div>
-                                <span className="font-medium text-gray-900">{owner.name}</span>
-                                {isInactive && <span className="ml-2 text-xs text-gray-500">(Inactive)</span>}
-                              </div>
-                            </div>
-                            {!isOnlyOwner && (
-                              <button onClick={() => handleRemoveOwner(ownerId)}
-                                className="text-sm text-red-500 hover:text-red-700">Remove</button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-3">Add Owner</p>
-                    <div className="space-y-2">
-                      {teamMembers
-                        .filter(m => !selectedEngagement.ownerIds?.includes(m.id))
-                        .map(member => (
-                          <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-medium">
-                                {member.initials}
-                              </div>
-                              <span className="text-gray-900">{member.name}</span>
-                            </div>
-                            <button onClick={() => handleAddOwner(member.id)}
-                              className="text-sm text-blue-600 hover:text-blue-800">Add</button>
-                          </div>
-                        ))
-                      }
-                      {teamMembers.filter(m => !selectedEngagement.ownerIds?.includes(m.id)).length === 0 && (
-                        <p className="text-sm text-gray-400 text-center py-2">All active team members are already owners</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 mt-6">
-                    <button onClick={() => setShowOwnersModal(false)}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                    >Done</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <IntegrationsModal
+              isOpen={showIntegrationsModal}
+              onClose={() => setShowIntegrationsModal(false)}
+              initialData={selectedEngagement}
+              onSave={handleUpdateIntegrations}
+            />
 
-            {/* History Modal */}
-            {showHistoryModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHistoryModal(false)}>
-                <div className="bg-white rounded-2xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-xl font-medium text-gray-900 mb-6">Change History</h3>
-                  
-                  <div className="flex-1 overflow-y-auto space-y-3">
-                    {selectedEngagement.changeLogs?.length > 0 ? (
-                      selectedEngagement.changeLogs.map((log) => {
-                        const author = getOwnerInfo(log.userId);
-                        const isOwnChange = log.userId === currentUser?.id;
-                        
-                        return (
-                          <div key={log.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                              isOwnChange ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
-                            }`}>{author.initials}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-gray-900">{author.name}</span>
-                                <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded">
-                                  {changeTypeLabels[log.changeType] || log.changeType}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-700 mt-1">{log.description}</p>
-                              <p className="text-xs text-gray-400 mt-1">{new Date(log.createdAt).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-gray-400 text-center py-8">No change history yet</p>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-3 mt-6 pt-4 border-t">
-                    <button onClick={() => setShowHistoryModal(false)}
-                      className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-                    >Close</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <EditDetailsModal
+              isOpen={showEditDetailsModal}
+              onClose={() => setShowEditDetailsModal(false)}
+              initialData={selectedEngagement}
+              onSave={handleUpdateDetails}
+            />
+
+            <OwnersModal
+              isOpen={showOwnersModal}
+              onClose={() => setShowOwnersModal(false)}
+              currentOwnerIds={selectedEngagement.ownerIds}
+              teamMembers={teamMembers}
+              currentUserId={currentUser?.id}
+              getOwnerInfo={getOwnerInfo}
+              onAddOwner={handleAddOwner}
+              onRemoveOwner={handleRemoveOwner}
+            />
+
+            <HistoryModal
+              isOpen={showHistoryModal}
+              onClose={() => setShowHistoryModal(false)}
+              changeLogs={selectedEngagement.changeLogs}
+              currentUserId={currentUser?.id}
+              getOwnerInfo={getOwnerInfo}
+            />
           </div>
         )}
 
@@ -2968,7 +2276,7 @@ function PresalesTracker() {
         )}
       </main>
 
-      {/* Delete Engagement Modal */}
+      {/* Delete Engagement Modal - outside main content since it's used in admin view */}
       <DeleteEngagementModal
         isOpen={deleteModalEngagement !== null}
         engagement={deleteModalEngagement}
