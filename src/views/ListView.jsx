@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon } from '../components';
 import { industryLabels, phaseConfig } from '../constants';
 
 /**
@@ -242,13 +242,22 @@ const ListView = ({
                 </div>
               </div>
               
-              {(engagement.salesforceId || engagement.jiraTicket || engagement.slackUrl) && (
+              {/* Integration badges: SF → Jira → Drive → Slack */}
+              {(engagement.salesforceId || engagement.jiraTicket || engagement.driveFolderUrl || engagement.slackUrl) && (
                 <div className="flex gap-2 mb-3">
                   {engagement.salesforceId && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">SF</span>
                   )}
                   {engagement.jiraTicket && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">{engagement.jiraTicket}</span>
+                  )}
+                  {engagement.driveFolderUrl && (
+                    <span 
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded"
+                      title={engagement.driveFolderName || 'Google Drive'}
+                    >
+                      <DriveIcon className="w-3.5 h-3.5" />
+                    </span>
                   )}
                   {engagement.slackUrl && (
                     <span 
