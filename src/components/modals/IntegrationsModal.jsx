@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 
 /**
- * Modal for editing integration links (Salesforce, Jira, Slack)
+ * Modal for editing integration links (Salesforce, Jira, Drive, Slack)
  * Manages its own local form state
+ * Grouped by: Tracking (SF, Jira) → Documents (Drive) → Communication (Slack)
  */
 const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     salesforceUrl: '',
     jiraTicket: '',
     jiraUrl: '',
+    driveFolderName: '',
+    driveFolderUrl: '',
     slackChannel: '',
     slackUrl: ''
   });
@@ -23,6 +26,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
         salesforceUrl: initialData.salesforceUrl || '',
         jiraTicket: initialData.jiraTicket || '',
         jiraUrl: initialData.jiraUrl || '',
+        driveFolderName: initialData.driveFolderName || '',
+        driveFolderUrl: initialData.driveFolderUrl || '',
         slackChannel: initialData.slackChannel || '',
         slackUrl: initialData.slackUrl || ''
       });
@@ -36,6 +41,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
       salesforceUrl: formData.salesforceUrl || null,
       jiraTicket: formData.jiraTicket || null,
       jiraUrl: formData.jiraUrl || null,
+      driveFolderName: formData.driveFolderName || null,
+      driveFolderUrl: formData.driveFolderUrl || null,
       slackChannel: formData.slackChannel || null,
       slackUrl: formData.slackUrl || null
     });
@@ -49,6 +56,7 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Integrations">
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
+          {/* Tracking: Salesforce */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Salesforce Opportunity ID
@@ -73,6 +81,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               placeholder="https://plainid.lightning.force.com/..." 
             />
           </div>
+
+          {/* Tracking: Jira */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Jira Ticket
@@ -97,6 +107,40 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               placeholder="https://plainid.atlassian.net/browse/..." 
             />
           </div>
+
+          {/* Visual spacing before Documents group */}
+          <div className="pt-2"></div>
+
+          {/* Documents: Google Drive */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Drive Folder Name
+            </label>
+            <input 
+              type="text" 
+              value={formData.driveFolderName}
+              onChange={e => updateField('driveFolderName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Acme Corp POC Docs" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Drive Folder URL
+            </label>
+            <input 
+              type="url" 
+              value={formData.driveFolderUrl}
+              onChange={e => updateField('driveFolderUrl', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://drive.google.com/drive/folders/..." 
+            />
+          </div>
+
+          {/* Visual spacing before Communication group */}
+          <div className="pt-2"></div>
+
+          {/* Communication: Slack */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Slack Channel
