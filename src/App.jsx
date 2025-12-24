@@ -542,6 +542,7 @@ function PresalesTracker() {
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
   const [newActivity, setNewActivity] = useState({ date: getTodayDate(), type: 'MEETING', description: '' });
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
@@ -1621,6 +1622,46 @@ function PresalesTracker() {
     }
   };
 
+  const handleUpdateDetails = async (updates) => {
+    if (!selectedEngagement) return;
+    
+    const previousValues = {
+      company: selectedEngagement.company,
+      contactName: selectedEngagement.contactName,
+      contactEmail: selectedEngagement.contactEmail,
+      contactPhone: selectedEngagement.contactPhone,
+      industry: selectedEngagement.industry,
+      dealSize: selectedEngagement.dealSize
+    };
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, updates);
+    setShowEditDetailsModal(false);
+    
+    try {
+      await client.models.Engagement.update({
+        id: selectedEngagement.id,
+        ...updates
+      });
+      
+      // Log changes for significant updates
+      const changes = [];
+      if (updates.company !== previousValues.company) changes.push(`company to "${updates.company}"`);
+      if (updates.contactName !== previousValues.contactName) changes.push(`contact to "${updates.contactName}"`);
+      if (updates.industry !== previousValues.industry) changes.push(`industry to ${industryLabels[updates.industry]}`);
+      if (updates.dealSize !== previousValues.dealSize) changes.push(`deal size to "${updates.dealSize || 'N/A'}"`);
+      
+      if (changes.length > 0) {
+        logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', `Updated ${changes.join(', ')}`);
+      }
+      
+    } catch (error) {
+      console.error('Error updating details:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, previousValues);
+    }
+  };
+
   const handleToggleArchive = async (engagementId, archive) => {
     const engagement = engagements.find(e => e.id === engagementId);
     if (!engagement) return;
@@ -2227,6 +2268,13 @@ function PresalesTracker() {
                     </p>
                     <span className="text-gray-300">·</span>
                     <button
+                      onClick={() => setShowEditDetailsModal(true)}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Edit Details
+                    </button>
+                    <span className="text-gray-300">·</span>
+                    <button
                       onClick={() => setShowOwnersModal(true)}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
@@ -2258,7 +2306,15 @@ function PresalesTracker() {
 
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-sm text-gray-500 mb-2">Primary Contact</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-500">Primary Contact</p>
+                  <button 
+                    onClick={() => setShowEditDetailsModal(true)}
+                    className="text-xs text-gray-500 hover:text-gray-900"
+                  >
+                    Edit
+                  </button>
+                </div>
                 <p className="font-medium text-gray-900">{selectedEngagement.contactName}</p>
                 {selectedEngagement.contactEmail && (
                   <p className="text-sm text-gray-600">{selectedEngagement.contactEmail}</p>
@@ -2652,6 +2708,81 @@ function PresalesTracker() {
                       <button type="submit"
                         className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
                       >Save</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Details Modal */}
+            {showEditDetailsModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditDetailsModal(false)}>
+                <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-xl font-medium text-gray-900 mb-6">Edit Engagement Details</h3>
+                  
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    handleUpdateDetails({
+                      company: formData.get('company') || selectedEngagement.company,
+                      contactName: formData.get('contactName') || selectedEngagement.contactName,
+                      contactEmail: formData.get('contactEmail') || null,
+                      contactPhone: formData.get('contactPhone') || null,
+                      industry: formData.get('industry') || selectedEngagement.industry,
+                      dealSize: formData.get('dealSize') || null
+                    });
+                  }}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                        <input type="text" name="company" defaultValue={selectedEngagement.company}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="Acme Corporation" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
+                        <input type="text" name="contactName" defaultValue={selectedEngagement.contactName}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="John Smith" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                        <input type="email" name="contactEmail" defaultValue={selectedEngagement.contactEmail || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="john@acme.com" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+                        <input type="tel" name="contactPhone" defaultValue={selectedEngagement.contactPhone || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="+1 (555) 123-4567" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                        <select name="industry" defaultValue={selectedEngagement.industry}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent">
+                          {industries.map(ind => (
+                            <option key={ind} value={ind}>{industryLabels[ind]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deal Size</label>
+                        <input type="text" name="dealSize" defaultValue={selectedEngagement.dealSize || ''}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                          placeholder="$100K" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3 mt-6">
+                      <button type="button" onClick={() => setShowEditDetailsModal(false)}
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                      >Cancel</button>
+                      <button type="submit"
+                        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+                      >Save Changes</button>
                     </div>
                   </form>
                 </div>
