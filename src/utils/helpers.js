@@ -38,3 +38,15 @@ export const getTodayDate = () => new Date().toISOString().split('T')[0];
  * @returns {string} Temporary ID
  */
 export const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+/**
+ * Format deal size to always start with $ if there's a value
+ * @param {string} value - Deal size value
+ * @returns {string} Formatted deal size with $ prefix
+ */
+export const formatDealSize = (value) => {
+  if (!value || !value.trim()) return '';
+  const trimmed = value.trim();
+  if (trimmed.startsWith('$')) return trimmed;
+  return `$${trimmed}`;
+};
