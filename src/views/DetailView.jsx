@@ -3,6 +3,7 @@ import {
   OwnersDisplay,
   StaleBadge,
   SlackIcon,
+  DriveIcon,
   LinkifyText,
   ActivityModal,
   PhaseEditModal,
@@ -250,6 +251,26 @@ const DetailView = ({
               </a>
             ) : (
               <p className="text-sm text-gray-400">No Jira ticket linked</p>
+            )}
+            {engagement.driveFolderName ? (
+              engagement.driveFolderUrl ? (
+                <a 
+                  href={engagement.driveFolderUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <DriveIcon className="w-4 h-4" />
+                  {engagement.driveFolderName}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <DriveIcon className="w-4 h-4" />
+                  {engagement.driveFolderName}
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-400">No Drive folder linked</p>
             )}
             {engagement.slackChannel ? (
               engagement.slackUrl ? (
