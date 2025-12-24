@@ -7,6 +7,7 @@ export {
   StaleBadge, 
   NotificationBadge,
   SlackIcon,
+  DriveIcon,
   LinkifyText
 } from './ui';
 
