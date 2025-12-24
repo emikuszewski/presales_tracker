@@ -217,7 +217,7 @@ const NewEngagementView = ({
               />
             </div>
             
-            <div className="col-span-2">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel</label>
               <input 
                 type="text" 
@@ -225,6 +225,17 @@ const NewEngagementView = ({
                 onChange={e => updateField('slackChannel', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 placeholder="#customer-poc" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel URL</label>
+              <input 
+                type="url" 
+                value={newEngagement.slackUrl}
+                onChange={e => updateField('slackUrl', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="https://plainid.slack.com/archives/..." 
               />
             </div>
           </div>
