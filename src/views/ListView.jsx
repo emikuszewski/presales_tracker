@@ -17,6 +17,7 @@ const ListView = ({
   filterActions,
   // Navigation
   onSelectEngagement,
+  onNavigateToActivity,
   onNewEngagement
 }) => {
   const { 
@@ -40,6 +41,19 @@ const ListView = ({
       case 'COMPLETE': return 'bg-emerald-500';
       case 'IN_PROGRESS': return 'bg-blue-500';
       default: return 'bg-gray-200';
+    }
+  };
+
+  /**
+   * Handle click on "Last activity" link
+   * Navigates to detail view and scrolls to the most recent activity
+   */
+  const handleLastActivityClick = (e, engagement) => {
+    e.stopPropagation(); // Prevent card click
+    
+    const lastActivityId = engagement.activities?.[0]?.id;
+    if (lastActivityId) {
+      onNavigateToActivity(engagement.id, lastActivityId);
     }
   };
 
@@ -180,85 +194,100 @@ const ListView = ({
       )}
 
       <div className="space-y-3">
-        {engagements.map(engagement => (
-          <div
-            key={engagement.id}
-            onClick={() => onSelectEngagement(engagement.id)}
-            className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${
-              engagement.isStale ? 'border-amber-200' : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-start gap-3">
-                <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
-                    {engagement.unreadChanges > 0 && (
-                      <NotificationBadge count={engagement.unreadChanges} />
+        {engagements.map(engagement => {
+          const hasActivities = engagement.activities?.length > 0;
+          
+          return (
+            <div
+              key={engagement.id}
+              onClick={() => onSelectEngagement(engagement.id)}
+              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${
+                engagement.isStale ? 'border-amber-200' : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-3">
+                  <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
+                      {engagement.unreadChanges > 0 && (
+                        <NotificationBadge count={engagement.unreadChanges} />
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
+                  <div className="flex items-center justify-end gap-2 mt-1">
+                    {engagement.isStale && (
+                      <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
+                    )}
+                    {!engagement.isStale && (
+                      hasActivities ? (
+                        <button
+                          onClick={(e) => handleLastActivityClick(e, engagement)}
+                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          Last activity: {engagement.lastActivity || engagement.startDate}
+                        </button>
+                      ) : (
+                        <p className="text-xs text-gray-400">
+                          Last activity: {engagement.lastActivity || engagement.startDate}
+                        </p>
+                      )
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
-                <div className="flex items-center justify-end gap-2 mt-1">
-                  {engagement.isStale && (
-                    <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
+              
+              {(engagement.salesforceId || engagement.jiraTicket || engagement.slackUrl) && (
+                <div className="flex gap-2 mb-3">
+                  {engagement.salesforceId && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">SF</span>
                   )}
-                  {!engagement.isStale && (
-                    <p className="text-xs text-gray-400">Last activity: {engagement.lastActivity || engagement.startDate}</p>
+                  {engagement.jiraTicket && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">{engagement.jiraTicket}</span>
+                  )}
+                  {engagement.slackUrl && (
+                    <span 
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded"
+                      title={engagement.slackChannel || 'Slack'}
+                    >
+                      <SlackIcon className="w-3.5 h-3.5" />
+                    </span>
                   )}
                 </div>
+              )}
+              
+              <div className="flex items-center gap-1">
+                {phaseConfig.map((phase, index) => {
+                  const phaseData = engagement.phases[phase.id];
+                  const status = phaseData?.status || 'PENDING';
+                  return (
+                    <React.Fragment key={phase.id}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
+                        <span className={`text-xs font-medium ${
+                          status === 'COMPLETE' ? 'text-emerald-700' : 
+                          status === 'IN_PROGRESS' ? 'text-blue-700' : 'text-gray-400'
+                        }`}>
+                          {phase.label}
+                        </span>
+                      </div>
+                      {index < phaseConfig.length - 1 && (
+                        <div className={`flex-1 h-px mx-2 ${
+                          status === 'COMPLETE' ? 'bg-emerald-300' : 'bg-gray-200'
+                        }`} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
-            
-            {(engagement.salesforceId || engagement.jiraTicket || engagement.slackUrl) && (
-              <div className="flex gap-2 mb-3">
-                {engagement.salesforceId && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">SF</span>
-                )}
-                {engagement.jiraTicket && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">{engagement.jiraTicket}</span>
-                )}
-                {engagement.slackUrl && (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded"
-                    title={engagement.slackChannel || 'Slack'}
-                  >
-                    <SlackIcon className="w-3.5 h-3.5" />
-                  </span>
-                )}
-              </div>
-            )}
-            
-            <div className="flex items-center gap-1">
-              {phaseConfig.map((phase, index) => {
-                const phaseData = engagement.phases[phase.id];
-                const status = phaseData?.status || 'PENDING';
-                return (
-                  <React.Fragment key={phase.id}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
-                      <span className={`text-xs font-medium ${
-                        status === 'COMPLETE' ? 'text-emerald-700' : 
-                        status === 'IN_PROGRESS' ? 'text-blue-700' : 'text-gray-400'
-                      }`}>
-                        {phase.label}
-                      </span>
-                    </div>
-                    {index < phaseConfig.length - 1 && (
-                      <div className={`flex-1 h-px mx-2 ${
-                        status === 'COMPLETE' ? 'bg-emerald-300' : 'bg-gray-200'
-                      }`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         {engagements.length === 0 && (
           <div className="text-center py-12 text-gray-400">
