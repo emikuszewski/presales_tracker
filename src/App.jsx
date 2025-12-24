@@ -34,6 +34,7 @@ function PresalesTracker() {
   // ============================================
   const [selectedEngagementId, setSelectedEngagementId] = useState(null);
   const [view, setView] = useState('list');
+  const [navigationOptions, setNavigationOptions] = useState(null);
   const [filterPhase, setFilterPhase] = useState('all');
   const [filterOwner, setFilterOwner] = useState('mine');
   const [filterStale, setFilterStale] = useState(false);
@@ -144,15 +145,26 @@ function PresalesTracker() {
   
   /**
    * Centralized navigation to prevent bugs from forgetting to clear selection
+   * @param {string} targetView - The view to navigate to
+   * @param {string|null} engagementId - Optional engagement ID
+   * @param {Object|null} options - Optional navigation options (e.g., { scrollToActivityId: '123' })
    */
-  const navigateTo = (targetView, engagementId = null) => {
+  const navigateTo = (targetView, engagementId = null, options = null) => {
     setView(targetView);
     setSelectedEngagementId(engagementId);
+    setNavigationOptions(options);
     
     // Track view when navigating to detail
     if (targetView === 'detail' && engagementId) {
       detail.view.update(engagementId);
     }
+  };
+
+  /**
+   * Clear navigation options after they've been consumed
+   */
+  const clearNavigationOptions = () => {
+    setNavigationOptions(null);
   };
 
   // ============================================
@@ -249,6 +261,7 @@ function PresalesTracker() {
               setSearchQuery
             }}
             onSelectEngagement={(id) => navigateTo('detail', id)}
+            onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivityId: activityId })}
             onNewEngagement={() => navigateTo('new')}
           />
         )}
@@ -260,6 +273,8 @@ function PresalesTracker() {
             currentUser={currentUser}
             getOwnerInfo={getOwnerInfo}
             detail={detail}
+            navigationOptions={navigationOptions}
+            onClearNavigationOptions={clearNavigationOptions}
             onToggleArchive={handleToggleArchive}
             onBack={() => navigateTo('list')}
           />
