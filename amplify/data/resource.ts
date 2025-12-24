@@ -67,6 +67,7 @@ const schema = a.schema({
     jiraTicket: a.string(),
     jiraUrl: a.string(),
     slackChannel: a.string(),
+    slackUrl: a.string(),
     
     // Archive support
     isArchived: a.boolean().default(false),
