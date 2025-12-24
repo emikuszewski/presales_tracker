@@ -1,0 +1,200 @@
+import React, { useState } from 'react';
+import { OwnersDisplay, DeleteEngagementModal } from '../components';
+import { phaseLabels } from '../constants';
+
+/**
+ * Admin view for engagement management
+ * Allows admins to view all engagements and delete them
+ */
+const EngagementsAdminView = ({
+  engagements,
+  currentUser,
+  getOwnerInfo,
+  getCascadeInfo,
+  onDeleteEngagement,
+  onBack
+}) => {
+  // Local filter state
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  
+  // Modal state - owned by this view
+  const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Filter engagements
+  const filteredEngagements = engagements
+    .filter(e => {
+      if (filter === 'active' && e.isArchived) return false;
+      if (filter === 'archived' && !e.isArchived) return false;
+      
+      if (search) {
+        const query = search.toLowerCase();
+        const matchesCompany = e.company.toLowerCase().includes(query);
+        const matchesContact = e.contactName.toLowerCase().includes(query);
+        if (!matchesCompany && !matchesContact) return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+  const handleConfirmDelete = async () => {
+    await onDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting);
+  };
+
+  return (
+    <div>
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Engagements
+      </button>
+
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-2xl font-medium text-gray-900">Engagement Management</h2>
+          <p className="text-gray-500 mt-1">
+            {engagements.filter(e => !e.isArchived).length} active · {engagements.filter(e => e.isArchived).length} archived · {engagements.length} total
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Search by company or contact..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+        />
+      </div>
+
+      <div className="mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All ({engagements.length})
+          </button>
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Active ({engagements.filter(e => !e.isArchived).length})
+          </button>
+          <button
+            onClick={() => setFilter('archived')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'archived' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Archived ({engagements.filter(e => e.isArchived).length})
+          </button>
+        </div>
+      </div>
+
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredEngagements.map(engagement => (
+              <tr key={engagement.id} className="hover:bg-gray-50">
+                <td className="px-4 py-4">
+                  <div>
+                    <p className="font-medium text-gray-900">{engagement.company}</p>
+                    <p className="text-sm text-gray-500">{engagement.contactName}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-4">
+                  <OwnersDisplay 
+                    ownerIds={engagement.ownerIds} 
+                    size="sm" 
+                    getOwnerInfo={getOwnerInfo} 
+                    currentUserId={currentUser?.id} 
+                  />
+                </td>
+                <td className="px-4 py-4">
+                  <span className="text-sm text-gray-700">
+                    {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-center">
+                  <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
+                </td>
+                <td className="px-4 py-4">
+                  <span className="text-sm text-gray-500">{engagement.startDate}</span>
+                </td>
+                <td className="px-4 py-4">
+                  {engagement.isArchived ? (
+                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                      Archived
+                    </span>
+                  ) : (
+                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
+                      Active
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <button
+                    onClick={() => setDeleteModalEngagement(engagement)}
+                    className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        
+        {filteredEngagements.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            No engagements found
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 p-4 bg-red-50 rounded-xl">
+        <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
+        <ul className="text-sm text-red-700 space-y-1">
+          <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
+          <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
+          <li>• Consider archiving engagements instead if you may need the data later.</li>
+        </ul>
+      </div>
+
+      {/* Delete Modal - owned by this view */}
+      <DeleteEngagementModal
+        isOpen={deleteModalEngagement !== null}
+        engagement={deleteModalEngagement}
+        cascadeInfo={getCascadeInfo(deleteModalEngagement)}
+        onClose={() => setDeleteModalEngagement(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+    </div>
+  );
+};
+
+export default EngagementsAdminView;
