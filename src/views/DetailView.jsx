@@ -3,6 +3,7 @@ import {
   OwnersDisplay,
   StaleBadge,
   SlackIcon,
+  LinkifyText,
   ActivityModal,
   PhaseEditModal,
   LinkModal,
@@ -317,7 +318,9 @@ const DetailView = ({
                 </div>
                 
                 {phaseData.notes && (
-                  <p className="text-sm text-gray-600 mt-3 pl-11">{phaseData.notes}</p>
+                  <p className="text-sm text-gray-600 mt-3 pl-11">
+                    <LinkifyText text={phaseData.notes} />
+                  </p>
                 )}
                 
                 <div className="mt-3 pl-11">
@@ -381,7 +384,9 @@ const DetailView = ({
                     <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded mb-1">
                       {activityTypeLabels[activity.type] || activity.type}
                     </span>
-                    <p className="text-gray-900">{activity.description}</p>
+                    <p className="text-gray-900">
+                      <LinkifyText text={activity.description} />
+                    </p>
                     
                     <button
                       onClick={() => toggleActivityExpansion(activity.id)}
@@ -417,7 +422,9 @@ const DetailView = ({
                                       className="text-xs text-gray-400 hover:text-red-500">Delete</button>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-700 mt-0.5">{comment.text}</p>
+                                <p className="text-sm text-gray-700 mt-0.5">
+                                  <LinkifyText text={comment.text} />
+                                </p>
                               </div>
                             </div>
                           );
