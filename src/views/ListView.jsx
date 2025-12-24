@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon } from '../components';
 import { industryLabels, phaseConfig } from '../constants';
 
 /**
@@ -214,13 +214,21 @@ const ListView = ({
               </div>
             </div>
             
-            {(engagement.salesforceId || engagement.jiraTicket) && (
+            {(engagement.salesforceId || engagement.jiraTicket || engagement.slackUrl) && (
               <div className="flex gap-2 mb-3">
                 {engagement.salesforceId && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">SF</span>
                 )}
                 {engagement.jiraTicket && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">{engagement.jiraTicket}</span>
+                )}
+                {engagement.slackUrl && (
+                  <span 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded"
+                    title={engagement.slackChannel || 'Slack'}
+                  >
+                    <SlackIcon className="w-3.5 h-3.5" />
+                  </span>
                 )}
               </div>
             )}
