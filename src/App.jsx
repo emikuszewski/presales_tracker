@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
@@ -125,6 +125,9 @@ const getDaysSinceActivity = (engagement) => {
   if (!lastDate) return 0;
   return getBusinessDaysDiff(lastDate, new Date());
 };
+
+// Helper to generate a temporary ID for optimistic updates
+const generateTempId = () => `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 // ========== OWNERS DISPLAY COMPONENT ==========
 const OwnersDisplay = ({ ownerIds, size = 'md', getOwnerInfo, currentUser }) => {
@@ -310,7 +313,6 @@ function PresalesTracker() {
     initializeUser();
   }, [user]);
 
-  // Initialize phase form data when modal opens
   // Initialize phase form data ONLY when modal opens (not when selectedEngagement changes)
   useEffect(() => {
     if (showPhaseModal && selectedEngagement) {
@@ -321,6 +323,21 @@ function PresalesTracker() {
       });
     }
   }, [showPhaseModal]); // Only trigger when modal opens/closes, NOT on selectedEngagement changes
+
+  // Helper to update a single engagement in state
+  const updateEngagementInState = useCallback((engagementId, updater) => {
+    setEngagements(prev => prev.map(e => 
+      e.id === engagementId ? (typeof updater === 'function' ? updater(e) : { ...e, ...updater }) : e
+    ));
+    
+    // Also update selectedEngagement if it's the same one
+    setSelectedEngagement(prev => {
+      if (prev?.id === engagementId) {
+        return typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      }
+      return prev;
+    });
+  }, []);
 
   const initializeUser = async () => {
     try {
@@ -427,7 +444,6 @@ function PresalesTracker() {
             const existingPhase = phases.find(ph => ph.phaseType === p.id);
             if (existingPhase) {
               const parsedLinks = parseLinks(existingPhase.links);
-              console.log(`Phase ${p.id} links:`, parsedLinks);
               phasesObj[p.id] = {
                 ...existingPhase,
                 links: parsedLinks
@@ -481,21 +497,18 @@ function PresalesTracker() {
     }
   };
 
-  const logChange = async (engagementId, changeType, description, previousValue = null, newValue = null) => {
+  // Background log - doesn't block UI
+  const logChangeAsync = (engagementId, changeType, description, previousValue = null, newValue = null) => {
     if (!currentUser) return;
     
-    try {
-      await client.models.ChangeLog.create({
-        engagementId: engagementId,
-        userId: currentUser.id,
-        changeType: changeType,
-        description: description,
-        previousValue: previousValue,
-        newValue: newValue
-      });
-    } catch (e) {
-      console.error('Error logging change:', e);
-    }
+    client.models.ChangeLog.create({
+      engagementId: engagementId,
+      userId: currentUser.id,
+      changeType: changeType,
+      description: description,
+      previousValue: previousValue,
+      newValue: newValue
+    }).catch(e => console.error('Error logging change:', e));
   };
 
   const updateEngagementView = async (engagementId) => {
@@ -522,9 +535,7 @@ function PresalesTracker() {
         [engagementId]: { ...prev[engagementId], lastViewedAt: new Date().toISOString() }
       }));
       
-      setEngagements(prev => prev.map(e => 
-        e.id === engagementId ? { ...e, unreadChanges: 0 } : e
-      ));
+      updateEngagementInState(engagementId, { unreadChanges: 0 });
     } catch (e) {
       console.error('Error updating view:', e);
     }
@@ -538,15 +549,30 @@ function PresalesTracker() {
       return;
     }
     
+    const newStatus = !currentStatus;
+    
+    // Optimistic update
+    setAllTeamMembers(prev => prev.map(m => 
+      m.id === memberId ? { ...m, isActive: newStatus } : m
+    ));
+    setTeamMembers(prev => 
+      newStatus 
+        ? [...prev, allTeamMembers.find(m => m.id === memberId)].filter(Boolean)
+        : prev.filter(m => m.id !== memberId)
+    );
+    
     try {
       await client.models.TeamMember.update({
         id: memberId,
-        isActive: !currentStatus
+        isActive: newStatus
       });
-      
-      await fetchAllData(currentUser?.id);
     } catch (error) {
       console.error('Error toggling user status:', error);
+      // Rollback on error
+      setAllTeamMembers(prev => prev.map(m => 
+        m.id === memberId ? { ...m, isActive: currentStatus } : m
+      ));
+      await fetchAllData(currentUser?.id);
     }
   };
 
@@ -558,22 +584,37 @@ function PresalesTracker() {
       return;
     }
     
+    const newStatus = !currentStatus;
+    
+    // Optimistic update
+    setAllTeamMembers(prev => prev.map(m => 
+      m.id === memberId ? { ...m, isAdmin: newStatus } : m
+    ));
+    setTeamMembers(prev => prev.map(m => 
+      m.id === memberId ? { ...m, isAdmin: newStatus } : m
+    ));
+    
     try {
       await client.models.TeamMember.update({
         id: memberId,
-        isAdmin: !currentStatus
+        isAdmin: newStatus
       });
-      
-      await fetchAllData(currentUser?.id);
     } catch (error) {
       console.error('Error toggling admin status:', error);
+      // Rollback on error
+      setAllTeamMembers(prev => prev.map(m => 
+        m.id === memberId ? { ...m, isAdmin: currentStatus } : m
+      ));
+      setTeamMembers(prev => prev.map(m => 
+        m.id === memberId ? { ...m, isAdmin: currentStatus } : m
+      ));
     }
   };
 
-  const getOwnerInfo = (ownerId) => {
+  const getOwnerInfo = useCallback((ownerId) => {
     const member = allTeamMembers.find(m => m.id === ownerId);
     return member || { name: 'Unknown', initials: '?' };
-  };
+  }, [allTeamMembers]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -625,6 +666,7 @@ function PresalesTracker() {
     (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
   ).length;
 
+  // Create engagement still uses fetchAllData since we need server-generated IDs
   const handleCreateEngagement = async () => {
     if (!newEngagement.company || !newEngagement.contactName) return;
     if (newEngagement.ownerIds.length === 0) return;
@@ -671,7 +713,7 @@ function PresalesTracker() {
         });
       }
       
-      await logChange(engagement.id, 'CREATED', `Created engagement for ${newEngagement.company}`);
+      logChangeAsync(engagement.id, 'CREATED', `Created engagement for ${newEngagement.company}`);
       
       await fetchAllData(currentUser?.id);
       
@@ -690,26 +732,51 @@ function PresalesTracker() {
   const handleAddOwner = async (teamMemberId) => {
     if (!selectedEngagement || selectedEngagement.ownerIds?.includes(teamMemberId)) return;
     
+    const tempId = generateTempId();
+    const addedMember = getOwnerInfo(teamMemberId);
+    
+    // Optimistic update
+    const newOwnerIds = [...(selectedEngagement.ownerIds || []), teamMemberId];
+    const tempOwnershipRecord = {
+      id: tempId,
+      engagementId: selectedEngagement.id,
+      teamMemberId: teamMemberId,
+      role: 'secondary',
+      addedAt: new Date().toISOString()
+    };
+    
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      ownerIds: newOwnerIds,
+      ownershipRecords: [...(eng.ownershipRecords || []), tempOwnershipRecord]
+    }));
+    
     try {
-      await client.models.EngagementOwner.create({
+      const { data: newRecord } = await client.models.EngagementOwner.create({
         engagementId: selectedEngagement.id,
         teamMemberId: teamMemberId,
         role: 'secondary',
         addedAt: new Date().toISOString()
       });
       
-      const addedMember = getOwnerInfo(teamMemberId);
-      await logChange(selectedEngagement.id, 'OWNER_ADDED', `Added ${addedMember.name} as owner`);
-      
-      await fetchAllData(currentUser?.id);
-      
-      setSelectedEngagement(prev => ({
-        ...prev,
-        ownerIds: [...(prev.ownerIds || []), teamMemberId]
+      // Replace temp record with real one
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        ownershipRecords: eng.ownershipRecords.map(r => 
+          r.id === tempId ? newRecord : r
+        )
       }));
+      
+      logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', `Added ${addedMember.name} as owner`);
       
     } catch (error) {
       console.error('Error adding owner:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
+        ownershipRecords: eng.ownershipRecords.filter(r => r.id !== tempId)
+      }));
     }
   };
 
@@ -721,35 +788,68 @@ function PresalesTracker() {
       return;
     }
     
+    const removedMember = getOwnerInfo(teamMemberId);
+    const ownershipRecord = selectedEngagement.ownershipRecords?.find(
+      o => o.teamMemberId === teamMemberId
+    );
+    
+    // Store for rollback
+    const previousOwnerIds = [...selectedEngagement.ownerIds];
+    const previousOwnershipRecords = [...(selectedEngagement.ownershipRecords || [])];
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
+      ownershipRecords: eng.ownershipRecords?.filter(r => r.teamMemberId !== teamMemberId) || []
+    }));
+    
     try {
-      const ownershipRecord = selectedEngagement.ownershipRecords?.find(
-        o => o.teamMemberId === teamMemberId
-      );
-      
       if (ownershipRecord) {
         await client.models.EngagementOwner.delete({ id: ownershipRecord.id });
       }
       
-      const removedMember = getOwnerInfo(teamMemberId);
-      await logChange(selectedEngagement.id, 'OWNER_REMOVED', `Removed ${removedMember.name} as owner`);
-      
-      await fetchAllData(currentUser?.id);
-      
-      setSelectedEngagement(prev => ({
-        ...prev,
-        ownerIds: prev.ownerIds?.filter(id => id !== teamMemberId) || []
-      }));
+      logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', `Removed ${removedMember.name} as owner`);
       
     } catch (error) {
       console.error('Error removing owner:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        ownerIds: previousOwnerIds,
+        ownershipRecords: previousOwnershipRecords
+      }));
     }
   };
 
   const handleAddActivity = async () => {
     if (!newActivity.date || !newActivity.description || !selectedEngagement) return;
     
+    const tempId = generateTempId();
+    const tempActivity = {
+      id: tempId,
+      engagementId: selectedEngagement.id,
+      date: newActivity.date,
+      type: newActivity.type,
+      description: newActivity.description,
+      comments: [],
+      createdAt: new Date().toISOString()
+    };
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      activities: [tempActivity, ...eng.activities],
+      lastActivity: newActivity.date,
+      isStale: false,
+      daysSinceActivity: 0
+    }));
+    
+    setNewActivity({ date: getTodayDate(), type: 'MEETING', description: '' });
+    setShowActivityModal(false);
+    
     try {
-      await client.models.Activity.create({
+      const { data: createdActivity } = await client.models.Activity.create({
         engagementId: selectedEngagement.id,
         date: newActivity.date,
         type: newActivity.type,
@@ -761,24 +861,27 @@ function PresalesTracker() {
         lastActivity: newActivity.date
       });
       
-      await logChange(
+      // Replace temp with real
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        activities: eng.activities.map(a => 
+          a.id === tempId ? { ...createdActivity, comments: [] } : a
+        )
+      }));
+      
+      logChangeAsync(
         selectedEngagement.id, 
         'ACTIVITY_ADDED', 
         `Added ${activityTypeLabels[newActivity.type]}: ${newActivity.description.substring(0, 50)}${newActivity.description.length > 50 ? '...' : ''}`
       );
       
-      await fetchAllData(currentUser?.id);
-      
-      const updated = engagements.find(e => e.id === selectedEngagement.id);
-      if (updated) {
-        setSelectedEngagement(updated);
-      }
-      
-      setNewActivity({ date: getTodayDate(), type: 'MEETING', description: '' });
-      setShowActivityModal(false);
-      
     } catch (error) {
       console.error('Error adding activity:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        activities: eng.activities.filter(a => a.id !== tempId)
+      }));
     }
   };
 
@@ -786,44 +889,105 @@ function PresalesTracker() {
     const commentText = newComment[activityId];
     if (!commentText?.trim() || !currentUser) return;
     
+    const tempId = generateTempId();
+    const tempComment = {
+      id: tempId,
+      activityId: activityId,
+      authorId: currentUser.id,
+      text: commentText.trim(),
+      createdAt: new Date().toISOString()
+    };
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      activities: eng.activities.map(a => 
+        a.id === activityId 
+          ? { ...a, comments: [...(a.comments || []), tempComment] }
+          : a
+      )
+    }));
+    
+    setNewComment(prev => ({ ...prev, [activityId]: '' }));
+    
     try {
-      await client.models.Comment.create({
+      const { data: createdComment } = await client.models.Comment.create({
         activityId: activityId,
         authorId: currentUser.id,
         text: commentText.trim()
       });
       
-      await logChange(
+      // Replace temp with real
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        activities: eng.activities.map(a => 
+          a.id === activityId 
+            ? { ...a, comments: a.comments.map(c => c.id === tempId ? createdComment : c) }
+            : a
+        )
+      }));
+      
+      logChangeAsync(
         selectedEngagement.id, 
         'COMMENT_ADDED', 
         `Added comment: ${commentText.substring(0, 50)}${commentText.length > 50 ? '...' : ''}`
       );
       
-      await fetchAllData(currentUser?.id);
-      
-      setNewComment(prev => ({ ...prev, [activityId]: '' }));
-      
-      const updated = engagements.find(e => e.id === selectedEngagement?.id);
-      if (updated) {
-        setSelectedEngagement(updated);
-      }
-      
     } catch (error) {
       console.error('Error adding comment:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        activities: eng.activities.map(a => 
+          a.id === activityId 
+            ? { ...a, comments: a.comments.filter(c => c.id !== tempId) }
+            : a
+        )
+      }));
     }
   };
 
   const handleDeleteComment = async (commentId) => {
+    if (!selectedEngagement) return;
+    
+    // Find the activity and comment for rollback
+    let targetActivity = null;
+    let deletedComment = null;
+    
+    for (const activity of selectedEngagement.activities) {
+      const comment = activity.comments?.find(c => c.id === commentId);
+      if (comment) {
+        targetActivity = activity;
+        deletedComment = comment;
+        break;
+      }
+    }
+    
+    if (!targetActivity || !deletedComment) return;
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      activities: eng.activities.map(a => 
+        a.id === targetActivity.id 
+          ? { ...a, comments: a.comments.filter(c => c.id !== commentId) }
+          : a
+      )
+    }));
+    
     try {
       await client.models.Comment.delete({ id: commentId });
-      await fetchAllData(currentUser?.id);
-      
-      const updated = engagements.find(e => e.id === selectedEngagement?.id);
-      if (updated) {
-        setSelectedEngagement(updated);
-      }
     } catch (error) {
       console.error('Error deleting comment:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        activities: eng.activities.map(a => 
+          a.id === targetActivity.id 
+            ? { ...a, comments: [...a.comments, deletedComment].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }
+            : a
+        )
+      }));
     }
   };
 
@@ -842,10 +1006,37 @@ function PresalesTracker() {
     const updates = { status: phaseFormData.status, notes: phaseFormData.notes };
     const engagementId = selectedEngagement.id;
     
+    const existingPhase = selectedEngagement.phases[phaseId];
+    const previousStatus = existingPhase?.status || 'PENDING';
+    const previousNotes = existingPhase?.notes || '';
+    
+    // Calculate new current phase if completing
+    let newCurrentPhase = selectedEngagement.currentPhase;
+    if (updates.status === 'COMPLETE') {
+      const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
+      if (phaseIndex < phaseConfig.length - 1) {
+        newCurrentPhase = phaseConfig[phaseIndex + 1].id;
+      }
+    }
+    
+    // Optimistic update
+    updateEngagementInState(engagementId, (eng) => ({
+      ...eng,
+      currentPhase: newCurrentPhase,
+      phases: {
+        ...eng.phases,
+        [phaseId]: {
+          ...eng.phases[phaseId],
+          status: updates.status,
+          notes: updates.notes,
+          completedDate: updates.status === 'COMPLETE' ? getTodayDate() : eng.phases[phaseId]?.completedDate
+        }
+      }
+    }));
+    
+    setShowPhaseModal(null);
+    
     try {
-      const existingPhase = selectedEngagement.phases[phaseId];
-      const previousStatus = existingPhase?.status || 'PENDING';
-      
       if (existingPhase && existingPhase.id) {
         await client.models.Phase.update({
           id: existingPhase.id,
@@ -864,18 +1055,15 @@ function PresalesTracker() {
         });
       }
       
-      if (updates.status === 'COMPLETE') {
-        const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
-        if (phaseIndex < phaseConfig.length - 1) {
-          await client.models.Engagement.update({
-            id: engagementId,
-            currentPhase: phaseConfig[phaseIndex + 1].id
-          });
-        }
+      if (newCurrentPhase !== selectedEngagement.currentPhase) {
+        await client.models.Engagement.update({
+          id: engagementId,
+          currentPhase: newCurrentPhase
+        });
       }
       
       if (updates.status !== previousStatus) {
-        await logChange(
+        logChangeAsync(
           engagementId,
           'PHASE_UPDATE',
           `${phaseLabels[phaseId]} phase changed to ${updates.status.toLowerCase().replace('_', ' ')}`,
@@ -884,73 +1072,65 @@ function PresalesTracker() {
         );
       }
       
-      // Close modal first to prevent re-initialization of form data
-      setShowPhaseModal(null);
-      
-      // Refresh data
-      await fetchAllData(currentUser?.id);
-      
     } catch (error) {
       console.error('Error updating phase:', error);
+      // Rollback
+      updateEngagementInState(engagementId, (eng) => ({
+        ...eng,
+        currentPhase: selectedEngagement.currentPhase,
+        phases: {
+          ...eng.phases,
+          [phaseId]: {
+            ...eng.phases[phaseId],
+            status: previousStatus,
+            notes: previousNotes
+          }
+        }
+      }));
     }
   };
 
   const handleAddLink = async (phaseId, linkData) => {
-    console.log('handleAddLink called with:', { phaseId, linkData, selectedEngagement: selectedEngagement?.id });
-    
     if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) {
-      console.log('handleAddLink early return - missing data:', { 
-        hasTitle: !!linkData?.title, 
-        hasUrl: !!linkData?.url, 
-        hasEngagement: !!selectedEngagement, 
-        hasPhaseId: !!phaseId 
-      });
       return;
     }
     
     const engagementId = selectedEngagement.id;
     const linkToAdd = { title: linkData.title, url: linkData.url };
+    const existingPhase = selectedEngagement.phases[phaseId];
+    const currentLinks = parseLinks(existingPhase?.links);
+    
+    // Optimistic update
+    updateEngagementInState(engagementId, (eng) => ({
+      ...eng,
+      phases: {
+        ...eng.phases,
+        [phaseId]: {
+          ...eng.phases[phaseId],
+          links: [...currentLinks, linkToAdd]
+        }
+      }
+    }));
+    
+    setShowLinkModal(null);
     
     try {
-      // Fetch fresh phase data from database to get current links
+      // Fetch fresh phase data from database
       const { data: freshPhases } = await client.models.Phase.list({
         filter: { engagementId: { eq: engagementId } }
       });
       const freshPhase = freshPhases.find(p => p.phaseType === phaseId);
       
-      console.log('Fresh phase from DB:', freshPhase);
-      
-      const currentLinks = parseLinks(freshPhase?.links);
-      const updatedLinks = [...currentLinks, linkToAdd];
-      console.log('Updated links:', updatedLinks);
+      const freshLinks = parseLinks(freshPhase?.links);
+      const updatedLinks = [...freshLinks, linkToAdd];
       
       if (freshPhase && freshPhase.id) {
-        console.log('Updating existing phase:', freshPhase.id);
-        console.log('Links to save:', JSON.stringify(updatedLinks));
-        
-        // Amplify a.json() fields need to receive stringified JSON
-        const updateResult = await client.models.Phase.update({
+        await client.models.Phase.update({
           id: freshPhase.id,
           links: JSON.stringify(updatedLinks)
         });
-        
-        console.log('Update result:', updateResult);
-        
-        // Check for errors
-        if (updateResult.errors && updateResult.errors.length > 0) {
-          console.error('Amplify update errors:', JSON.stringify(updateResult.errors, null, 2));
-          alert('Error updating phase: ' + updateResult.errors.map(e => e.message).join(', '));
-          return;
-        }
-        
-        // Verify the update by fetching the phase again
-        const { data: verifyPhase } = await client.models.Phase.get({ id: freshPhase.id });
-        console.log('Verified phase after update:', verifyPhase);
-        console.log('Verified links:', verifyPhase?.links);
-        
       } else {
-        console.log('Creating new phase for:', phaseId);
-        const createResult = await client.models.Phase.create({
+        await client.models.Phase.create({
           engagementId: engagementId,
           phaseType: phaseId,
           status: 'PENDING',
@@ -958,31 +1138,27 @@ function PresalesTracker() {
           notes: null,
           links: JSON.stringify(updatedLinks)
         });
-        console.log('Create result:', createResult);
-        
-        if (createResult.errors && createResult.errors.length > 0) {
-          console.error('Amplify create errors:', JSON.stringify(createResult.errors, null, 2));
-          alert('Error creating phase: ' + createResult.errors.map(e => e.message).join(', '));
-          return;
-        }
       }
       
-      console.log('Link saved successfully');
-      
-      await logChange(
+      logChangeAsync(
         engagementId,
         'LINK_ADDED',
         `Added link "${linkToAdd.title}" to ${phaseLabels[phaseId]} phase`
       );
       
-      // Close modal first
-      setShowLinkModal(null);
-      
-      // Refresh all data
-      await fetchAllData(currentUser?.id);
-      
     } catch (error) {
       console.error('Error adding link:', error);
+      // Rollback
+      updateEngagementInState(engagementId, (eng) => ({
+        ...eng,
+        phases: {
+          ...eng.phases,
+          [phaseId]: {
+            ...eng.phases[phaseId],
+            links: currentLinks
+          }
+        }
+      }));
       alert('Error saving link: ' + error.message);
     }
   };
@@ -990,9 +1166,23 @@ function PresalesTracker() {
   const handleRemoveLink = async (phaseId, linkIndex) => {
     if (!selectedEngagement) return;
     
+    const existingPhase = selectedEngagement.phases[phaseId];
+    const currentLinks = parseLinks(existingPhase?.links);
+    const removedLink = currentLinks[linkIndex];
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, (eng) => ({
+      ...eng,
+      phases: {
+        ...eng.phases,
+        [phaseId]: {
+          ...eng.phases[phaseId],
+          links: currentLinks.filter((_, i) => i !== linkIndex)
+        }
+      }
+    }));
+    
     try {
-      const existingPhase = selectedEngagement.phases[phaseId];
-      const currentLinks = parseLinks(existingPhase?.links);
       const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
       
       if (existingPhase.id) {
@@ -1002,20 +1192,36 @@ function PresalesTracker() {
         });
       }
       
-      await fetchAllData(currentUser?.id);
-      
-      const refreshed = engagements.find(e => e.id === selectedEngagement.id);
-      if (refreshed) {
-        setSelectedEngagement(refreshed);
-      }
-      
     } catch (error) {
       console.error('Error removing link:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, (eng) => ({
+        ...eng,
+        phases: {
+          ...eng.phases,
+          [phaseId]: {
+            ...eng.phases[phaseId],
+            links: currentLinks
+          }
+        }
+      }));
     }
   };
 
   const handleUpdateIntegrations = async (updates) => {
     if (!selectedEngagement) return;
+    
+    const previousValues = {
+      salesforceId: selectedEngagement.salesforceId,
+      salesforceUrl: selectedEngagement.salesforceUrl,
+      jiraTicket: selectedEngagement.jiraTicket,
+      jiraUrl: selectedEngagement.jiraUrl,
+      slackChannel: selectedEngagement.slackChannel
+    };
+    
+    // Optimistic update
+    updateEngagementInState(selectedEngagement.id, updates);
+    setShowIntegrationsModal(false);
     
     try {
       await client.models.Engagement.update({
@@ -1023,44 +1229,45 @@ function PresalesTracker() {
         ...updates
       });
       
-      await logChange(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integration links');
-      
-      await fetchAllData(currentUser?.id);
-      
-      const refreshed = engagements.find(e => e.id === selectedEngagement.id);
-      if (refreshed) {
-        setSelectedEngagement(refreshed);
-      }
-      
-      setShowIntegrationsModal(false);
+      logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integration links');
       
     } catch (error) {
       console.error('Error updating integrations:', error);
+      // Rollback
+      updateEngagementInState(selectedEngagement.id, previousValues);
     }
   };
 
   const handleToggleArchive = async (engagementId, archive) => {
+    const engagement = engagements.find(e => e.id === engagementId);
+    if (!engagement) return;
+    
+    const previousValue = engagement.isArchived;
+    
+    // Optimistic update
+    updateEngagementInState(engagementId, { isArchived: archive });
+    
+    if (selectedEngagement?.id === engagementId) {
+      setSelectedEngagement(null);
+      setView('list');
+    }
+    
     try {
       await client.models.Engagement.update({
         id: engagementId,
         isArchived: archive
       });
       
-      await logChange(
+      logChangeAsync(
         engagementId, 
         archive ? 'ARCHIVED' : 'RESTORED', 
         archive ? 'Engagement archived' : 'Engagement restored'
       );
       
-      await fetchAllData(currentUser?.id);
-      
-      if (selectedEngagement?.id === engagementId) {
-        setSelectedEngagement(null);
-        setView('list');
-      }
-      
     } catch (error) {
       console.error('Error archiving engagement:', error);
+      // Rollback
+      updateEngagementInState(engagementId, { isArchived: previousValue });
     }
   };
 
@@ -1071,17 +1278,6 @@ function PresalesTracker() {
       console.error('Error signing out:', error);
     }
   };
-
-  // Refresh selected engagement when engagements update
-  useEffect(() => {
-    if (selectedEngagement && engagements.length > 0) {
-      const updated = engagements.find(e => e.id === selectedEngagement.id);
-      if (updated) {
-        // Always update to ensure we have fresh data
-        setSelectedEngagement(updated);
-      }
-    }
-  }, [engagements]);
 
   if (loading) {
     return (
