@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '../ui/Modal';
+import LinkifyText from '../ui/LinkifyText';
 import { changeTypeLabels } from '../../constants';
 
 /**
@@ -41,7 +42,9 @@ const HistoryModal = ({
                       {changeTypeLabels[log.changeType] || log.changeType}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700 mt-1">{log.description}</p>
+                  <p className="text-sm text-gray-700 mt-1">
+                    <LinkifyText text={log.description} />
+                  </p>
                   <p className="text-xs text-gray-400 mt-1">
                     {new Date(log.createdAt).toLocaleString()}
                   </p>
