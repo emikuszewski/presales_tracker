@@ -68,6 +68,8 @@ const schema = a.schema({
     jiraUrl: a.string(),
     slackChannel: a.string(),
     slackUrl: a.string(),
+    driveFolderName: a.string(),
+    driveFolderUrl: a.string(),
     
     // Archive support
     isArchived: a.boolean().default(false),
