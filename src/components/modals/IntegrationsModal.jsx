@@ -11,7 +11,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     salesforceUrl: '',
     jiraTicket: '',
     jiraUrl: '',
-    slackChannel: ''
+    slackChannel: '',
+    slackUrl: ''
   });
 
   // Reset form when modal opens with initial values
@@ -22,7 +23,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
         salesforceUrl: initialData.salesforceUrl || '',
         jiraTicket: initialData.jiraTicket || '',
         jiraUrl: initialData.jiraUrl || '',
-        slackChannel: initialData.slackChannel || ''
+        slackChannel: initialData.slackChannel || '',
+        slackUrl: initialData.slackUrl || ''
       });
     }
   }, [isOpen]); // Only reset when modal opens
@@ -34,7 +36,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
       salesforceUrl: formData.salesforceUrl || null,
       jiraTicket: formData.jiraTicket || null,
       jiraUrl: formData.jiraUrl || null,
-      slackChannel: formData.slackChannel || null
+      slackChannel: formData.slackChannel || null,
+      slackUrl: formData.slackUrl || null
     });
   };
 
@@ -105,6 +108,21 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="#customer-poc" 
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Slack Channel URL
+            </label>
+            <input 
+              type="url" 
+              value={formData.slackUrl}
+              onChange={e => updateField('slackUrl', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://plainid.slack.com/archives/C0123456789" 
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Right-click the channel in Slack → Copy link
+            </p>
           </div>
         </div>
         
