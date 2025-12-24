@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
-import { generateClient } from 'aws-amplify/data';
-import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 
 // Import constants
 import {
@@ -12,20 +10,11 @@ import {
   phaseConfig,
   activityTypes,
   industries,
-  ADMIN_EMAIL,
   ALLOWED_DOMAIN
 } from './constants';
 
 // Import utilities
-import {
-  groupBy,
-  generateInitials,
-  getTodayDate,
-  generateTempId,
-  parseLinks,
-  isEngagementStale,
-  getDaysSinceActivity
-} from './utils';
+import { parseLinks } from './utils';
 
 // Import components
 import {
@@ -43,26 +32,29 @@ import {
   HistoryModal
 } from './components';
 
-// Generate typed client
-const client = generateClient();
+// Import custom hooks
+import {
+  usePresalesData,
+  useAuth,
+  useTeamOperations,
+  useEngagementList,
+  useEngagementDetail
+} from './hooks';
 
 // Main App Component (inside Authenticator)
 function PresalesTracker() {
   const { user } = useAuthenticator((context) => [context.user]);
   
-  // State
-  const [currentUser, setCurrentUser] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [allTeamMembers, setAllTeamMembers] = useState([]);
-  const [engagements, setEngagements] = useState([]);
-  const [selectedEngagement, setSelectedEngagement] = useState(null);
+  // ============================================
+  // UI STATE (stays in component)
+  // ============================================
+  const [selectedEngagementId, setSelectedEngagementId] = useState(null);
   const [view, setView] = useState('list');
   const [filterPhase, setFilterPhase] = useState('all');
   const [filterOwner, setFilterOwner] = useState('mine');
   const [filterStale, setFilterStale] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showPhaseModal, setShowPhaseModal] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(null);
@@ -72,9 +64,7 @@ function PresalesTracker() {
   const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
   const [newComment, setNewComment] = useState({});
   const [expandedActivities, setExpandedActivities] = useState({});
-  const [engagementViews, setEngagementViews] = useState({});
   const [adminShowInactive, setAdminShowInactive] = useState(false);
-  // Engagement Management state
   const [engagementAdminFilter, setEngagementAdminFilter] = useState('all');
   const [engagementAdminSearch, setEngagementAdminSearch] = useState('');
   const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
@@ -85,324 +75,116 @@ function PresalesTracker() {
     salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: ''
   });
 
-  // Initialize user and fetch data
+  // ============================================
+  // HOOKS - Data and Operations
+  // ============================================
+  
+  // Core data hook - owns all data state
+  const {
+    currentUser,
+    setCurrentUser,
+    teamMembers,
+    setTeamMembers,
+    allTeamMembers,
+    setAllTeamMembers,
+    engagements,
+    setEngagements,
+    engagementViews,
+    setEngagementViews,
+    loading,
+    setLoading,
+    selectedEngagement, // Derived from selectedEngagementId
+    updateEngagementInState,
+    getOwnerInfo,
+    logChangeAsync,
+    fetchAllData,
+    client
+  } = usePresalesData(selectedEngagementId);
+
+  // Auth operations
+  const { initializeUser, handleSignOut } = useAuth({
+    user,
+    setCurrentUser,
+    setLoading,
+    setNewEngagement,
+    fetchAllData,
+    client
+  });
+
+  // Team admin operations
+  const { handleToggleUserActive, handleToggleUserAdmin } = useTeamOperations({
+    currentUser,
+    allTeamMembers,
+    setAllTeamMembers,
+    setTeamMembers,
+    fetchAllData,
+    client
+  });
+
+  // Engagement list operations
+  const {
+    filteredEngagements,
+    filteredEngagementsAdmin,
+    staleCount,
+    getCascadeInfo,
+    handleCreateEngagement,
+    handleToggleArchive,
+    handleDeleteEngagement
+  } = useEngagementList({
+    engagements,
+    setEngagements,
+    currentUser,
+    newEngagement,
+    setNewEngagement,
+    setView,
+    selectedEngagementId,
+    setSelectedEngagementId,
+    updateEngagementInState,
+    fetchAllData,
+    logChangeAsync,
+    client,
+    filters: {
+      filterPhase,
+      filterOwner,
+      filterStale,
+      showArchived,
+      searchQuery,
+      engagementAdminFilter,
+      engagementAdminSearch
+    }
+  });
+
+  // Engagement detail operations (namespaced)
+  const detail = useEngagementDetail({
+    selectedEngagement,
+    updateEngagementInState,
+    currentUser,
+    engagementViews,
+    setEngagementViews,
+    logChangeAsync,
+    getOwnerInfo,
+    client
+  });
+
+  // ============================================
+  // EFFECTS
+  // ============================================
+
+  // Initialize user on mount
   useEffect(() => {
     initializeUser();
   }, [user]);
 
-  // Helper to update a single engagement in state
-  const updateEngagementInState = useCallback((engagementId, updater) => {
-    setEngagements(prev => prev.map(e => 
-      e.id === engagementId ? (typeof updater === 'function' ? updater(e) : { ...e, ...updater }) : e
-    ));
-    
-    // Also update selectedEngagement if it's the same one
-    setSelectedEngagement(prev => {
-      if (prev?.id === engagementId) {
-        return typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
-      }
-      return prev;
-    });
-  }, []);
+  // ============================================
+  // LOCAL HANDLERS (UI-specific, not data operations)
+  // ============================================
 
-  const initializeUser = async () => {
-    try {
-      setLoading(true);
-      
-      const attributes = await fetchUserAttributes();
-      const email = attributes.email;
-      const givenName = attributes.given_name || '';
-      const familyName = attributes.family_name || '';
-      const fullName = `${givenName} ${familyName}`.trim() || email.split('@')[0];
-      
-      const { data: existingMembers } = await client.models.TeamMember.list({
-        filter: { email: { eq: email } }
-      });
-      
-      let member;
-      if (existingMembers.length > 0) {
-        member = existingMembers[0];
-      } else {
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-        const { data: newMember } = await client.models.TeamMember.create({
-          email: email,
-          name: fullName,
-          initials: generateInitials(fullName),
-          isAdmin: isAdmin,
-          isActive: true
-        });
-        member = newMember;
-      }
-      
-      setCurrentUser(member);
-      setNewEngagement(prev => ({ ...prev, ownerIds: [member.id] }));
-      
-      await fetchAllData(member.id);
-      
-    } catch (error) {
-      console.error('Error initializing user:', error);
-    } finally {
-      setLoading(false);
-    }
+  const toggleActivityExpansion = (activityId) => {
+    setExpandedActivities(prev => ({
+      ...prev,
+      [activityId]: !prev[activityId]
+    }));
   };
-
-  // OPTIMIZED: Batch fetch all data in parallel to solve N+1 query problem
-  const fetchAllData = async (userId) => {
-    try {
-      // Parallel fetch ALL data in one batch - this is the key optimization
-      const [
-        membersResult,
-        engagementsResult,
-        phasesResult,
-        activitiesResult,
-        ownershipResult,
-        commentsResult,
-        changeLogsResult,
-        viewsResult
-      ] = await Promise.all([
-        client.models.TeamMember.list(),
-        client.models.Engagement.list(),
-        client.models.Phase.list(),
-        client.models.Activity.list(),
-        client.models.EngagementOwner.list(),
-        client.models.Comment.list(),
-        client.models.ChangeLog.list(),
-        userId 
-          ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } })
-              .catch(() => ({ data: [] })) // Handle if EngagementView not available
-          : Promise.resolve({ data: [] })
-      ]);
-
-      const allMembers = membersResult.data;
-      const engagementData = engagementsResult.data;
-      const allPhases = phasesResult.data;
-      const allActivities = activitiesResult.data;
-      const allOwnershipRecords = ownershipResult.data;
-      const allComments = commentsResult.data;
-      const allChangeLogs = changeLogsResult.data;
-      const allViews = viewsResult.data;
-
-      // Create lookup maps for O(1) access instead of filtering per engagement
-      const phasesByEngagement = groupBy(allPhases, 'engagementId');
-      const activitiesByEngagement = groupBy(allActivities, 'engagementId');
-      const ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
-      const commentsByActivity = groupBy(allComments, 'activityId');
-      const changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
-      
-      // Create views map
-      const viewsMap = {};
-      allViews.forEach(v => {
-        viewsMap[v.engagementId] = v;
-      });
-      setEngagementViews(viewsMap);
-
-      // Set team members
-      setAllTeamMembers(allMembers);
-      const activeMembers = allMembers.filter(m => m.isActive !== false);
-      setTeamMembers(activeMembers);
-
-      // Enrich engagements WITHOUT additional queries - all data is already loaded
-      const enrichedEngagements = engagementData.map((eng) => {
-        // Get phases for this engagement from our lookup map
-        const phases = phasesByEngagement[eng.id] || [];
-        
-        // Get activities for this engagement from our lookup map
-        const activities = activitiesByEngagement[eng.id] || [];
-        
-        // Get ownership records for this engagement from our lookup map
-        const ownershipRecords = ownershipByEngagement[eng.id] || [];
-        
-        // Get change logs for this engagement from our lookup map
-        const changeLogs = (changeLogsByEngagement[eng.id] || [])
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        // Enrich activities with their comments from our lookup map
-        const activitiesWithComments = activities
-          .map((activity) => ({
-            ...activity,
-            comments: (commentsByActivity[activity.id] || [])
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-          }))
-          .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        // Build phases object
-        const phasesObj = {};
-        phaseConfig.forEach(p => {
-          const existingPhase = phases.find(ph => ph.phaseType === p.id);
-          if (existingPhase) {
-            const parsedLinks = parseLinks(existingPhase.links);
-            phasesObj[p.id] = {
-              ...existingPhase,
-              links: parsedLinks
-            };
-          } else {
-            phasesObj[p.id] = {
-              phaseType: p.id,
-              status: 'PENDING',
-              completedDate: null,
-              notes: '',
-              links: []
-            };
-          }
-        });
-
-        // Build owner IDs list
-        const ownerIds = ownershipRecords.map(o => o.teamMemberId);
-        if (ownerIds.length === 0 && eng.ownerId) {
-          ownerIds.push(eng.ownerId);
-        }
-
-        // Calculate unread changes
-        const userView = viewsMap[eng.id];
-        let unreadChanges = 0;
-        if (userView && userId) {
-          const lastViewed = new Date(userView.lastViewedAt);
-          unreadChanges = changeLogs.filter(log => 
-            new Date(log.createdAt) > lastViewed && log.userId !== userId
-          ).length;
-        } else if (changeLogs.length > 0 && userId) {
-          unreadChanges = changeLogs.filter(log => log.userId !== userId).length;
-        }
-
-        return {
-          ...eng,
-          phases: phasesObj,
-          activities: activitiesWithComments,
-          ownerIds: ownerIds,
-          ownershipRecords: ownershipRecords,
-          changeLogs: changeLogs,
-          unreadChanges: unreadChanges,
-          isStale: isEngagementStale(eng),
-          daysSinceActivity: getDaysSinceActivity(eng)
-        };
-      });
-
-      setEngagements(enrichedEngagements);
-
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  };
-
-  // Background log - doesn't block UI
-  const logChangeAsync = (engagementId, changeType, description, previousValue = null, newValue = null) => {
-    if (!currentUser) return;
-    
-    client.models.ChangeLog.create({
-      engagementId: engagementId,
-      userId: currentUser.id,
-      changeType: changeType,
-      description: description,
-      previousValue: previousValue,
-      newValue: newValue
-    }).catch(e => console.error('Error logging change:', e));
-  };
-
-  const updateEngagementView = async (engagementId) => {
-    if (!currentUser) return;
-    
-    try {
-      const existingView = engagementViews[engagementId];
-      
-      if (existingView) {
-        await client.models.EngagementView.update({
-          id: existingView.id,
-          lastViewedAt: new Date().toISOString()
-        });
-      } else {
-        await client.models.EngagementView.create({
-          engagementId: engagementId,
-          visitorId: currentUser.id,
-          lastViewedAt: new Date().toISOString()
-        });
-      }
-      
-      setEngagementViews(prev => ({
-        ...prev,
-        [engagementId]: { ...prev[engagementId], lastViewedAt: new Date().toISOString() }
-      }));
-      
-      updateEngagementInState(engagementId, { unreadChanges: 0 });
-    } catch (e) {
-      console.error('Error updating view:', e);
-    }
-  };
-
-  const handleToggleUserActive = async (memberId, currentStatus) => {
-    if (!currentUser?.isAdmin) return;
-    
-    if (memberId === currentUser.id) {
-      alert('You cannot deactivate yourself.');
-      return;
-    }
-    
-    const newStatus = !currentStatus;
-    
-    // Optimistic update
-    setAllTeamMembers(prev => prev.map(m => 
-      m.id === memberId ? { ...m, isActive: newStatus } : m
-    ));
-    setTeamMembers(prev => 
-      newStatus 
-        ? [...prev, allTeamMembers.find(m => m.id === memberId)].filter(Boolean)
-        : prev.filter(m => m.id !== memberId)
-    );
-    
-    try {
-      await client.models.TeamMember.update({
-        id: memberId,
-        isActive: newStatus
-      });
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-      // Rollback on error
-      setAllTeamMembers(prev => prev.map(m => 
-        m.id === memberId ? { ...m, isActive: currentStatus } : m
-      ));
-      await fetchAllData(currentUser?.id);
-    }
-  };
-
-  const handleToggleUserAdmin = async (memberId, currentStatus) => {
-    if (!currentUser?.isAdmin) return;
-    
-    if (memberId === currentUser.id) {
-      alert('You cannot remove your own admin status.');
-      return;
-    }
-    
-    const newStatus = !currentStatus;
-    
-    // Optimistic update
-    setAllTeamMembers(prev => prev.map(m => 
-      m.id === memberId ? { ...m, isAdmin: newStatus } : m
-    ));
-    setTeamMembers(prev => prev.map(m => 
-      m.id === memberId ? { ...m, isAdmin: newStatus } : m
-    ));
-    
-    try {
-      await client.models.TeamMember.update({
-        id: memberId,
-        isAdmin: newStatus
-      });
-    } catch (error) {
-      console.error('Error toggling admin status:', error);
-      // Rollback on error
-      setAllTeamMembers(prev => prev.map(m => 
-        m.id === memberId ? { ...m, isAdmin: currentStatus } : m
-      ));
-      setTeamMembers(prev => prev.map(m => 
-        m.id === memberId ? { ...m, isAdmin: currentStatus } : m
-      ));
-    }
-  };
-
-  // Memoized owner info lookup function
-  const getOwnerInfo = useCallback((ownerId) => {
-    const member = allTeamMembers.find(m => m.id === ownerId);
-    return member || { name: 'Unknown', initials: '?' };
-  }, [allTeamMembers]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -420,796 +202,49 @@ function PresalesTracker() {
     }
   };
 
-  // MEMOIZED: Filtered engagements - only recalculates when dependencies change
-  const filteredEngagements = useMemo(() => {
-    return engagements
-      .filter(e => {
-        if (showArchived !== (e.isArchived || false)) return false;
-        if (filterPhase !== 'all' && e.currentPhase !== filterPhase) return false;
-        if (filterStale && !e.isStale) return false;
-        
-        if (filterOwner === 'mine') {
-          const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-          if (!isOwner) return false;
-        } else if (filterOwner !== 'all') {
-          const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
-          if (!isOwner) return false;
-        }
-        
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          const matchesCompany = e.company.toLowerCase().includes(query);
-          const matchesContact = e.contactName.toLowerCase().includes(query);
-          const matchesIndustry = (industryLabels[e.industry] || '').toLowerCase().includes(query);
-          if (!matchesCompany && !matchesContact && !matchesIndustry) return false;
-        }
-        
-        return true;
-      })
-      .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
-  }, [engagements, showArchived, filterPhase, filterStale, filterOwner, currentUser?.id, searchQuery]);
-
-  // MEMOIZED: Filtered engagements for admin view
-  const filteredEngagementsAdmin = useMemo(() => {
-    return engagements
-      .filter(e => {
-        // Filter by status
-        if (engagementAdminFilter === 'active' && e.isArchived) return false;
-        if (engagementAdminFilter === 'archived' && !e.isArchived) return false;
-        
-        // Search filter
-        if (engagementAdminSearch) {
-          const query = engagementAdminSearch.toLowerCase();
-          const matchesCompany = e.company.toLowerCase().includes(query);
-          const matchesContact = e.contactName.toLowerCase().includes(query);
-          if (!matchesCompany && !matchesContact) return false;
-        }
-        
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
-  }, [engagements, engagementAdminFilter, engagementAdminSearch]);
-
-  // MEMOIZED: Stale count - only recalculates when dependencies change
-  const staleCount = useMemo(() => {
-    return engagements.filter(e => 
-      !e.isArchived && e.isStale && 
-      (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
-    ).length;
-  }, [engagements, filterOwner, currentUser?.id]);
-
-  // Get cascade info for an engagement
-  const getCascadeInfo = useCallback((engagement) => {
-    if (!engagement) return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0 };
-    
-    const phaseCount = Object.keys(engagement.phases || {}).filter(k => engagement.phases[k]?.id).length;
-    const activityCount = engagement.activities?.length || 0;
-    const commentCount = engagement.activities?.reduce((sum, a) => sum + (a.comments?.length || 0), 0) || 0;
-    const changeLogCount = engagement.changeLogs?.length || 0;
-    const ownerCount = engagement.ownershipRecords?.length || engagement.ownerIds?.length || 0;
-    
-    return {
-      phases: phaseCount,
-      activities: activityCount,
-      comments: commentCount,
-      changeLogs: changeLogCount,
-      owners: ownerCount
-    };
-  }, []);
-
-  // Delete engagement with cascade
-  const handleDeleteEngagement = async () => {
-    if (!deleteModalEngagement || !currentUser?.isAdmin) return;
-    
-    setIsDeleting(true);
-    
-    try {
-      const engagementId = deleteModalEngagement.id;
-      
-      // 1. Delete all comments for all activities
-      for (const activity of (deleteModalEngagement.activities || [])) {
-        for (const comment of (activity.comments || [])) {
-          await client.models.Comment.delete({ id: comment.id });
-        }
-      }
-      
-      // 2. Delete all activities
-      for (const activity of (deleteModalEngagement.activities || [])) {
-        await client.models.Activity.delete({ id: activity.id });
-      }
-      
-      // 3. Delete all phases
-      for (const phaseKey of Object.keys(deleteModalEngagement.phases || {})) {
-        const phase = deleteModalEngagement.phases[phaseKey];
-        if (phase?.id) {
-          await client.models.Phase.delete({ id: phase.id });
-        }
-      }
-      
-      // 4. Delete all ownership records
-      for (const ownership of (deleteModalEngagement.ownershipRecords || [])) {
-        await client.models.EngagementOwner.delete({ id: ownership.id });
-      }
-      
-      // 5. Delete all change logs
-      for (const log of (deleteModalEngagement.changeLogs || [])) {
-        await client.models.ChangeLog.delete({ id: log.id });
-      }
-      
-      // 6. Delete engagement views
-      const { data: views } = await client.models.EngagementView.list({
-        filter: { engagementId: { eq: engagementId } }
-      });
-      for (const view of views) {
-        await client.models.EngagementView.delete({ id: view.id });
-      }
-      
-      // 7. Finally, delete the engagement itself
-      await client.models.Engagement.delete({ id: engagementId });
-      
-      // Update local state
-      setEngagements(prev => prev.filter(e => e.id !== engagementId));
-      setDeleteModalEngagement(null);
-      
-    } catch (error) {
-      console.error('Error deleting engagement:', error);
-      alert('Error deleting engagement: ' + error.message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Create engagement still uses fetchAllData since we need server-generated IDs
-  const handleCreateEngagement = async () => {
-    if (!newEngagement.company || !newEngagement.contactName) return;
-    if (newEngagement.ownerIds.length === 0) return;
-    
-    try {
-      const today = getTodayDate();
-      
-      const { data: engagement } = await client.models.Engagement.create({
-        company: newEngagement.company,
-        contactName: newEngagement.contactName,
-        contactEmail: newEngagement.contactEmail || null,
-        contactPhone: newEngagement.contactPhone || null,
-        industry: newEngagement.industry,
-        dealSize: newEngagement.dealSize || null,
-        currentPhase: 'DISCOVER',
-        startDate: today,
-        lastActivity: today,
-        ownerId: newEngagement.ownerIds[0],
-        salesforceId: newEngagement.salesforceId || null,
-        salesforceUrl: newEngagement.salesforceUrl || null,
-        jiraTicket: newEngagement.jiraTicket || null,
-        jiraUrl: newEngagement.jiraUrl || null,
-        slackChannel: newEngagement.slackChannel || null,
-        isArchived: false
-      });
-      
-      for (const ownerId of newEngagement.ownerIds) {
-        await client.models.EngagementOwner.create({
-          engagementId: engagement.id,
-          teamMemberId: ownerId,
-          role: ownerId === newEngagement.ownerIds[0] ? 'primary' : 'secondary',
-          addedAt: new Date().toISOString()
-        });
-      }
-      
-      for (const phase of phaseConfig) {
-        await client.models.Phase.create({
-          engagementId: engagement.id,
-          phaseType: phase.id,
-          status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
-          completedDate: null,
-          notes: null,
-          links: null
-        });
-      }
-      
-      logChangeAsync(engagement.id, 'CREATED', `Created engagement for ${newEngagement.company}`);
-      
-      await fetchAllData(currentUser?.id);
-      
-      setNewEngagement({
-        company: '', contactName: '', contactEmail: '', contactPhone: '',
-        industry: 'TECHNOLOGY', dealSize: '', ownerIds: [currentUser?.id],
-        salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', slackChannel: ''
-      });
-      setView('list');
-      
-    } catch (error) {
-      console.error('Error creating engagement:', error);
-    }
-  };
-
-  const handleAddOwner = async (teamMemberId) => {
-    if (!selectedEngagement || selectedEngagement.ownerIds?.includes(teamMemberId)) return;
-    
-    const tempId = generateTempId();
-    const addedMember = getOwnerInfo(teamMemberId);
-    
-    // Optimistic update
-    const newOwnerIds = [...(selectedEngagement.ownerIds || []), teamMemberId];
-    const tempOwnershipRecord = {
-      id: tempId,
-      engagementId: selectedEngagement.id,
-      teamMemberId: teamMemberId,
-      role: 'secondary',
-      addedAt: new Date().toISOString()
-    };
-    
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      ownerIds: newOwnerIds,
-      ownershipRecords: [...(eng.ownershipRecords || []), tempOwnershipRecord]
-    }));
-    
-    try {
-      const { data: newRecord } = await client.models.EngagementOwner.create({
-        engagementId: selectedEngagement.id,
-        teamMemberId: teamMemberId,
-        role: 'secondary',
-        addedAt: new Date().toISOString()
-      });
-      
-      // Replace temp record with real one
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownershipRecords: eng.ownershipRecords.map(r => 
-          r.id === tempId ? newRecord : r
-        )
-      }));
-      
-      logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', `Added ${addedMember.name} as owner`);
-      
-    } catch (error) {
-      console.error('Error adding owner:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
-        ownershipRecords: eng.ownershipRecords.filter(r => r.id !== tempId)
-      }));
-    }
-  };
-
-  const handleRemoveOwner = async (teamMemberId) => {
-    if (!selectedEngagement) return;
-    
-    if (selectedEngagement.ownerIds?.length <= 1) {
-      alert('Cannot remove the last owner. Add another owner first.');
-      return;
-    }
-    
-    const removedMember = getOwnerInfo(teamMemberId);
-    const ownershipRecord = selectedEngagement.ownershipRecords?.find(
-      o => o.teamMemberId === teamMemberId
-    );
-    
-    // Store for rollback
-    const previousOwnerIds = [...selectedEngagement.ownerIds];
-    const previousOwnershipRecords = [...(selectedEngagement.ownershipRecords || [])];
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
-      ownershipRecords: eng.ownershipRecords?.filter(r => r.teamMemberId !== teamMemberId) || []
-    }));
-    
-    try {
-      if (ownershipRecord) {
-        await client.models.EngagementOwner.delete({ id: ownershipRecord.id });
-      }
-      
-      logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', `Removed ${removedMember.name} as owner`);
-      
-    } catch (error) {
-      console.error('Error removing owner:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownerIds: previousOwnerIds,
-        ownershipRecords: previousOwnershipRecords
-      }));
-    }
-  };
-
-  // Updated to receive activity data from modal
+  // Wrapper handlers that connect modals to hook operations
   const handleAddActivity = async (activityData) => {
-    if (!activityData.date || !activityData.description || !selectedEngagement) return;
-    
-    const tempId = generateTempId();
-    const tempActivity = {
-      id: tempId,
-      engagementId: selectedEngagement.id,
-      date: activityData.date,
-      type: activityData.type,
-      description: activityData.description,
-      comments: [],
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: [tempActivity, ...eng.activities],
-      lastActivity: activityData.date,
-      isStale: false,
-      daysSinceActivity: 0
-    }));
-    
-    setShowActivityModal(false);
-    
-    try {
-      const { data: createdActivity } = await client.models.Activity.create({
-        engagementId: selectedEngagement.id,
-        date: activityData.date,
-        type: activityData.type,
-        description: activityData.description
-      });
-      
-      await client.models.Engagement.update({
-        id: selectedEngagement.id,
-        lastActivity: activityData.date
-      });
-      
-      // Replace temp with real
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === tempId ? { ...createdActivity, comments: [] } : a
-        )
-      }));
-      
-      logChangeAsync(
-        selectedEngagement.id, 
-        'ACTIVITY_ADDED', 
-        `Added ${activityTypeLabels[activityData.type]}: ${activityData.description.substring(0, 50)}${activityData.description.length > 50 ? '...' : ''}`
-      );
-      
-    } catch (error) {
-      console.error('Error adding activity:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.filter(a => a.id !== tempId)
-      }));
+    const success = await detail.activity.add(activityData);
+    if (success) {
+      setShowActivityModal(false);
     }
+  };
+
+  const handleSavePhase = async (phaseData) => {
+    await detail.phase.save(showPhaseModal, phaseData);
+    setShowPhaseModal(null);
+  };
+
+  const handleAddLink = async (linkData) => {
+    await detail.phase.addLink(showLinkModal, linkData);
+    setShowLinkModal(null);
+  };
+
+  const handleUpdateIntegrations = async (updates) => {
+    await detail.integrations.update(updates);
+    setShowIntegrationsModal(false);
+  };
+
+  const handleUpdateDetails = async (updates) => {
+    await detail.details.update(updates);
+    setShowEditDetailsModal(false);
   };
 
   const handleAddComment = async (activityId) => {
     const commentText = newComment[activityId];
-    if (!commentText?.trim() || !currentUser) return;
-    
-    const tempId = generateTempId();
-    const tempComment = {
-      id: tempId,
-      activityId: activityId,
-      authorId: currentUser.id,
-      text: commentText.trim(),
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: eng.activities.map(a => 
-        a.id === activityId 
-          ? { ...a, comments: [...(a.comments || []), tempComment] }
-          : a
-      )
-    }));
-    
-    setNewComment(prev => ({ ...prev, [activityId]: '' }));
-    
-    try {
-      const { data: createdComment } = await client.models.Comment.create({
-        activityId: activityId,
-        authorId: currentUser.id,
-        text: commentText.trim()
-      });
-      
-      // Replace temp with real
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === activityId 
-            ? { ...a, comments: a.comments.map(c => c.id === tempId ? createdComment : c) }
-            : a
-        )
-      }));
-      
-      logChangeAsync(
-        selectedEngagement.id, 
-        'COMMENT_ADDED', 
-        `Added comment: ${commentText.substring(0, 50)}${commentText.length > 50 ? '...' : ''}`
-      );
-      
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === activityId 
-            ? { ...a, comments: a.comments.filter(c => c.id !== tempId) }
-            : a
-        )
-      }));
+    const success = await detail.activity.addComment(activityId, commentText);
+    if (success) {
+      setNewComment(prev => ({ ...prev, [activityId]: '' }));
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!selectedEngagement) return;
-    
-    // Find the activity and comment for rollback
-    let targetActivity = null;
-    let deletedComment = null;
-    
-    for (const activity of selectedEngagement.activities) {
-      const comment = activity.comments?.find(c => c.id === commentId);
-      if (comment) {
-        targetActivity = activity;
-        deletedComment = comment;
-        break;
-      }
-    }
-    
-    if (!targetActivity || !deletedComment) return;
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: eng.activities.map(a => 
-        a.id === targetActivity.id 
-          ? { ...a, comments: a.comments.filter(c => c.id !== commentId) }
-          : a
-      )
-    }));
-    
-    try {
-      await client.models.Comment.delete({ id: commentId });
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === targetActivity.id 
-            ? { ...a, comments: [...a.comments, deletedComment].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }
-            : a
-        )
-      }));
-    }
+  const onDeleteEngagement = async () => {
+    await handleDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting);
   };
 
-  const toggleActivityExpansion = (activityId) => {
-    setExpandedActivities(prev => ({
-      ...prev,
-      [activityId]: !prev[activityId]
-    }));
-  };
-
-  // Updated to receive phase data from modal
-  const handleSavePhase = async (phaseData) => {
-    if (!selectedEngagement || !showPhaseModal) return;
-    
-    const phaseId = showPhaseModal;
-    const engagementId = selectedEngagement.id;
-    
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const previousStatus = existingPhase?.status || 'PENDING';
-    const previousNotes = existingPhase?.notes || '';
-    
-    // Calculate new current phase if completing
-    let newCurrentPhase = selectedEngagement.currentPhase;
-    if (phaseData.status === 'COMPLETE') {
-      const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
-      if (phaseIndex < phaseConfig.length - 1) {
-        newCurrentPhase = phaseConfig[phaseIndex + 1].id;
-      }
-    }
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, (eng) => ({
-      ...eng,
-      currentPhase: newCurrentPhase,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          status: phaseData.status,
-          notes: phaseData.notes,
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : eng.phases[phaseId]?.completedDate
-        }
-      }
-    }));
-    
-    setShowPhaseModal(null);
-    
-    try {
-      if (existingPhase && existingPhase.id) {
-        await client.models.Phase.update({
-          id: existingPhase.id,
-          status: phaseData.status,
-          notes: phaseData.notes,
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : existingPhase.completedDate
-        });
-      } else {
-        await client.models.Phase.create({
-          engagementId: engagementId,
-          phaseType: phaseId,
-          status: phaseData.status || 'PENDING',
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : null,
-          notes: phaseData.notes || null,
-          links: null
-        });
-      }
-      
-      if (newCurrentPhase !== selectedEngagement.currentPhase) {
-        await client.models.Engagement.update({
-          id: engagementId,
-          currentPhase: newCurrentPhase
-        });
-      }
-      
-      if (phaseData.status !== previousStatus) {
-        logChangeAsync(
-          engagementId,
-          'PHASE_UPDATE',
-          `${phaseLabels[phaseId]} phase changed to ${phaseData.status.toLowerCase().replace('_', ' ')}`,
-          previousStatus,
-          phaseData.status
-        );
-      }
-      
-    } catch (error) {
-      console.error('Error updating phase:', error);
-      // Rollback
-      updateEngagementInState(engagementId, (eng) => ({
-        ...eng,
-        currentPhase: selectedEngagement.currentPhase,
-        phases: {
-          ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            status: previousStatus,
-            notes: previousNotes
-          }
-        }
-      }));
-    }
-  };
-
-  const handleAddLink = async (linkData) => {
-    if (!linkData?.title || !linkData?.url || !selectedEngagement || !showLinkModal) {
-      return;
-    }
-    
-    const phaseId = showLinkModal;
-    const engagementId = selectedEngagement.id;
-    const linkToAdd = { title: linkData.title, url: linkData.url };
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const currentLinks = parseLinks(existingPhase?.links);
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, (eng) => ({
-      ...eng,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          links: [...currentLinks, linkToAdd]
-        }
-      }
-    }));
-    
-    setShowLinkModal(null);
-    
-    try {
-      // Fetch fresh phase data from database
-      const { data: freshPhases } = await client.models.Phase.list({
-        filter: { engagementId: { eq: engagementId } }
-      });
-      const freshPhase = freshPhases.find(p => p.phaseType === phaseId);
-      
-      const freshLinks = parseLinks(freshPhase?.links);
-      const updatedLinks = [...freshLinks, linkToAdd];
-      
-      if (freshPhase && freshPhase.id) {
-        await client.models.Phase.update({
-          id: freshPhase.id,
-          links: JSON.stringify(updatedLinks)
-        });
-      } else {
-        await client.models.Phase.create({
-          engagementId: engagementId,
-          phaseType: phaseId,
-          status: 'PENDING',
-          completedDate: null,
-          notes: null,
-          links: JSON.stringify(updatedLinks)
-        });
-      }
-      
-      logChangeAsync(
-        engagementId,
-        'LINK_ADDED',
-        `Added link "${linkToAdd.title}" to ${phaseLabels[phaseId]} phase`
-      );
-      
-    } catch (error) {
-      console.error('Error adding link:', error);
-      // Rollback
-      updateEngagementInState(engagementId, (eng) => ({
-        ...eng,
-        phases: {
-          ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            links: currentLinks
-          }
-        }
-      }));
-      alert('Error saving link: ' + error.message);
-    }
-  };
-
-  const handleRemoveLink = async (phaseId, linkIndex) => {
-    if (!selectedEngagement) return;
-    
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const currentLinks = parseLinks(existingPhase?.links);
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          links: currentLinks.filter((_, i) => i !== linkIndex)
-        }
-      }
-    }));
-    
-    try {
-      const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
-      
-      if (existingPhase.id) {
-        await client.models.Phase.update({
-          id: existingPhase.id,
-          links: JSON.stringify(updatedLinks)
-        });
-      }
-      
-    } catch (error) {
-      console.error('Error removing link:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        phases: {
-          ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            links: currentLinks
-          }
-        }
-      }));
-    }
-  };
-
-  const handleUpdateIntegrations = async (updates) => {
-    if (!selectedEngagement) return;
-    
-    const previousValues = {
-      salesforceId: selectedEngagement.salesforceId,
-      salesforceUrl: selectedEngagement.salesforceUrl,
-      jiraTicket: selectedEngagement.jiraTicket,
-      jiraUrl: selectedEngagement.jiraUrl,
-      slackChannel: selectedEngagement.slackChannel
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, updates);
-    setShowIntegrationsModal(false);
-    
-    try {
-      await client.models.Engagement.update({
-        id: selectedEngagement.id,
-        ...updates
-      });
-      
-      logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integration links');
-      
-    } catch (error) {
-      console.error('Error updating integrations:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, previousValues);
-    }
-  };
-
-  const handleUpdateDetails = async (updates) => {
-    if (!selectedEngagement) return;
-    
-    const previousValues = {
-      company: selectedEngagement.company,
-      contactName: selectedEngagement.contactName,
-      contactEmail: selectedEngagement.contactEmail,
-      contactPhone: selectedEngagement.contactPhone,
-      industry: selectedEngagement.industry,
-      dealSize: selectedEngagement.dealSize
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, updates);
-    setShowEditDetailsModal(false);
-    
-    try {
-      await client.models.Engagement.update({
-        id: selectedEngagement.id,
-        ...updates
-      });
-      
-      // Log changes for significant updates
-      const changes = [];
-      if (updates.company !== previousValues.company) changes.push(`company to "${updates.company}"`);
-      if (updates.contactName !== previousValues.contactName) changes.push(`contact to "${updates.contactName}"`);
-      if (updates.industry !== previousValues.industry) changes.push(`industry to ${industryLabels[updates.industry]}`);
-      if (updates.dealSize !== previousValues.dealSize) changes.push(`deal size to "${updates.dealSize || 'N/A'}"`);
-      
-      if (changes.length > 0) {
-        logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', `Updated ${changes.join(', ')}`);
-      }
-      
-    } catch (error) {
-      console.error('Error updating details:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, previousValues);
-    }
-  };
-
-  const handleToggleArchive = async (engagementId, archive) => {
-    const engagement = engagements.find(e => e.id === engagementId);
-    if (!engagement) return;
-    
-    const previousValue = engagement.isArchived;
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, { isArchived: archive });
-    
-    if (selectedEngagement?.id === engagementId) {
-      setSelectedEngagement(null);
-      setView('list');
-    }
-    
-    try {
-      await client.models.Engagement.update({
-        id: engagementId,
-        isArchived: archive
-      });
-      
-      logChangeAsync(
-        engagementId, 
-        archive ? 'ARCHIVED' : 'RESTORED', 
-        archive ? 'Engagement archived' : 'Engagement restored'
-      );
-      
-    } catch (error) {
-      console.error('Error archiving engagement:', error);
-      // Rollback
-      updateEngagementInState(engagementId, { isArchived: previousValue });
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
+  // ============================================
+  // LOADING STATE
+  // ============================================
 
   if (loading) {
     return (
@@ -1222,6 +257,10 @@ function PresalesTracker() {
     );
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
+
   return (
     <div className="min-h-screen bg-white">
       {/* Top Navigation */}
@@ -1233,7 +272,6 @@ function PresalesTracker() {
             <p className="font-medium text-gray-900">Engagement Tracker</p>
           </div>
           
-          {/* Avatar Menu */}
           <AvatarMenu 
             currentUser={currentUser}
             onTeamClick={() => setView('admin')}
@@ -1394,7 +432,6 @@ function PresalesTracker() {
               </div>
             </div>
 
-            {/* Search */}
             <div className="mb-6">
               <input
                 type="text"
@@ -1405,7 +442,6 @@ function PresalesTracker() {
               />
             </div>
 
-            {/* Filters */}
             <div className="mb-6">
               <div className="flex gap-2">
                 <button
@@ -1435,7 +471,6 @@ function PresalesTracker() {
               </div>
             </div>
 
-            {/* Table */}
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -1661,9 +696,9 @@ function PresalesTracker() {
                 <div
                   key={engagement.id}
                   onClick={() => { 
-                    setSelectedEngagement(engagement); 
+                    setSelectedEngagementId(engagement.id); 
                     setView('detail'); 
-                    updateEngagementView(engagement.id);
+                    detail.view.update(engagement.id);
                   }}
                   className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${
                     engagement.isStale ? 'border-amber-200' : 'border-gray-200 hover:border-gray-300'
@@ -1748,7 +783,7 @@ function PresalesTracker() {
         {view === 'detail' && selectedEngagement && (
           <div>
             <button 
-              onClick={() => { setView('list'); setSelectedEngagement(null); }}
+              onClick={() => { setView('list'); setSelectedEngagementId(null); }}
               className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1925,7 +960,7 @@ function PresalesTracker() {
                                   {link.title}
                                 </a>
                                 <button 
-                                  onClick={(e) => { e.stopPropagation(); handleRemoveLink(phase.id, linkIndex); }}
+                                  onClick={(e) => { e.stopPropagation(); detail.phase.removeLink(phase.id, linkIndex); }}
                                   className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >×</button>
                               </div>
@@ -1998,7 +1033,7 @@ function PresalesTracker() {
                                         <span className="text-sm font-medium text-gray-900">{author.name}</span>
                                         <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
                                         {isOwnComment && (
-                                          <button onClick={() => handleDeleteComment(comment.id)}
+                                          <button onClick={() => detail.activity.deleteComment(comment.id)}
                                             className="text-xs text-gray-400 hover:text-red-500">Delete</button>
                                         )}
                                       </div>
@@ -2090,8 +1125,8 @@ function PresalesTracker() {
               teamMembers={teamMembers}
               currentUserId={currentUser?.id}
               getOwnerInfo={getOwnerInfo}
-              onAddOwner={handleAddOwner}
-              onRemoveOwner={handleRemoveOwner}
+              onAddOwner={detail.owner.add}
+              onRemoveOwner={detail.owner.remove}
             />
 
             <HistoryModal
@@ -2282,7 +1317,7 @@ function PresalesTracker() {
         engagement={deleteModalEngagement}
         cascadeInfo={getCascadeInfo(deleteModalEngagement)}
         onClose={() => setDeleteModalEngagement(null)}
-        onConfirm={handleDeleteEngagement}
+        onConfirm={onDeleteEngagement}
         isDeleting={isDeleting}
       />
     </div>
