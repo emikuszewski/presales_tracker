@@ -31,6 +31,8 @@ export const changeTypeLabels = {
   CREATED: 'Created engagement',
   PHASE_UPDATE: 'Updated phase',
   ACTIVITY_ADDED: 'Added activity',
+  ACTIVITY_EDITED: 'Edited activity',
+  ACTIVITY_DELETED: 'Deleted activity',
   OWNER_ADDED: 'Added owner',
   OWNER_REMOVED: 'Removed owner',
   COMMENT_ADDED: 'Added comment',
