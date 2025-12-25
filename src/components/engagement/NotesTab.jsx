@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { phaseConfig } from '../../constants';
-import LinkifyText from '../common/LinkifyText';
+import LinkifyText from '../ui/LinkifyText';
 
 const formatNoteDate = (dateString) => {
   if (!dateString) return '';
