@@ -6,6 +6,7 @@ import {
   DriveIcon,
   DocsIcon,
   SlidesIcon,
+  SheetsIcon,
   LinkifyText,
   ActivityModal,
   PhaseEditModal,
@@ -302,6 +303,28 @@ const DetailView = ({
               )
             ) : (
               <p className="text-sm text-gray-400">No Slides deck linked</p>
+            )}
+            
+            {/* Google Sheets */}
+            {engagement.sheetsName ? (
+              engagement.sheetsUrl ? (
+                <a 
+                  href={engagement.sheetsUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <SheetsIcon className="w-4 h-4" />
+                  {engagement.sheetsName}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <SheetsIcon className="w-4 h-4" />
+                  {engagement.sheetsName}
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-400">No Google Sheet linked</p>
             )}
             
             {/* Slack */}
