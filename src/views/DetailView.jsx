@@ -26,6 +26,24 @@ const GearIcon = ({ className = "w-5 h-5" }) => (
 );
 
 /**
+ * Archive icon - box with down arrow (for archiving)
+ */
+const ArchiveIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4l3 3m0 0l3-3m-3 3V9" />
+  </svg>
+);
+
+/**
+ * Restore icon - box with up arrow (for restoring from archive)
+ */
+const RestoreIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4l3-3m0 0l3 3m-3-3v7" />
+  </svg>
+);
+
+/**
  * Detail header component - compact header with back, owners, company, phase
  */
 const DetailHeader = ({ 
@@ -40,6 +58,7 @@ const DetailHeader = ({
   daysSinceActivity 
 }) => {
   const currentPhase = engagement?.currentPhase || 'DISCOVER';
+  const isArchived = engagement?.isArchived === true;
   
   // Get the phase data and status for styling
   const currentPhaseData = engagement?.phases?.[currentPhase];
@@ -120,6 +139,13 @@ const DetailHeader = ({
             {phaseLabel}
           </span>
 
+          {/* Archived badge - always visible (critical state info) */}
+          {isArchived && (
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 flex-shrink-0">
+              Archived
+            </span>
+          )}
+
           {/* Deal size */}
           {engagement?.dealSize && (
             <span className="text-sm text-gray-500 flex-shrink-0 hidden sm:inline">
@@ -179,15 +205,17 @@ const DetailHeader = ({
             </svg>
           </button>
 
-          {/* Archive button */}
+          {/* Archive/Restore button - icon changes based on archived state */}
           <button
             onClick={onArchive}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            title={engagement?.isArchived ? 'Restore engagement' : 'Archive engagement'}
+            title={isArchived ? 'Restore engagement' : 'Archive engagement'}
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-            </svg>
+            {isArchived ? (
+              <RestoreIcon className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ArchiveIcon className="w-5 h-5 text-gray-600" />
+            )}
           </button>
         </div>
       </div>
@@ -301,7 +329,7 @@ const DetailView = ({
     if (!engagement) return;
     
     if (engagement.isArchived) {
-      // Restoring - no confirmation needed
+      // Restoring - no confirmation needed, execute immediately
       onToggleArchive(engagement.id, false);
     } else {
       // Archiving - show confirmation modal
