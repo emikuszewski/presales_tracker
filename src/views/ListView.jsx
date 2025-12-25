@@ -1,9 +1,11 @@
 import React from 'react';
 import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon, DocsIcon, SlidesIcon, SheetsIcon } from '../components';
 import { industryLabels, phaseConfig } from '../constants';
+import { getAvatarColorClasses } from '../utils';
 
 /**
  * List view showing all engagements with filters
+ * SE Team appears in the owner filter row alongside regular team members
  */
 const ListView = ({
   // Data
@@ -57,15 +59,20 @@ const ListView = ({
     }
   };
 
+  // Get the display name for the current filter
+  const getFilterOwnerName = () => {
+    if (filterOwner === 'mine') return 'My Engagements';
+    if (filterOwner === 'all') return 'All Team Engagements';
+    const owner = getOwnerInfo(filterOwner);
+    return `${owner.name}'s Engagements`;
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-medium text-gray-900">
-            {showArchived ? 'Archived Engagements' : 
-              filterOwner === 'mine' ? 'My Engagements' : 
-              filterOwner === 'all' ? 'All Team Engagements' : 
-              `${getOwnerInfo(filterOwner).name}'s Engagements`}
+            {showArchived ? 'Archived Engagements' : getFilterOwnerName()}
           </h2>
           <p className="text-gray-500 mt-1">
             {engagements.length} engagement{engagements.length !== 1 ? 's' : ''}
@@ -138,20 +145,27 @@ const ListView = ({
                 All Team
               </button>
               <div className="w-px bg-gray-200 mx-2" />
-              {teamMembers.map(member => (
-                <button
-                  key={member.id}
-                  onClick={() => setFilterOwner(member.id)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
-                    filterOwner === member.id 
-                      ? 'bg-gray-900 text-white ring-2 ring-gray-900 ring-offset-2' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title={member.name}
-                >
-                  {member.initials}
-                </button>
-              ))}
+              {/* Team member avatars - includes SE Team (system users) */}
+              {teamMembers.map(member => {
+                const isSystemUser = member.isSystemUser === true;
+                // Use centralized helper for base color classes
+                const baseColorClasses = getAvatarColorClasses(member, currentUser?.id);
+                
+                return (
+                  <button
+                    key={member.id}
+                    onClick={() => setFilterOwner(member.id)}
+                    className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
+                      filterOwner === member.id 
+                        ? `${isSystemUser ? 'bg-blue-500 text-white' : 'bg-gray-900 text-white'} ring-2 ring-offset-2 ${isSystemUser ? 'ring-blue-500' : 'ring-gray-900'}` 
+                        : `${isSystemUser ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
+                    }`}
+                    title={`${member.name}${isSystemUser ? ' (Shared Pool)' : ''}`}
+                  >
+                    {member.initials}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
