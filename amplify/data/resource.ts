@@ -70,6 +70,8 @@ const schema = a.schema({
     slackUrl: a.string(),
     driveFolderName: a.string(),
     driveFolderUrl: a.string(),
+    docsName: a.string(),
+    docsUrl: a.string(),
     slidesName: a.string(),
     slidesUrl: a.string(),
     
