@@ -242,6 +242,20 @@ const DetailView = ({
     return false;
   }, [detail]);
 
+  const handleEditActivity = useCallback(async (activityId, updates) => {
+    if (detail?.activity?.edit) {
+      return await detail.activity.edit(activityId, updates);
+    }
+    return false;
+  }, [detail]);
+
+  const handleDeleteActivity = useCallback(async (activityId) => {
+    if (detail?.activity?.delete) {
+      return await detail.activity.delete(activityId);
+    }
+    return false;
+  }, [detail]);
+
   const handleAddComment = useCallback(async (activityId, text) => {
     if (detail?.activity?.addComment) {
       return await detail.activity.addComment(activityId, text);
@@ -333,6 +347,8 @@ const DetailView = ({
             engagement={engagement}
             getOwnerInfo={getOwnerInfo}
             onAddActivity={handleAddActivity}
+            onEditActivity={handleEditActivity}
+            onDeleteActivity={handleDeleteActivity}
             onAddComment={handleAddComment}
             onDeleteComment={handleDeleteComment}
             highlightId={highlightActivityId}
