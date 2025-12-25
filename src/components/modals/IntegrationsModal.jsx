@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 
 /**
- * Modal for editing integration links (Drive, Slides, Slack)
+ * Modal for editing integration links (Drive, Docs, Slides, Slack)
  * Manages its own local form state
- * Grouped by: Documents (Drive, Slides) → Communication (Slack)
+ * Grouped by: Documents (Drive, Docs, Slides) → Communication (Slack)
  */
 const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -14,6 +14,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     jiraUrl: '',
     driveFolderName: '',
     driveFolderUrl: '',
+    docsName: '',
+    docsUrl: '',
     slidesName: '',
     slidesUrl: '',
     slackChannel: '',
@@ -30,6 +32,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
         jiraUrl: initialData.jiraUrl || '',
         driveFolderName: initialData.driveFolderName || '',
         driveFolderUrl: initialData.driveFolderUrl || '',
+        docsName: initialData.docsName || '',
+        docsUrl: initialData.docsUrl || '',
         slidesName: initialData.slidesName || '',
         slidesUrl: initialData.slidesUrl || '',
         slackChannel: initialData.slackChannel || '',
@@ -47,6 +51,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
       jiraUrl: formData.jiraUrl || null,
       driveFolderName: formData.driveFolderName || null,
       driveFolderUrl: formData.driveFolderUrl || null,
+      docsName: formData.docsName || null,
+      docsUrl: formData.docsUrl || null,
       slidesName: formData.slidesName || null,
       slidesUrl: formData.slidesUrl || null,
       slackChannel: formData.slackChannel || null,
@@ -85,6 +91,32 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               onChange={e => updateField('driveFolderUrl', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="https://drive.google.com/drive/folders/..." 
+            />
+          </div>
+
+          {/* Documents: Google Docs */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Doc Name
+            </label>
+            <input 
+              type="text" 
+              value={formData.docsName}
+              onChange={e => updateField('docsName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Running Notes" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Doc URL
+            </label>
+            <input 
+              type="url" 
+              value={formData.docsUrl}
+              onChange={e => updateField('docsUrl', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://docs.google.com/document/d/..." 
             />
           </div>
 
