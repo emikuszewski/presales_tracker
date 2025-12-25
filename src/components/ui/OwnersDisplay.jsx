@@ -1,8 +1,10 @@
 import React from 'react';
+import { getAvatarColorClasses } from '../../utils';
 
 /**
  * Displays a stack of owner avatars with overlap effect
  * Shows up to 3 avatars plus a "+N" indicator for additional owners
+ * System users display with blue avatar styling
  */
 const OwnersDisplay = React.memo(({ 
   ownerIds, 
@@ -17,16 +19,16 @@ const OwnersDisplay = React.memo(({
     <div className="flex items-center">
       {ownerIds?.slice(0, 3).map((ownerId, index) => {
         const owner = getOwnerInfo(ownerId);
-        const isCurrentUser = ownerId === currentUserId;
+        // Use centralized helper for color classes (handles system user, inactive, current user)
+        const colorClasses = getAvatarColorClasses(owner, currentUserId);
         const isInactive = owner.isActive === false;
+        const isSystemUser = owner.isSystemUser === true;
+        
         return (
           <div
             key={ownerId}
-            className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${
-              isInactive ? 'bg-gray-300 text-gray-500' :
-              isCurrentUser ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-            } ${index > 0 ? overlapClass : ''}`}
-            title={`${owner.name}${isInactive ? ' (Inactive)' : ''}`}
+            className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${colorClasses} ${index > 0 ? overlapClass : ''}`}
+            title={`${owner.name}${isInactive ? ' (Inactive)' : ''}${isSystemUser ? ' (Shared)' : ''}`}
             style={{ zIndex: 10 - index }}
           >
             {owner.initials}
