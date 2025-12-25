@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
+  Modal,
   SlackIcon,
   DriveIcon,
   DocsIcon,
@@ -198,6 +199,7 @@ const DetailView = ({
   const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
   const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Get owners with full info
   const owners = useMemo(() => {
@@ -261,11 +263,25 @@ const DetailView = ({
     }
   }, [detail, engagement]);
 
-  // Archive handler
+  // Archive handler - shows confirmation for archive, immediate for restore
   const handleArchive = useCallback(() => {
-    if (engagement && onToggleArchive) {
-      onToggleArchive(engagement.id, !engagement.isArchived);
+    if (!engagement) return;
+    
+    if (engagement.isArchived) {
+      // Restoring - no confirmation needed
+      onToggleArchive(engagement.id, false);
+    } else {
+      // Archiving - show confirmation modal
+      setShowArchiveConfirm(true);
     }
+  }, [engagement, onToggleArchive]);
+
+  // Confirm archive handler
+  const handleConfirmArchive = useCallback(() => {
+    if (engagement && onToggleArchive) {
+      onToggleArchive(engagement.id, true);
+    }
+    setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
 
   // Details save handler
@@ -449,6 +465,32 @@ const DetailView = ({
         initialData={engagement}
         onSave={handleUpdateIntegrations}
       />
+
+      {/* Archive Confirmation Modal */}
+      <Modal
+        isOpen={showArchiveConfirm}
+        onClose={() => setShowArchiveConfirm(false)}
+        title="Archive Engagement"
+      >
+        <p className="text-gray-600 mb-6">
+          Archive <strong>{engagement.company}</strong>? This engagement will move to your archived list. You can restore it anytime.
+        </p>
+        
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setShowArchiveConfirm(false)}
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleConfirmArchive}
+            className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+          >
+            Archive
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
