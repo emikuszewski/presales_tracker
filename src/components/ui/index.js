@@ -9,3 +9,4 @@ export { default as DocsIcon } from './DocsIcon';
 export { default as SlidesIcon } from './SlidesIcon';
 export { default as SheetsIcon } from './SheetsIcon';
 export { default as LinkifyText } from './LinkifyText';
+export { default as IntegrationLinksIndicator } from './IntegrationLinksIndicator';
