@@ -3,65 +3,67 @@ import { getCurrentUser, signOut, fetchUserAttributes } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import { ADMIN_EMAIL, ALLOWED_DOMAIN } from '../constants';
 
-const useAuth = (setCurrentUser, teamMembers = []) => {
+const useAuth = (setCurrentUser, teamMembers) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
 
-  const isAllowedDomain = useCallback((email) => {
+  const members = teamMembers || [];
+
+  const isAllowedDomain = useCallback(function(email) {
     if (!email) return false;
-    const domain = email.split('@')[1];
+    var domain = email.split('@')[1];
     return domain === ALLOWED_DOMAIN;
   }, []);
 
-  const isAdmin = useCallback((email) => {
+  const isAdmin = useCallback(function(email) {
     return email === ADMIN_EMAIL;
   }, []);
 
-  const findOrCreateTeamMember = useCallback(async (email, name) => {
+  const findOrCreateTeamMember = useCallback(async function(email, name) {
     try {
-      const existingMember = teamMembers.find(m => m.email === email);
+      var existingMember = members.find(function(m) { return m.email === email; });
       if (existingMember) {
         return existingMember;
       }
 
-      const client = generateClient();
-      const { data: members } = await client.models.TeamMember.list({
+      var client = generateClient();
+      var result = await client.models.TeamMember.list({
         filter: { email: { eq: email } }
       });
 
-      if (members && members.length > 0) {
-        return members[0];
+      if (result.data && result.data.length > 0) {
+        return result.data[0];
       }
 
-      const initials = name
-        ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+      var initials = name
+        ? name.split(' ').map(function(n) { return n[0]; }).join('').toUpperCase().slice(0, 2)
         : email.substring(0, 2).toUpperCase();
 
-      const { data: newMember } = await client.models.TeamMember.create({
-        email,
+      var createResult = await client.models.TeamMember.create({
+        email: email,
         name: name || email.split('@')[0],
-        initials,
+        initials: initials,
         isAdmin: isAdmin(email),
         isActive: true,
         isSystemUser: false
       });
 
-      return newMember;
+      return createResult.data;
     } catch (error) {
       console.error('Error finding/creating team member:', error);
       return null;
     }
-  }, [teamMembers, isAdmin]);
+  }, [members, isAdmin]);
 
-  const checkAuth = useCallback(async () => {
+  const checkAuth = useCallback(async function() {
     try {
       setIsLoading(true);
-      const user = await getCurrentUser();
-      const attributes = await fetchUserAttributes();
+      await getCurrentUser();
+      var attributes = await fetchUserAttributes();
       
-      const email = attributes.email;
+      var email = attributes.email;
       setUserEmail(email);
 
       if (!isAllowedDomain(email)) {
@@ -73,7 +75,7 @@ const useAuth = (setCurrentUser, teamMembers = []) => {
 
       setIsAuthenticated(true);
       
-      const teamMember = await findOrCreateTeamMember(email, attributes.name);
+      var teamMember = await findOrCreateTeamMember(email, attributes.name);
       if (teamMember && setCurrentUser) {
         setCurrentUser(teamMember);
       }
@@ -85,7 +87,7 @@ const useAuth = (setCurrentUser, teamMembers = []) => {
     }
   }, [isAllowedDomain, findOrCreateTeamMember, setCurrentUser]);
 
-  const handleSignOut = useCallback(async () => {
+  const handleSignOut = useCallback(async function() {
     try {
       await signOut();
       setIsAuthenticated(false);
@@ -98,26 +100,26 @@ const useAuth = (setCurrentUser, teamMembers = []) => {
     }
   }, [setCurrentUser]);
 
-  useEffect(() => {
+  useEffect(function() {
     checkAuth();
   }, [checkAuth]);
 
-  useEffect(() => {
-    if (isAuthenticated && userEmail && teamMembers.length > 0) {
-      const member = teamMembers.find(m => m.email === userEmail);
+  useEffect(function() {
+    if (isAuthenticated && userEmail && members.length > 0) {
+      var member = members.find(function(m) { return m.email === userEmail; });
       if (member && setCurrentUser) {
         setCurrentUser(member);
       }
     }
-  }, [isAuthenticated, userEmail, teamMembers, setCurrentUser]);
+  }, [isAuthenticated, userEmail, members, setCurrentUser]);
 
   return {
-    isAuthenticated,
-    isLoading,
-    authError,
-    userEmail,
+    isAuthenticated: isAuthenticated,
+    isLoading: isLoading,
+    authError: authError,
+    userEmail: userEmail,
     isAdmin: isAdmin(userEmail),
-    checkAuth,
+    checkAuth: checkAuth,
     signOut: handleSignOut
   };
 };
