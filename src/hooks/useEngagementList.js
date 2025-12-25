@@ -152,6 +152,8 @@ const useEngagementList = ({
         docsUrl: newEngagement.docsUrl || null,
         slidesName: newEngagement.slidesName || null,
         slidesUrl: newEngagement.slidesUrl || null,
+        sheetsName: newEngagement.sheetsName || null,
+        sheetsUrl: newEngagement.sheetsUrl || null,
         slackChannel: newEngagement.slackChannel || null,
         slackUrl: newEngagement.slackUrl || null,
         isArchived: false
@@ -188,6 +190,7 @@ const useEngagementList = ({
         driveFolderName: '', driveFolderUrl: '',
         docsName: '', docsUrl: '',
         slidesName: '', slidesUrl: '',
+        sheetsName: '', sheetsUrl: '',
         slackChannel: '', slackUrl: ''
       });
       setView('list');
