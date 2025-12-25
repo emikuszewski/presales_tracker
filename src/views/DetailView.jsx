@@ -4,6 +4,7 @@ import {
   StaleBadge,
   SlackIcon,
   DriveIcon,
+  SlidesIcon,
   LinkifyText,
   ActivityModal,
   PhaseEditModal,
@@ -271,6 +272,26 @@ const DetailView = ({
               )
             ) : (
               <p className="text-sm text-gray-400">No Drive folder linked</p>
+            )}
+            {engagement.slidesName ? (
+              engagement.slidesUrl ? (
+                <a 
+                  href={engagement.slidesUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <SlidesIcon className="w-4 h-4" />
+                  {engagement.slidesName}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <SlidesIcon className="w-4 h-4" />
+                  {engagement.slidesName}
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-400">No Slides deck linked</p>
             )}
             {engagement.slackChannel ? (
               engagement.slackUrl ? (
