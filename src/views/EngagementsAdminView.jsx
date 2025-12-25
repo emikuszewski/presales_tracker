@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
 import { OwnersDisplay, DeleteEngagementModal } from '../components';
 import { phaseLabels } from '../constants';
+import { formatDate } from '../utils';
 
 /**
  * Admin view for engagement management
- * Allows admins to view all engagements and delete them
+ * Allows admins to view all engagements, delete them, and see deletion audit log
  */
 const EngagementsAdminView = ({
   engagements,
@@ -22,7 +24,47 @@ const EngagementsAdminView = ({
   const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter engagements
+  // Deletion log state
+  const [deletionLogs, setDeletionLogs] = useState([]);
+  const [loadingDeletionLogs, setLoadingDeletionLogs] = useState(false);
+
+  /**
+   * Fetch deletion logs from the database
+   * Filters out expired records (belt and suspenders with DynamoDB TTL)
+   */
+  const fetchDeletionLogs = useCallback(async () => {
+    setLoadingDeletionLogs(true);
+    try {
+      const client = generateClient();
+      const result = await client.models.DeletionLog.list();
+      
+      // Filter out expired records (in case TTL hasn't cleaned them up yet)
+      const now = Math.floor(Date.now() / 1000);
+      const validLogs = (result.data || []).filter(log => {
+        // Keep if no expiresAt or if expiresAt is in the future
+        return !log.expiresAt || log.expiresAt > now;
+      });
+      
+      // Sort by createdAt (most recent first)
+      validLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setDeletionLogs(validLogs);
+    } catch (error) {
+      console.error('Error fetching deletion logs:', error);
+      setDeletionLogs([]);
+    } finally {
+      setLoadingDeletionLogs(false);
+    }
+  }, []);
+
+  // Fetch deletion logs when switching to 'deleted' tab
+  useEffect(() => {
+    if (filter === 'deleted') {
+      fetchDeletionLogs();
+    }
+  }, [filter, fetchDeletionLogs]);
+
+  // Filter engagements (only for non-deleted tabs)
   const filteredEngagements = engagements
     .filter(e => {
       if (filter === 'active' && e.isArchived) return false;
@@ -40,8 +82,15 @@ const EngagementsAdminView = ({
     .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
 
   const handleConfirmDelete = async () => {
-    await onDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting);
+    await onDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfo);
+    // Refresh deletion logs if we're on the deleted tab
+    if (filter === 'deleted') {
+      fetchDeletionLogs();
+    }
   };
+
+  // Count for deletion log badge
+  const deletionLogCount = deletionLogs.length;
 
   return (
     <div>
@@ -64,16 +113,20 @@ const EngagementsAdminView = ({
         </div>
       </div>
 
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search by company or contact..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-        />
-      </div>
+      {/* Search bar - hidden when on Deleted tab */}
+      {filter !== 'deleted' && (
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search by company or contact..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+        </div>
+      )}
 
+      {/* Tab buttons */}
       <div className="mb-6">
         <div className="flex gap-2">
           <button
@@ -100,89 +153,177 @@ const EngagementsAdminView = ({
           >
             Archived ({engagements.filter(e => e.isArchived).length})
           </button>
+          <button
+            onClick={() => setFilter('deleted')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+              filter === 'deleted' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Deleted
+            {deletionLogCount > 0 && (
+              <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                filter === 'deleted' ? 'bg-white text-gray-900' : 'bg-gray-300 text-gray-700'
+              }`}>
+                {deletionLogCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredEngagements.map(engagement => (
-              <tr key={engagement.id} className="hover:bg-gray-50">
-                <td className="px-4 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">{engagement.company}</p>
-                    <p className="text-sm text-gray-500">{engagement.contactName}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <OwnersDisplay 
-                    ownerIds={engagement.ownerIds} 
-                    size="sm" 
-                    getOwnerInfo={getOwnerInfo} 
-                    currentUserId={currentUser?.id} 
-                  />
-                </td>
-                <td className="px-4 py-4">
-                  <span className="text-sm text-gray-700">
-                    {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
-                  </span>
-                </td>
-                <td className="px-4 py-4 text-center">
-                  <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
-                </td>
-                <td className="px-4 py-4">
-                  <span className="text-sm text-gray-500">{engagement.startDate}</span>
-                </td>
-                <td className="px-4 py-4">
-                  {engagement.isArchived ? (
-                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                      Archived
-                    </span>
-                  ) : (
-                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
-                      Active
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <button
-                    onClick={() => setDeleteModalEngagement(engagement)}
-                    className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {filteredEngagements.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            No engagements found
-          </div>
-        )}
-      </div>
+      {/* Content based on selected tab */}
+      {filter === 'deleted' ? (
+        // Deletion Log View
+        <div>
+          {loadingDeletionLogs ? (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading deletion history...</p>
+            </div>
+          ) : deletionLogs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🗑️</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No deletion history</h3>
+              <p className="text-gray-500">No engagements have been deleted in the past year.</p>
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Deleted By</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Removed Data</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {deletionLogs.map(log => (
+                    <tr key={log.id} className="bg-gray-50/50 text-gray-600">
+                      <td className="px-4 py-4">
+                        <div>
+                          <p className="font-medium text-gray-700">{log.companyName}</p>
+                          {log.currentPhase && (
+                            <p className="text-xs text-gray-400 mt-0.5">Was in: {log.currentPhase}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-600">{log.contactName}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-600">{log.deletedByName}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-500 text-sm">{formatDate(log.createdAt)}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-500 text-sm">{log.cascadeSummary || 'No related data'}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      <div className="mt-8 p-4 bg-red-50 rounded-xl">
-        <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
-        <ul className="text-sm text-red-700 space-y-1">
-          <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
-          <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
-          <li>• Consider archiving engagements instead if you may need the data later.</li>
-        </ul>
-      </div>
+          {/* Info box for deletion log */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-xl">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">About Deletion History</h4>
+            <ul className="text-sm text-gray-500 space-y-1">
+              <li>• This log shows engagements deleted in the past 365 days.</li>
+              <li>• Deleted data cannot be restored - this is for audit purposes only.</li>
+              <li>• Records are automatically removed after one year.</li>
+            </ul>
+          </div>
+        </div>
+      ) : (
+        // Regular Engagement Table View
+        <>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredEngagements.map(engagement => (
+                  <tr key={engagement.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{engagement.company}</p>
+                        <p className="text-sm text-gray-500">{engagement.contactName}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <OwnersDisplay 
+                        ownerIds={engagement.ownerIds} 
+                        size="sm" 
+                        getOwnerInfo={getOwnerInfo} 
+                        currentUserId={currentUser?.id} 
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-700">
+                        {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-500">{engagement.startDate}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      {engagement.isArchived ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                          Archived
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        onClick={() => setDeleteModalEngagement(engagement)}
+                        className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {filteredEngagements.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                No engagements found
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 p-4 bg-red-50 rounded-xl">
+            <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
+            <ul className="text-sm text-red-700 space-y-1">
+              <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
+              <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
+              <li>• Consider archiving engagements instead if you may need the data later.</li>
+              <li>• Deletions are logged for audit purposes and visible in the "Deleted" tab.</li>
+            </ul>
+          </div>
+        </>
+      )}
 
       {/* Delete Modal - owned by this view */}
       <DeleteEngagementModal
