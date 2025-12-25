@@ -74,6 +74,8 @@ const schema = a.schema({
     docsUrl: a.string(),
     slidesName: a.string(),
     slidesUrl: a.string(),
+    sheetsName: a.string(),
+    sheetsUrl: a.string(),
     
     // Archive support
     isArchived: a.boolean().default(false),
