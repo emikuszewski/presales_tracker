@@ -34,6 +34,7 @@ export const changeTypeLabels = {
   OWNER_ADDED: 'Added owner',
   OWNER_REMOVED: 'Removed owner',
   COMMENT_ADDED: 'Added comment',
+  COMMENT_DELETED: 'Deleted comment',
   LINK_ADDED: 'Added link',
   INTEGRATION_UPDATE: 'Updated integrations',
   ARCHIVED: 'Archived',
