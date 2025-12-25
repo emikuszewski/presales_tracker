@@ -1,17 +1,182 @@
-// Barrel export for all utilities
-export {
-  groupBy,
-  generateInitials,
-  getTodayDate,
-  generateTempId,
-  formatDealSize,
-  getAvatarClasses,
-  getAvatarColorClasses
-} from './helpers';
+import { STALE_THRESHOLD_BUSINESS_DAYS } from '../constants';
 
-export {
-  parseLinks,
-  getBusinessDaysDiff,
-  isEngagementStale,
-  getDaysSinceActivity
-} from './engagement';
+/**
+ * Group an array of objects by a key
+ * @param {Array} array - Array to group
+ * @param {string} key - Key to group by
+ * @returns {Object} Grouped object
+ */
+export const groupBy = (array, key) => {
+  return array.reduce((result, item) => {
+    const groupKey = item[key];
+    if (!result[groupKey]) {
+      result[groupKey] = [];
+    }
+    result[groupKey].push(item);
+    return result;
+  }, {});
+};
+
+/**
+ * Parse links from JSON string or return array as-is
+ * @param {string|Array} links - Links JSON string or array
+ * @returns {Array} Parsed links array
+ */
+export const parseLinks = (links) => {
+  if (!links) return [];
+  if (Array.isArray(links)) return links;
+  try {
+    return JSON.parse(links);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Format date for display: "Jan 8, 2025"
+ * @param {string|Date} date - Date to format
+ * @returns {string} Formatted date
+ */
+export const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+/**
+ * Format short date: "Jan 8" or "Jan 8, 2024" if not current year
+ * @param {string|Date} date - Date to format
+ * @returns {string} Formatted date
+ */
+export const formatShortDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const sameYear = d.getFullYear() === now.getFullYear();
+  
+  if (sameYear) {
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+/**
+ * Format datetime for display: "Jan 8, 2025 at 3:45 PM"
+ * @param {string|Date} datetime - DateTime to format
+ * @returns {string} Formatted datetime
+ */
+export const formatDateTime = (datetime) => {
+  if (!datetime) return '';
+  const d = new Date(datetime);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+};
+
+/**
+ * Calculate business days between two dates (excludes weekends)
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @returns {number} Number of business days
+ */
+export const getBusinessDaysBetween = (startDate, endDate) => {
+  let count = 0;
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+};
+
+/**
+ * Check if an engagement is stale (no activity in STALE_THRESHOLD_BUSINESS_DAYS)
+ * @param {Object} engagement - Engagement object with lastActivity
+ * @returns {boolean} True if stale
+ */
+export const isEngagementStale = (engagement) => {
+  if (!engagement?.lastActivity) return false;
+  
+  // Don't mark archived engagements as stale
+  if (engagement.isArchived) return false;
+  
+  // Don't mark completed engagements as stale
+  if (engagement.currentPhase === 'ENABLE' && 
+      engagement.phases?.ENABLE?.status === 'COMPLETE') {
+    return false;
+  }
+  
+  const lastActivity = new Date(engagement.lastActivity);
+  const today = new Date();
+  const businessDays = getBusinessDaysBetween(lastActivity, today);
+  
+  return businessDays > STALE_THRESHOLD_BUSINESS_DAYS;
+};
+
+/**
+ * Get days since last activity (calendar days)
+ * @param {Object} engagement - Engagement object with lastActivity
+ * @returns {number} Days since last activity
+ */
+export const getDaysSinceActivity = (engagement) => {
+  if (!engagement?.lastActivity) return 0;
+  
+  const lastActivity = new Date(engagement.lastActivity);
+  const today = new Date();
+  const diffTime = Math.abs(today - lastActivity);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays;
+};
+
+/**
+ * Debounce a function
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in ms
+ * @returns {Function} Debounced function
+ */
+export const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
+
+/**
+ * Get initials from a name
+ * @param {string} name - Full name
+ * @returns {string} Initials (max 2 characters)
+ */
+export const getInitials = (name) => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
