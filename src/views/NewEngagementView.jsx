@@ -1,9 +1,10 @@
 import React from 'react';
 import { industries, industryLabels } from '../constants';
-import { formatDealSize } from '../utils';
+import { formatDealSize, getAvatarColorClasses } from '../utils';
 
 /**
  * Form view for creating a new engagement
+ * SE Team appears in owner picker with blue styling
  */
 const NewEngagementView = ({
   newEngagement,
@@ -131,20 +132,50 @@ const NewEngagementView = ({
           <div className="space-y-2">
             {teamMembers.map(member => {
               const isSelected = newEngagement.ownerIds.includes(member.id);
+              const isSystemUser = member.isSystemUser === true;
+              
+              // Determine avatar classes based on selection and system user status
+              let avatarClasses;
+              let labelClasses;
+              let checkboxBorderClasses;
+              
+              if (isSelected) {
+                if (isSystemUser) {
+                  avatarClasses = 'bg-white text-blue-600';
+                  labelClasses = 'bg-blue-500 text-white';
+                  checkboxBorderClasses = 'border-white bg-white';
+                } else {
+                  avatarClasses = 'bg-white text-gray-900';
+                  labelClasses = 'bg-gray-900 text-white';
+                  checkboxBorderClasses = 'border-white bg-white';
+                }
+              } else {
+                if (isSystemUser) {
+                  avatarClasses = 'bg-blue-100 text-blue-700';
+                  labelClasses = 'bg-gray-50 hover:bg-blue-50';
+                  checkboxBorderClasses = 'border-blue-300';
+                } else {
+                  avatarClasses = 'bg-gray-200 text-gray-600';
+                  labelClasses = 'bg-gray-50 hover:bg-gray-100';
+                  checkboxBorderClasses = 'border-gray-300';
+                }
+              }
+              
               return (
                 <label 
                   key={member.id}
-                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
-                    isSelected ? 'bg-gray-900 text-white' : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
+                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${labelClasses}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      isSelected ? 'bg-white text-gray-900' : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${avatarClasses}`}>
                       {member.initials}
                     </div>
-                    <span className="font-medium">{member.name}</span>
+                    <div>
+                      <span className="font-medium">{member.name}</span>
+                      {isSystemUser && (
+                        <span className={`ml-2 text-xs ${isSelected ? 'text-blue-200' : 'text-blue-600'}`}>(Shared Pool)</span>
+                      )}
+                    </div>
                   </div>
                   <input 
                     type="checkbox" 
@@ -152,11 +183,9 @@ const NewEngagementView = ({
                     onChange={(e) => toggleOwner(member.id, e.target.checked)}
                     className="sr-only" 
                   />
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    isSelected ? 'border-white bg-white' : 'border-gray-300'
-                  }`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${checkboxBorderClasses}`}>
                     {isSelected && (
-                      <svg className="w-3 h-3 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-3 h-3 ${isSystemUser ? 'text-blue-600' : 'text-gray-900'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
