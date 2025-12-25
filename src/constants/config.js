@@ -30,3 +30,11 @@ export const activityTypes = ['MEETING', 'DEMO', 'DOCUMENT', 'EMAIL', 'SUPPORT',
 
 // Industry options
 export const industries = ['FINANCIAL_SERVICES', 'HEALTHCARE', 'TECHNOLOGY', 'RETAIL', 'MANUFACTURING', 'GOVERNMENT'];
+
+// Tab configuration for detail view
+export const detailTabs = [
+  { id: 'progress', label: 'Progress', icon: 'chart' },
+  { id: 'activity', label: 'Activity', icon: 'chat' },
+  { id: 'history', label: 'History', icon: 'clock' },
+  { id: 'notes', label: 'Notes', icon: 'document' }
+];
