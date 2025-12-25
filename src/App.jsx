@@ -47,6 +47,7 @@ function PresalesTracker() {
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
     salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
     driveFolderName: '', driveFolderUrl: '',
+    slidesName: '', slidesUrl: '',
     slackChannel: '', slackUrl: ''
   });
 
