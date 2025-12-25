@@ -245,6 +245,29 @@ const NewEngagementView = ({
               />
             </div>
 
+            {/* Documents: Google Slides */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Slides Deck Name</label>
+              <input 
+                type="text" 
+                value={newEngagement.slidesName}
+                onChange={e => updateField('slidesName', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="Customer Demo Deck" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Slides Deck URL</label>
+              <input 
+                type="url" 
+                value={newEngagement.slidesUrl}
+                onChange={e => updateField('slidesUrl', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="https://docs.google.com/presentation/d/..." 
+              />
+            </div>
+
             {/* Visual spacing row */}
             <div className="col-span-2 pt-2"></div>
             
