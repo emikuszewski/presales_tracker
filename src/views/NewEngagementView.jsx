@@ -173,55 +173,6 @@ const NewEngagementView = ({
         <div>
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Integrations (Optional)</h3>
           <div className="grid grid-cols-2 gap-4">
-            {/* Tracking: Salesforce */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salesforce Opportunity ID</label>
-              <input 
-                type="text" 
-                value={newEngagement.salesforceId}
-                onChange={e => updateField('salesforceId', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="006Dn000004XXXX" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salesforce URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.salesforceUrl}
-                onChange={e => updateField('salesforceUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://..." 
-              />
-            </div>
-            
-            {/* Tracking: Jira */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Jira Ticket</label>
-              <input 
-                type="text" 
-                value={newEngagement.jiraTicket}
-                onChange={e => updateField('jiraTicket', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="SE-1234" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Jira URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.jiraUrl}
-                onChange={e => updateField('jiraUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://..." 
-              />
-            </div>
-
-            {/* Visual spacing row */}
-            <div className="col-span-2 pt-2"></div>
-            
             {/* Documents: Google Drive */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Drive Folder Name</label>
