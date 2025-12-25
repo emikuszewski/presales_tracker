@@ -1,27 +1,15 @@
 import { useState, useMemo, useCallback } from 'react';
 
-/**
- * Hook for engagement list filtering, sorting, and selection
- * 
- * @param {Array} engagements - Full list of engagements
- * @returns {Object} List state and operations
- */
 const useEngagementList = (engagements = []) => {
-  // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('ALL');
   const [ownerFilter, setOwnerFilter] = useState('ALL');
   const [industryFilter, setIndustryFilter] = useState('ALL');
   const [showArchived, setShowArchived] = useState(false);
   const [showStaleOnly, setShowStaleOnly] = useState(false);
-
-  // Sort state
   const [sortField, setSortField] = useState('lastActivity');
   const [sortDirection, setSortDirection] = useState('desc');
 
-  /**
-   * Clear all filters
-   */
   const clearFilters = useCallback(() => {
     setSearchQuery('');
     setPhaseFilter('ALL');
@@ -31,9 +19,6 @@ const useEngagementList = (engagements = []) => {
     setShowStaleOnly(false);
   }, []);
 
-  /**
-   * Toggle sort direction or change sort field
-   */
   const handleSort = useCallback((field) => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -43,23 +28,17 @@ const useEngagementList = (engagements = []) => {
     }
   }, [sortField]);
 
-  /**
-   * Filtered engagements based on all criteria
-   */
   const filteredEngagements = useMemo(() => {
     let result = [...engagements];
 
-    // Filter by archived status
     if (!showArchived) {
       result = result.filter(e => !e.isArchived);
     }
 
-    // Filter by stale status
     if (showStaleOnly) {
       result = result.filter(e => e.isStale);
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(e =>
@@ -69,35 +48,29 @@ const useEngagementList = (engagements = []) => {
       );
     }
 
-    // Filter by phase
     if (phaseFilter !== 'ALL') {
       result = result.filter(e => e.currentPhase === phaseFilter);
     }
 
-    // Filter by owner
     if (ownerFilter !== 'ALL') {
       result = result.filter(e => 
         e.ownerIds?.includes(ownerFilter) || e.ownerId === ownerFilter
       );
     }
 
-    // Filter by industry
     if (industryFilter !== 'ALL') {
       result = result.filter(e => e.industry === industryFilter);
     }
 
-    // Sort
     result.sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
 
-      // Handle dates
       if (sortField === 'lastActivity' || sortField === 'startDate' || sortField === 'createdAt') {
         aVal = aVal ? new Date(aVal).getTime() : 0;
         bVal = bVal ? new Date(bVal).getTime() : 0;
       }
 
-      // Handle strings
       if (typeof aVal === 'string') {
         aVal = aVal.toLowerCase();
         bVal = (bVal || '').toLowerCase();
@@ -121,9 +94,6 @@ const useEngagementList = (engagements = []) => {
     sortDirection
   ]);
 
-  /**
-   * Count of active filters
-   */
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (searchQuery.trim()) count++;
@@ -135,9 +105,6 @@ const useEngagementList = (engagements = []) => {
     return count;
   }, [searchQuery, phaseFilter, ownerFilter, industryFilter, showArchived, showStaleOnly]);
 
-  /**
-   * Aggregated stats for dashboard
-   */
   const stats = useMemo(() => {
     const active = engagements.filter(e => !e.isArchived);
     return {
@@ -154,7 +121,6 @@ const useEngagementList = (engagements = []) => {
   }, [engagements]);
 
   return {
-    // Filter state
     searchQuery,
     setSearchQuery,
     phaseFilter,
@@ -167,18 +133,12 @@ const useEngagementList = (engagements = []) => {
     setShowArchived,
     showStaleOnly,
     setShowStaleOnly,
-    
-    // Sort state
     sortField,
     sortDirection,
     handleSort,
-    
-    // Derived data
     filteredEngagements,
     activeFilterCount,
     stats,
-    
-    // Actions
     clearFilters
   };
 };
