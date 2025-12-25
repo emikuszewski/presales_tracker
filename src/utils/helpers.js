@@ -50,3 +50,56 @@ export const formatDealSize = (value) => {
   if (trimmed.startsWith('$')) return trimmed;
   return `$${trimmed}`;
 };
+
+/**
+ * Determines avatar background/text classes based on member state
+ * Priority: system user → inactive → current user → default
+ * 
+ * @param {Object} member - Team member object
+ * @param {string} currentUserId - Current logged-in user's ID
+ * @param {string} size - Optional size variant ('sm' | 'md')
+ * @returns {string} Tailwind CSS classes for the avatar
+ */
+export const getAvatarClasses = (member, currentUserId, size = 'md') => {
+  // Size classes
+  const sizeClasses = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-8 h-8 text-sm';
+  
+  // Color classes based on priority
+  let colorClasses;
+  
+  if (member?.isSystemUser) {
+    // System users get distinct blue
+    colorClasses = 'bg-blue-500 text-white';
+  } else if (member?.isActive === false) {
+    // Inactive users get muted gray
+    colorClasses = 'bg-gray-300 text-gray-500';
+  } else if (member?.id === currentUserId) {
+    // Current user gets dark styling
+    colorClasses = 'bg-gray-900 text-white';
+  } else {
+    // Default styling for other active users
+    colorClasses = 'bg-gray-200 text-gray-600';
+  }
+  
+  return `${sizeClasses} ${colorClasses}`;
+};
+
+/**
+ * Gets just the color classes for avatar (without size)
+ * Useful when size is handled separately
+ * 
+ * @param {Object} member - Team member object  
+ * @param {string} currentUserId - Current logged-in user's ID
+ * @returns {string} Tailwind CSS color classes for the avatar
+ */
+export const getAvatarColorClasses = (member, currentUserId) => {
+  if (member?.isSystemUser) {
+    return 'bg-blue-500 text-white';
+  } else if (member?.isActive === false) {
+    return 'bg-gray-300 text-gray-500';
+  } else if (member?.id === currentUserId) {
+    return 'bg-gray-900 text-white';
+  } else {
+    return 'bg-gray-200 text-gray-600';
+  }
+};
