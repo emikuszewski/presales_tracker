@@ -40,6 +40,24 @@ const DetailHeader = ({
   daysSinceActivity 
 }) => {
   const currentPhase = engagement?.currentPhase || 'DISCOVER';
+  
+  // Get the phase data and status for styling
+  const currentPhaseData = engagement?.phases?.[currentPhase];
+  const currentStatus = currentPhaseData?.status || 'PENDING';
+  const phaseLabel = phaseLabels[currentPhase] || currentPhase;
+  
+  // Determine badge styling based on status
+  let badgeClasses, dotClasses;
+  if (currentStatus === 'COMPLETE') {
+    badgeClasses = 'bg-emerald-50 text-emerald-700';
+    dotClasses = 'bg-emerald-500';
+  } else if (currentStatus === 'IN_PROGRESS') {
+    badgeClasses = 'bg-blue-50 text-blue-700';
+    dotClasses = 'bg-blue-500';
+  } else {
+    badgeClasses = 'bg-gray-100 text-gray-600';
+    dotClasses = 'bg-gray-400';
+  }
 
   const integrations = [
     { url: engagement?.driveFolderUrl, name: engagement?.driveFolderName || 'Drive', Icon: DriveIcon },
@@ -96,9 +114,10 @@ const DetailHeader = ({
             {engagement?.company || 'Engagement'}
           </h1>
 
-          {/* Phase badge */}
-          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
-            {phaseLabels[currentPhase] || currentPhase}
+          {/* Phase badge - styled based on status */}
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${badgeClasses}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+            {phaseLabel}
           </span>
 
           {/* Deal size */}
