@@ -40,8 +40,6 @@ function PresalesTracker() {
   const [filterStale, setFilterStale] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [engagementAdminFilter, setEngagementAdminFilter] = useState('all');
-  const [engagementAdminSearch, setEngagementAdminSearch] = useState('');
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
@@ -102,7 +100,6 @@ function PresalesTracker() {
   // Engagement list operations
   const {
     filteredEngagements,
-    filteredEngagementsAdmin,
     staleCount,
     totalInViewMode,
     inProgressInViewMode,
@@ -128,9 +125,7 @@ function PresalesTracker() {
       filterOwner,
       filterStale,
       showArchived,
-      searchQuery,
-      engagementAdminFilter,
-      engagementAdminSearch
+      searchQuery
     }
   });
 
