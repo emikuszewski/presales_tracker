@@ -4,6 +4,7 @@ import {
   StaleBadge,
   SlackIcon,
   DriveIcon,
+  DocsIcon,
   SlidesIcon,
   LinkifyText,
   ActivityModal,
@@ -237,6 +238,7 @@ const DetailView = ({
             </button>
           </div>
           <div className="space-y-1">
+            {/* Google Drive */}
             {engagement.driveFolderName ? (
               engagement.driveFolderUrl ? (
                 <a 
@@ -257,6 +259,30 @@ const DetailView = ({
             ) : (
               <p className="text-sm text-gray-400">No Drive folder linked</p>
             )}
+            
+            {/* Google Docs */}
+            {engagement.docsName ? (
+              engagement.docsUrl ? (
+                <a 
+                  href={engagement.docsUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <DocsIcon className="w-4 h-4" />
+                  {engagement.docsName}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <DocsIcon className="w-4 h-4" />
+                  {engagement.docsName}
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-400">No Google Doc linked</p>
+            )}
+            
+            {/* Google Slides */}
             {engagement.slidesName ? (
               engagement.slidesUrl ? (
                 <a 
@@ -277,6 +303,8 @@ const DetailView = ({
             ) : (
               <p className="text-sm text-gray-400">No Slides deck linked</p>
             )}
+            
+            {/* Slack */}
             {engagement.slackChannel ? (
               engagement.slackUrl ? (
                 <a 
