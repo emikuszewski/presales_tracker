@@ -4,7 +4,9 @@ export {
   generateInitials,
   getTodayDate,
   generateTempId,
-  formatDealSize
+  formatDealSize,
+  getAvatarClasses,
+  getAvatarColorClasses
 } from './helpers';
 
 export {
