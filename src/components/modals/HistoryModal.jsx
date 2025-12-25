@@ -14,6 +14,17 @@ const HistoryModal = ({
   currentUserId, 
   getOwnerInfo 
 }) => {
+  const footerContent = (
+    <div className="flex gap-3">
+      <button 
+        onClick={onClose}
+        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+      >
+        Close
+      </button>
+    </div>
+  );
+
   return (
     <Modal 
       isOpen={isOpen} 
@@ -21,6 +32,7 @@ const HistoryModal = ({
       title="Change History" 
       size="lg" 
       scrollable
+      footer={footerContent}
     >
       <div className="space-y-3">
         {changeLogs?.length > 0 ? (
@@ -55,15 +67,6 @@ const HistoryModal = ({
         ) : (
           <p className="text-gray-400 text-center py-8">No change history yet</p>
         )}
-      </div>
-      
-      <div className="flex gap-3 mt-6 pt-4 border-t">
-        <button 
-          onClick={onClose}
-          className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-        >
-          Close
-        </button>
       </div>
     </Modal>
   );
