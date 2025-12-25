@@ -256,6 +256,144 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, client]);
 
+  // Note operations
+  var noteAdd = useCallback(async function(phaseType, text) {
+    if (!selectedEngagement || !currentUser || !text) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      var result = await dataClient.models.PhaseNote.create({
+        engagementId: selectedEngagement.id,
+        phaseType: phaseType,
+        text: text,
+        authorId: currentUser.id
+      });
+
+      var newNote = result.data;
+
+      updateEngagementInState(selectedEngagement.id, function(eng) {
+        // Update notesByPhase
+        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        var phaseNotes = newNotesByPhase[phaseType] || [];
+        // Add new note at the beginning (newest first)
+        newNotesByPhase[phaseType] = [newNote].concat(phaseNotes);
+
+        // Update flat phaseNotes array
+        var newPhaseNotes = [newNote].concat(eng.phaseNotes || []);
+
+        return Object.assign({}, eng, {
+          notesByPhase: newNotesByPhase,
+          phaseNotes: newPhaseNotes,
+          totalNotesCount: (eng.totalNotesCount || 0) + 1
+        });
+      });
+
+      if (logChangeAsync) {
+        var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        logChangeAsync(selectedEngagement.id, 'NOTE_ADDED', 'Added note to ' + phaseType + ': "' + truncated + '"');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error adding note:', error);
+      return false;
+    }
+  }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
+
+  var noteEdit = useCallback(async function(noteId, phaseType, text) {
+    if (!selectedEngagement || !noteId || !text) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      await dataClient.models.PhaseNote.update({
+        id: noteId,
+        text: text
+      });
+
+      updateEngagementInState(selectedEngagement.id, function(eng) {
+        // Update notesByPhase
+        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        var phaseNotes = newNotesByPhase[phaseType] || [];
+        newNotesByPhase[phaseType] = phaseNotes.map(function(note) {
+          if (note.id === noteId) {
+            return Object.assign({}, note, { 
+              text: text, 
+              updatedAt: new Date().toISOString() 
+            });
+          }
+          return note;
+        });
+
+        // Update flat phaseNotes array
+        var newPhaseNotes = (eng.phaseNotes || []).map(function(note) {
+          if (note.id === noteId) {
+            return Object.assign({}, note, { 
+              text: text, 
+              updatedAt: new Date().toISOString() 
+            });
+          }
+          return note;
+        });
+
+        return Object.assign({}, eng, {
+          notesByPhase: newNotesByPhase,
+          phaseNotes: newPhaseNotes
+        });
+      });
+
+      if (logChangeAsync) {
+        var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        logChangeAsync(selectedEngagement.id, 'NOTE_EDITED', 'Edited note in ' + phaseType + ': "' + truncated + '"');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error editing note:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+
+  var noteDelete = useCallback(async function(noteId, phaseType) {
+    if (!selectedEngagement || !noteId) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      await dataClient.models.PhaseNote.delete({ id: noteId });
+
+      updateEngagementInState(selectedEngagement.id, function(eng) {
+        // Update notesByPhase
+        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        var phaseNotes = newNotesByPhase[phaseType] || [];
+        newNotesByPhase[phaseType] = phaseNotes.filter(function(note) {
+          return note.id !== noteId;
+        });
+
+        // Update flat phaseNotes array
+        var newPhaseNotes = (eng.phaseNotes || []).filter(function(note) {
+          return note.id !== noteId;
+        });
+
+        return Object.assign({}, eng, {
+          notesByPhase: newNotesByPhase,
+          phaseNotes: newPhaseNotes,
+          totalNotesCount: Math.max(0, (eng.totalNotesCount || 0) - 1)
+        });
+      });
+
+      if (logChangeAsync) {
+        logChangeAsync(selectedEngagement.id, 'NOTE_DELETED', 'Deleted note from ' + phaseType);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+
   // Integrations operations
   var integrationsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
@@ -365,6 +503,11 @@ var useEngagementDetail = function(params) {
       add: activityAdd,
       addComment: activityAddComment,
       deleteComment: activityDeleteComment
+    },
+    note: {
+      add: noteAdd,
+      edit: noteEdit,
+      delete: noteDelete
     },
     integrations: {
       update: integrationsUpdate
