@@ -13,6 +13,8 @@ const ListView = ({
   teamMembers,
   currentUser,
   staleCount,
+  totalInViewMode,
+  inProgressInViewMode,
   getOwnerInfo,
   // Filter state
   filters,
@@ -35,8 +37,12 @@ const ListView = ({
     setFilterOwner,
     setFilterStale,
     setShowArchived,
-    setSearchQuery
+    setSearchQuery,
+    clearAllFilters
   } = filterActions;
+
+  // Check if any filters are active (phase, stale, or search)
+  const isFiltered = filterPhase !== 'all' || filterStale || searchQuery !== '';
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -67,6 +73,54 @@ const ListView = ({
     return `${owner.name}'s Engagements`;
   };
 
+  /**
+   * Render the subtitle based on filter state
+   * - Unfiltered active: "X engagements · Y in progress · Z need attention"
+   * - Unfiltered archived: "X engagements"
+   * - Filtered: "Showing X of Y active/archived · [Clear all filters]"
+   */
+  const renderSubtitle = () => {
+    const currentCount = engagements.length;
+    const modeLabel = showArchived ? 'archived' : 'active';
+
+    if (isFiltered) {
+      // Filtered state: show "Showing X of Y"
+      return (
+        <p className="text-gray-500 mt-1">
+          Showing {currentCount} of {totalInViewMode} {modeLabel}
+          <span className="text-gray-300 mx-2">·</span>
+          <button
+            onClick={clearAllFilters}
+            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-0.5 rounded transition-colors"
+          >
+            Clear all filters
+          </button>
+        </p>
+      );
+    }
+
+    // Unfiltered state
+    if (showArchived) {
+      // Archived: just show count
+      return (
+        <p className="text-gray-500 mt-1">
+          {currentCount} engagement{currentCount !== 1 ? 's' : ''}
+        </p>
+      );
+    }
+
+    // Active unfiltered: show rich stats
+    return (
+      <p className="text-gray-500 mt-1">
+        {currentCount} engagement{currentCount !== 1 ? 's' : ''}
+        {` · ${inProgressInViewMode} in progress`}
+        {staleCount > 0 && (
+          <span className="text-amber-600"> · {staleCount} need attention</span>
+        )}
+      </p>
+    );
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -74,13 +128,7 @@ const ListView = ({
           <h2 className="text-2xl font-medium text-gray-900">
             {showArchived ? 'Archived Engagements' : getFilterOwnerName()}
           </h2>
-          <p className="text-gray-500 mt-1">
-            {engagements.length} engagement{engagements.length !== 1 ? 's' : ''}
-            {!showArchived && ` · ${engagements.filter(e => e.phases[e.currentPhase]?.status === 'IN_PROGRESS').length} in progress`}
-            {!showArchived && staleCount > 0 && (
-              <span className="text-amber-600"> · {staleCount} need attention</span>
-            )}
-          </p>
+          {renderSubtitle()}
         </div>
         {!showArchived && (
           <button 
@@ -360,10 +408,24 @@ const ListView = ({
         })}
         
         {engagements.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            {showArchived ? 'No archived engagements' : 
-              filterStale ? 'No stale engagements - great job!' :
-              'No engagements found with current filters'}
+          <div className="text-center py-12">
+            {isFiltered ? (
+              // Filtered empty state with clear button
+              <div>
+                <p className="text-gray-400 mb-3">No engagements match your filters</p>
+                <button
+                  onClick={clearAllFilters}
+                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+              // Unfiltered empty state
+              <p className="text-gray-400">
+                {showArchived ? 'No archived engagements' : 'No engagements yet'}
+              </p>
+            )}
           </div>
         )}
       </div>
