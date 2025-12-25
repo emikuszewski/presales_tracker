@@ -46,6 +46,39 @@ const useEngagementList = ({
     engagementAdminSearch
   } = filters;
 
+  // MEMOIZED: Engagements in current view mode (owner + archived only, no phase/stale/search filters)
+  // This gives us the "total" for "Showing X of Y"
+  const engagementsInViewMode = useMemo(() => {
+    return engagements.filter(e => {
+      // Archived filter
+      if (showArchived !== (e.isArchived || false)) return false;
+      
+      // Owner filter (view mode, not a "filter")
+      if (filterOwner === 'mine') {
+        const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
+        const hasSystemOwner = e.hasSystemOwner === true;
+        if (!isOwner && !hasSystemOwner) return false;
+      } else if (filterOwner !== 'all') {
+        const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
+        if (!isOwner) return false;
+      }
+      
+      return true;
+    });
+  }, [engagements, showArchived, filterOwner, currentUser?.id]);
+
+  // MEMOIZED: Total count in current view mode
+  const totalInViewMode = useMemo(() => {
+    return engagementsInViewMode.length;
+  }, [engagementsInViewMode]);
+
+  // MEMOIZED: In-progress count in current view mode (for unfiltered subtitle)
+  const inProgressInViewMode = useMemo(() => {
+    return engagementsInViewMode.filter(e => 
+      e.phases[e.currentPhase]?.status === 'IN_PROGRESS'
+    ).length;
+  }, [engagementsInViewMode]);
+
   // MEMOIZED: Filtered engagements for main list view
   const filteredEngagements = useMemo(() => {
     return engagements
@@ -315,6 +348,8 @@ const useEngagementList = ({
     filteredEngagements,
     filteredEngagementsAdmin,
     staleCount,
+    totalInViewMode,
+    inProgressInViewMode,
     
     // Operations
     getCascadeInfo,
