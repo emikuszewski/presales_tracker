@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { activityTypeLabels, activityTypes } from '../../constants';
 import { formatDate } from '../../utils';
-import LinkifyText from '../common/LinkifyText';
+import LinkifyText from '../ui/LinkifyText';
 
 const ActivityIcon = ({ type }) => {
   const icons = {
