@@ -11,7 +11,7 @@ const ActivityIcon = ({ type }) => {
   return <span className="text-lg">{icons[type] || '📋'}</span>;
 };
 
-const ActivityCard = ({ activity, getOwnerInfo, onAddComment, highlightId, scrollRef }) => {
+const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, highlightId, scrollRef }) => {
   const [showComments, setShowComments] = useState(activity.comments?.length > 0);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +23,12 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, highlightId, scrol
     await onAddComment(activity.id, newComment.trim());
     setNewComment('');
     setIsSubmitting(false);
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (onDeleteComment) {
+      await onDeleteComment(commentId);
+    }
   };
 
   return (
@@ -56,7 +62,7 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, highlightId, scrol
             {activity.comments?.map((comment) => {
               const author = getOwnerInfo(comment.authorId);
               return (
-                <div key={comment.id} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2">
+                <div key={comment.id} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2 group">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${author.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`} title={author.name}>
                     {author.initials}
                   </div>
@@ -64,6 +70,16 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, highlightId, scrol
                     <p className="text-sm text-gray-700"><LinkifyText text={comment.text} /></p>
                     <span className="text-xs text-gray-400">{formatDate(comment.createdAt)}</span>
                   </div>
+                  {/* Delete button - visible on hover */}
+                  <button
+                    onClick={() => handleDeleteComment(comment.id)}
+                    className="p-1 text-gray-400 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    title="Delete comment"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               );
             })}
@@ -138,7 +154,7 @@ const AddActivityForm = ({ onAdd, onCancel }) => {
   );
 };
 
-const ActivityTab = ({ engagement, getOwnerInfo, onAddActivity, onAddComment, highlightId }) => {
+const ActivityTab = ({ engagement, getOwnerInfo, onAddActivity, onAddComment, onDeleteComment, highlightId }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const scrollRef = useRef(null);
 
@@ -166,7 +182,15 @@ const ActivityTab = ({ engagement, getOwnerInfo, onAddActivity, onAddComment, hi
       {activities.length > 0 ? (
         <div className="space-y-3">
           {activities.map((activity) => (
-            <ActivityCard key={activity.id} activity={activity} getOwnerInfo={getOwnerInfo} onAddComment={onAddComment} highlightId={highlightId} scrollRef={scrollRef} />
+            <ActivityCard 
+              key={activity.id} 
+              activity={activity} 
+              getOwnerInfo={getOwnerInfo} 
+              onAddComment={onAddComment} 
+              onDeleteComment={onDeleteComment}
+              highlightId={highlightId} 
+              scrollRef={scrollRef} 
+            />
           ))}
         </div>
       ) : (
