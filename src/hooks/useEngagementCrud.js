@@ -4,27 +4,14 @@ import { phaseConfig } from '../constants';
 
 const client = generateClient();
 
-/**
- * Hook for engagement CRUD operations
- * 
- * @param {Object} params - Hook parameters
- * @param {Object} params.currentUser - Current logged-in user
- * @param {Function} params.setEngagements - Setter for engagements list
- * @param {Function} params.logChangeAsync - Function to log changes
- * @returns {Object} Engagement CRUD operations
- */
 const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
-  /**
-   * Create a new engagement with all phases
-   */
   const createEngagement = useCallback(async (engagementData) => {
     if (!currentUser) {
       return { success: false, error: 'No current user' };
     }
 
     try {
-      // Create the engagement
       const { data: newEngagement } = await client.models.Engagement.create({
         company: engagementData.company,
         contactName: engagementData.contactName,
@@ -37,7 +24,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         lastActivity: new Date().toISOString().split('T')[0],
         ownerId: currentUser.id,
         isArchived: false,
-        // Integration fields
         salesforceId: engagementData.salesforceId || null,
         salesforceUrl: engagementData.salesforceUrl || null,
         jiraTicket: engagementData.jiraTicket || null,
@@ -54,7 +40,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         sheetsUrl: engagementData.sheetsUrl || null
       });
 
-      // Create all 5 phases
       const phases = {};
       for (const phase of phaseConfig) {
         const { data: newPhase } = await client.models.Phase.create({
@@ -68,7 +53,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         phases[phase.id] = { ...newPhase, links: [] };
       }
 
-      // Create ownership record
       await client.models.EngagementOwner.create({
         engagementId: newEngagement.id,
         teamMemberId: currentUser.id,
@@ -76,7 +60,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         addedAt: new Date().toISOString()
       });
 
-      // Build enriched engagement
       const enrichedEngagement = {
         ...newEngagement,
         phases,
@@ -93,10 +76,8 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         hasSystemOwner: false
       };
 
-      // Update local state
       setEngagements(prev => [enrichedEngagement, ...prev]);
 
-      // Log the creation
       if (logChangeAsync) {
         logChangeAsync(
           newEngagement.id,
@@ -112,9 +93,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [currentUser, setEngagements, logChangeAsync]);
 
-  /**
-   * Update an engagement's details
-   */
   const updateEngagement = useCallback(async (engagementId, updates) => {
     try {
       const { data: updatedEngagement } = await client.models.Engagement.update({
@@ -122,7 +100,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         ...updates
       });
 
-      // Update local state
       setEngagements(prev => prev.map(e =>
         e.id === engagementId ? { ...e, ...updatedEngagement } : e
       ));
@@ -134,9 +111,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements]);
 
-  /**
-   * Archive an engagement
-   */
   const archiveEngagement = useCallback(async (engagementId) => {
     try {
       await client.models.Engagement.update({
@@ -159,9 +133,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements, logChangeAsync]);
 
-  /**
-   * Restore an archived engagement
-   */
   const restoreEngagement = useCallback(async (engagementId) => {
     try {
       await client.models.Engagement.update({
@@ -184,9 +155,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements, logChangeAsync]);
 
-  /**
-   * Update current phase
-   */
   const advancePhase = useCallback(async (engagementId, newPhase) => {
     try {
       await client.models.Engagement.update({
@@ -213,9 +181,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements, logChangeAsync]);
 
-  /**
-   * Add an owner to engagement
-   */
   const addOwner = useCallback(async (engagementId, teamMemberId) => {
     try {
       const { data: ownership } = await client.models.EngagementOwner.create({
@@ -247,9 +212,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements, logChangeAsync]);
 
-  /**
-   * Remove an owner from engagement
-   */
   const removeOwner = useCallback(async (engagementId, teamMemberId, ownershipId) => {
     try {
       await client.models.EngagementOwner.delete({ id: ownershipId });
@@ -276,9 +238,6 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
   }, [setEngagements, logChangeAsync]);
 
-  /**
-   * Update integrations
-   */
   const updateIntegrations = useCallback(async (engagementId, integrations) => {
     try {
       await client.models.Engagement.update({
