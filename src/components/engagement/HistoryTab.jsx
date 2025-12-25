@@ -3,10 +3,22 @@ import { formatDateTime } from '../../utils';
 
 const getChangeIcon = (changeType) => {
   const icons = {
-    CREATED: '🎉', PHASE_UPDATE: '📊', ACTIVITY_ADDED: '📋',
-    OWNER_ADDED: '👤', OWNER_REMOVED: '👤', COMMENT_ADDED: '💬',
-    LINK_ADDED: '🔗', INTEGRATION_UPDATE: '🔌', ARCHIVED: '📦',
-    RESTORED: '📤', NOTE_ADDED: '📝', NOTE_EDITED: '✏️', NOTE_DELETED: '🗑️'
+    CREATED: '🎉',
+    PHASE_UPDATE: '📊',
+    ACTIVITY_ADDED: '📋',
+    ACTIVITY_EDITED: '✏️',
+    ACTIVITY_DELETED: '🗑️',
+    OWNER_ADDED: '👤',
+    OWNER_REMOVED: '👤',
+    COMMENT_ADDED: '💬',
+    COMMENT_DELETED: '🗑️',
+    LINK_ADDED: '🔗',
+    INTEGRATION_UPDATE: '🔌',
+    ARCHIVED: '📦',
+    RESTORED: '📤',
+    NOTE_ADDED: '📝',
+    NOTE_EDITED: '✏️',
+    NOTE_DELETED: '🗑️'
   };
   return icons[changeType] || '📌';
 };
