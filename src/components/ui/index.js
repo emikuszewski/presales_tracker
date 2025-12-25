@@ -7,4 +7,5 @@ export { default as SlackIcon } from './SlackIcon';
 export { default as DriveIcon } from './DriveIcon';
 export { default as DocsIcon } from './DocsIcon';
 export { default as SlidesIcon } from './SlidesIcon';
+export { default as SheetsIcon } from './SheetsIcon';
 export { default as LinkifyText } from './LinkifyText';
