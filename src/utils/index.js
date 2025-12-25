@@ -435,3 +435,93 @@ export const isEmpty = (value) => {
   if (typeof value === 'object') return Object.keys(value).length === 0;
   return false;
 };
+
+// ============================================================================
+// FORMATTING UTILITIES
+// ============================================================================
+
+/**
+ * Format deal size for display (e.g., "$50K", "$1.2M")
+ * @param {string|number} value - Deal size value
+ * @returns {string} Formatted deal size
+ */
+export const formatDealSize = (value) => {
+  if (!value) return '';
+  
+  // If it's already a formatted string like "$50K", return as-is
+  if (typeof value === 'string' && value.includes('$')) {
+    return value;
+  }
+  
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  
+  if (isNaN(num)) return value.toString();
+  
+  if (num >= 1000000) {
+    return `$${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+  }
+  if (num >= 1000) {
+    return `$${(num / 1000).toFixed(0)}K`;
+  }
+  return `$${num}`;
+};
+
+/**
+ * Parse deal size string to number
+ * @param {string} value - Deal size string (e.g., "$50K", "$1.2M")
+ * @returns {number} Numeric value
+ */
+export const parseDealSize = (value) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  
+  const cleaned = value.replace(/[^0-9.KMkm]/g, '');
+  const num = parseFloat(cleaned);
+  
+  if (isNaN(num)) return 0;
+  
+  if (value.toUpperCase().includes('M')) {
+    return num * 1000000;
+  }
+  if (value.toUpperCase().includes('K')) {
+    return num * 1000;
+  }
+  return num;
+};
+
+/**
+ * Format currency value
+ * @param {number} value - Numeric value
+ * @param {string} currency - Currency code (default: USD)
+ * @returns {string} Formatted currency string
+ */
+export const formatCurrency = (value, currency = 'USD') => {
+  if (value === null || value === undefined) return '';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+/**
+ * Format number with commas
+ * @param {number} value - Numeric value
+ * @returns {string} Formatted number string
+ */
+export const formatNumber = (value) => {
+  if (value === null || value === undefined) return '';
+  return new Intl.NumberFormat('en-US').format(value);
+};
+
+/**
+ * Format percentage
+ * @param {number} value - Decimal value (0.5 = 50%)
+ * @param {number} decimals - Number of decimal places
+ * @returns {string} Formatted percentage string
+ */
+export const formatPercentage = (value, decimals = 0) => {
+  if (value === null || value === undefined) return '';
+  return `${(value * 100).toFixed(decimals)}%`;
+};
