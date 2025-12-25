@@ -180,3 +180,16 @@ export const getInitials = (name) => {
   }
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
+
+/**
+ * Get avatar color classes based on team member properties
+ * @param {Object} member - Team member object
+ * @param {boolean} member.isSystemUser - Whether this is a system user
+ * @returns {string} Tailwind CSS classes for avatar styling
+ */
+export const getAvatarColorClasses = (member) => {
+  if (member?.isSystemUser) {
+    return 'bg-blue-100 text-blue-700';
+  }
+  return 'bg-gray-200 text-gray-700';
+};
