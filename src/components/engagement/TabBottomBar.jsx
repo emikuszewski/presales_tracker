@@ -1,9 +1,6 @@
 import React from 'react';
 import { detailTabs } from '../../constants';
 
-/**
- * Icon components for tabs (same as TabSidebar)
- */
 const TabIcons = {
   chart: ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -27,34 +24,13 @@ const TabIcons = {
   )
 };
 
-/**
- * Bottom tab bar for mobile view (<768px)
- * 
- * @param {Object} props
- * @param {string} props.activeTab - Currently active tab id
- * @param {Function} props.onTabChange - Callback when tab is clicked
- * @param {number} props.activityCount - Total activity count for badge
- * @param {number} props.unreadCount - Unread history count for badge
- * @param {number} props.notesCount - Total notes count for badge
- */
-const TabBottomBar = ({ 
-  activeTab, 
-  onTabChange, 
-  activityCount = 0, 
-  unreadCount = 0, 
-  notesCount = 0 
-}) => {
-  
+const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0, notesCount = 0 }) => {
   const getBadgeValue = (tabId) => {
     switch (tabId) {
-      case 'activity':
-        return activityCount;
-      case 'history':
-        return unreadCount;
-      case 'notes':
-        return notesCount;
-      default:
-        return null;
+      case 'activity': return activityCount;
+      case 'history': return unreadCount;
+      case 'notes': return notesCount;
+      default: return null;
     }
   };
 
@@ -82,7 +58,6 @@ const TabBottomBar = ({
               <IconComponent className="w-5 h-5" />
               <span className="text-xs mt-1 font-medium">{tab.label}</span>
               
-              {/* Badge */}
               {badgeValue !== null && (
                 <span 
                   className={`
