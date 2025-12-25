@@ -55,8 +55,12 @@ const useEngagementList = ({
         if (filterStale && !e.isStale) return false;
         
         if (filterOwner === 'mine') {
+          // "My Engagements" includes:
+          // 1. Engagements where current user is an owner
+          // 2. Engagements with system owner (SE Team) - shared inbox model
           const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-          if (!isOwner) return false;
+          const hasSystemOwner = e.hasSystemOwner === true;
+          if (!isOwner && !hasSystemOwner) return false;
         } else if (filterOwner !== 'all') {
           const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
           if (!isOwner) return false;
@@ -96,12 +100,22 @@ const useEngagementList = ({
       .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
   }, [engagements, engagementAdminFilter, engagementAdminSearch]);
 
-  // MEMOIZED: Stale count
+  // MEMOIZED: Stale count - includes SE Team engagements for everyone
   const staleCount = useMemo(() => {
-    return engagements.filter(e => 
-      !e.isArchived && e.isStale && 
-      (filterOwner === 'all' || e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id)
-    ).length;
+    return engagements.filter(e => {
+      if (e.isArchived || !e.isStale) return false;
+      
+      // Include stale engagements that are:
+      // 1. Owned by current user
+      // 2. Owned by SE Team (shared responsibility)
+      // 3. All engagements if filterOwner is 'all'
+      if (filterOwner === 'all') return true;
+      
+      const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
+      const hasSystemOwner = e.hasSystemOwner === true;
+      
+      return isOwner || hasSystemOwner;
+    }).length;
   }, [engagements, filterOwner, currentUser?.id]);
 
   // Get cascade info for an engagement (for delete confirmation)
