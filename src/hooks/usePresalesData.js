@@ -118,7 +118,8 @@ const usePresalesData = (selectedEngagementId = null) => {
         ownershipResult,
         commentsResult,
         changeLogsResult,
-        viewsResult
+        viewsResult,
+        phaseNotesResult
       ] = await Promise.all([
         client.models.TeamMember.list(),
         client.models.Engagement.list(),
@@ -130,7 +131,9 @@ const usePresalesData = (selectedEngagementId = null) => {
         userId 
           ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } })
               .catch(() => ({ data: [] })) // Handle if EngagementView not available
-          : Promise.resolve({ data: [] })
+          : Promise.resolve({ data: [] }),
+        client.models.PhaseNote.list()
+          .catch(() => ({ data: [] })) // Handle if PhaseNote not available yet
       ]);
 
       let allMembersData = membersResult.data;
@@ -141,6 +144,7 @@ const usePresalesData = (selectedEngagementId = null) => {
       const allComments = commentsResult.data;
       const allChangeLogs = changeLogsResult.data;
       const allViews = viewsResult.data;
+      const allPhaseNotes = phaseNotesResult.data;
 
       // Ensure SE Team system user exists (auto-seed if needed)
       allMembersData = await ensureSystemUser(allMembersData);
@@ -151,6 +155,7 @@ const usePresalesData = (selectedEngagementId = null) => {
       const ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
       const commentsByActivity = groupBy(allComments, 'activityId');
       const changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
+      const phaseNotesByEngagement = groupBy(allPhaseNotes, 'engagementId');
       
       // Create views map
       const viewsMap = {};
@@ -183,6 +188,10 @@ const usePresalesData = (selectedEngagementId = null) => {
         
         // Get change logs for this engagement from our lookup map
         const changeLogs = (changeLogsByEngagement[eng.id] || [])
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Get phase notes for this engagement from our lookup map
+        const phaseNotes = (phaseNotesByEngagement[eng.id] || [])
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         // Enrich activities with their comments from our lookup map
@@ -236,6 +245,15 @@ const usePresalesData = (selectedEngagementId = null) => {
         // Compute hasSystemOwner - true if any owner is a system user
         const hasSystemOwner = ownerIds.some(id => systemUserIds.includes(id));
 
+        // Group phase notes by phase type for easy access
+        const notesByPhase = {};
+        phaseConfig.forEach(p => {
+          notesByPhase[p.id] = phaseNotes.filter(n => n.phaseType === p.id);
+        });
+
+        // Calculate total notes count
+        const totalNotesCount = phaseNotes.length;
+
         return {
           ...eng,
           phases: phasesObj,
@@ -243,10 +261,13 @@ const usePresalesData = (selectedEngagementId = null) => {
           ownerIds: ownerIds,
           ownershipRecords: ownershipRecords,
           changeLogs: changeLogs,
+          phaseNotes: phaseNotes,
+          notesByPhase: notesByPhase,
+          totalNotesCount: totalNotesCount,
           unreadChanges: unreadChanges,
           isStale: isEngagementStale(eng),
           daysSinceActivity: getDaysSinceActivity(eng),
-          hasSystemOwner: hasSystemOwner // NEW: Flag for filter logic
+          hasSystemOwner: hasSystemOwner
         };
       });
 
