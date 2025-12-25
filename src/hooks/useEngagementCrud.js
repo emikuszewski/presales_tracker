@@ -2,16 +2,19 @@ import { useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { phaseConfig } from '../constants';
 
-const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
+var useEngagementCrud = function(params) {
+  var currentUser = params.currentUser;
+  var setEngagements = params.setEngagements;
+  var logChangeAsync = params.logChangeAsync;
 
-  const createEngagement = useCallback(async (engagementData) => {
+  var createEngagement = useCallback(async function(engagementData) {
     if (!currentUser) {
       return { success: false, error: 'No current user' };
     }
 
     try {
-      const client = generateClient();
-      const { data: newEngagement } = await client.models.Engagement.create({
+      var client = generateClient();
+      var result = await client.models.Engagement.create({
         company: engagementData.company,
         contactName: engagementData.contactName,
         contactEmail: engagementData.contactEmail || null,
@@ -39,9 +42,12 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         sheetsUrl: engagementData.sheetsUrl || null
       });
 
-      const phases = {};
-      for (const phase of phaseConfig) {
-        const { data: newPhase } = await client.models.Phase.create({
+      var newEngagement = result.data;
+      var phases = {};
+      
+      for (var i = 0; i < phaseConfig.length; i++) {
+        var phase = phaseConfig[i];
+        var phaseResult = await client.models.Phase.create({
           engagementId: newEngagement.id,
           phaseType: phase.id,
           status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
@@ -49,7 +55,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
           notes: '',
           links: JSON.stringify([])
         });
-        phases[phase.id] = { ...newPhase, links: [] };
+        phases[phase.id] = { ...phaseResult.data, links: [] };
       }
 
       await client.models.EngagementOwner.create({
@@ -59,9 +65,9 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         addedAt: new Date().toISOString()
       });
 
-      const enrichedEngagement = {
+      var enrichedEngagement = {
         ...newEngagement,
-        phases,
+        phases: phases,
         activities: [],
         ownerIds: [currentUser.id],
         ownershipRecords: [],
@@ -75,53 +81,54 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
         hasSystemOwner: false
       };
 
-      setEngagements(prev => [enrichedEngagement, ...prev]);
+      setEngagements(function(prev) { return [enrichedEngagement].concat(prev); });
 
       if (logChangeAsync) {
-        logChangeAsync(
-          newEngagement.id,
-          'CREATED',
-          `Created engagement for ${engagementData.company}`
-        );
+        logChangeAsync(newEngagement.id, 'CREATED', 'Created engagement for ' + engagementData.company);
       }
 
       return { success: true, engagement: enrichedEngagement };
     } catch (error) {
       console.error('Error creating engagement:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [currentUser, setEngagements, logChangeAsync]);
 
-  const updateEngagement = useCallback(async (engagementId, updates) => {
+  var updateEngagement = useCallback(async function(engagementId, updates) {
     try {
-      const client = generateClient();
-      const { data: updatedEngagement } = await client.models.Engagement.update({
+      var client = generateClient();
+      var result = await client.models.Engagement.update({
         id: engagementId,
         ...updates
       });
 
-      setEngagements(prev => prev.map(e =>
-        e.id === engagementId ? { ...e, ...updatedEngagement } : e
-      ));
+      var updatedEngagement = result.data;
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          return e.id === engagementId ? { ...e, ...updatedEngagement } : e;
+        });
+      });
 
       return { success: true, engagement: updatedEngagement };
     } catch (error) {
       console.error('Error updating engagement:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements]);
 
-  const archiveEngagement = useCallback(async (engagementId) => {
+  var archiveEngagement = useCallback(async function(engagementId) {
     try {
-      const client = generateClient();
+      var client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         isArchived: true
       });
 
-      setEngagements(prev => prev.map(e =>
-        e.id === engagementId ? { ...e, isArchived: true } : e
-      ));
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          return e.id === engagementId ? { ...e, isArchived: true } : e;
+        });
+      });
 
       if (logChangeAsync) {
         logChangeAsync(engagementId, 'ARCHIVED', 'Archived engagement');
@@ -130,21 +137,23 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
       return { success: true };
     } catch (error) {
       console.error('Error archiving engagement:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
-  const restoreEngagement = useCallback(async (engagementId) => {
+  var restoreEngagement = useCallback(async function(engagementId) {
     try {
-      const client = generateClient();
+      var client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         isArchived: false
       });
 
-      setEngagements(prev => prev.map(e =>
-        e.id === engagementId ? { ...e, isArchived: false } : e
-      ));
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          return e.id === engagementId ? { ...e, isArchived: false } : e;
+        });
+      });
 
       if (logChangeAsync) {
         logChangeAsync(engagementId, 'RESTORED', 'Restored engagement');
@@ -153,84 +162,88 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
       return { success: true };
     } catch (error) {
       console.error('Error restoring engagement:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
-  const advancePhase = useCallback(async (engagementId, newPhase) => {
+  var advancePhase = useCallback(async function(engagementId, newPhase) {
     try {
-      const client = generateClient();
+      var client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         currentPhase: newPhase
       });
 
-      setEngagements(prev => prev.map(e =>
-        e.id === engagementId ? { ...e, currentPhase: newPhase } : e
-      ));
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          return e.id === engagementId ? { ...e, currentPhase: newPhase } : e;
+        });
+      });
 
       if (logChangeAsync) {
-        logChangeAsync(
-          engagementId,
-          'PHASE_UPDATE',
-          `Advanced to ${newPhase} phase`
-        );
+        logChangeAsync(engagementId, 'PHASE_UPDATE', 'Advanced to ' + newPhase + ' phase');
       }
 
       return { success: true };
     } catch (error) {
       console.error('Error advancing phase:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
-  const addOwner = useCallback(async (engagementId, teamMemberId) => {
+  var addOwner = useCallback(async function(engagementId, teamMemberId) {
     try {
-      const client = generateClient();
-      const { data: ownership } = await client.models.EngagementOwner.create({
-        engagementId,
-        teamMemberId,
+      var client = generateClient();
+      var result = await client.models.EngagementOwner.create({
+        engagementId: engagementId,
+        teamMemberId: teamMemberId,
         role: 'secondary',
         addedAt: new Date().toISOString()
       });
 
-      setEngagements(prev => prev.map(e => {
-        if (e.id === engagementId) {
-          return {
-            ...e,
-            ownerIds: [...e.ownerIds, teamMemberId],
-            ownershipRecords: [...(e.ownershipRecords || []), ownership]
-          };
-        }
-        return e;
-      }));
+      var ownership = result.data;
+
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          if (e.id === engagementId) {
+            return {
+              ...e,
+              ownerIds: e.ownerIds.concat([teamMemberId]),
+              ownershipRecords: (e.ownershipRecords || []).concat([ownership])
+            };
+          }
+          return e;
+        });
+      });
 
       if (logChangeAsync) {
         logChangeAsync(engagementId, 'OWNER_ADDED', 'Added owner');
       }
 
-      return { success: true, ownership };
+      return { success: true, ownership: ownership };
     } catch (error) {
       console.error('Error adding owner:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
-  const removeOwner = useCallback(async (engagementId, teamMemberId, ownershipId) => {
+  var removeOwner = useCallback(async function(engagementId, teamMemberId, ownershipId) {
     try {
-      const client = generateClient();
+      var client = generateClient();
       await client.models.EngagementOwner.delete({ id: ownershipId });
 
-      setEngagements(prev => prev.map(e => {
-        if (e.id === engagementId) {
-          return {
-            ...e,
-            ownerIds: e.ownerIds.filter(id => id !== teamMemberId),
-            ownershipRecords: (e.ownershipRecords || []).filter(o => o.id !== ownershipId)
-          };
-        }
-        return e;
-      }));
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          if (e.id === engagementId) {
+            return {
+              ...e,
+              ownerIds: e.ownerIds.filter(function(id) { return id !== teamMemberId; }),
+              ownershipRecords: (e.ownershipRecords || []).filter(function(o) { return o.id !== ownershipId; })
+            };
+          }
+          return e;
+        });
+      });
 
       if (logChangeAsync) {
         logChangeAsync(engagementId, 'OWNER_REMOVED', 'Removed owner');
@@ -239,21 +252,23 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
       return { success: true };
     } catch (error) {
       console.error('Error removing owner:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
-  const updateIntegrations = useCallback(async (engagementId, integrations) => {
+  var updateIntegrations = useCallback(async function(engagementId, integrations) {
     try {
-      const client = generateClient();
+      var client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         ...integrations
       });
 
-      setEngagements(prev => prev.map(e =>
-        e.id === engagementId ? { ...e, ...integrations } : e
-      ));
+      setEngagements(function(prev) {
+        return prev.map(function(e) {
+          return e.id === engagementId ? { ...e, ...integrations } : e;
+        });
+      });
 
       if (logChangeAsync) {
         logChangeAsync(engagementId, 'INTEGRATION_UPDATE', 'Updated integrations');
@@ -262,19 +277,19 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
       return { success: true };
     } catch (error) {
       console.error('Error updating integrations:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setEngagements, logChangeAsync]);
 
   return {
-    createEngagement,
-    updateEngagement,
-    archiveEngagement,
-    restoreEngagement,
-    advancePhase,
-    addOwner,
-    removeOwner,
-    updateIntegrations
+    createEngagement: createEngagement,
+    updateEngagement: updateEngagement,
+    archiveEngagement: archiveEngagement,
+    restoreEngagement: restoreEngagement,
+    advancePhase: advancePhase,
+    addOwner: addOwner,
+    removeOwner: removeOwner,
+    updateIntegrations: updateIntegrations
   };
 };
 
