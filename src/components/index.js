@@ -27,4 +27,4 @@ export {
 } from './modals';
 
 // Layout components
-export { AvatarMenu } from './layout';
+export { AvatarMenu, FilterPanel } from './layout';
