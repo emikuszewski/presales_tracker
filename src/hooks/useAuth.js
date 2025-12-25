@@ -3,11 +3,6 @@ import { getCurrentUser, signOut, fetchUserAttributes } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import { ADMIN_EMAIL, ALLOWED_DOMAIN } from '../constants';
 
-const client = generateClient();
-
-/**
- * Authentication hook that manages user state and auth operations
- */
 const useAuth = (setCurrentUser, teamMembers = []) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +26,7 @@ const useAuth = (setCurrentUser, teamMembers = []) => {
         return existingMember;
       }
 
+      const client = generateClient();
       const { data: members } = await client.models.TeamMember.list({
         filter: { email: { eq: email } }
       });
