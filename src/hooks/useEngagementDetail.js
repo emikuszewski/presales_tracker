@@ -1,655 +1,399 @@
 import { useCallback } from 'react';
-import { getTodayDate, generateTempId, parseLinks } from '../utils';
-import { phaseConfig, phaseLabels, activityTypeLabels } from '../constants';
+import { generateClient } from 'aws-amplify/data';
+import { phaseConfig } from '../constants';
+import { parseLinks } from '../utils';
+
+const client = generateClient();
 
 /**
- * Hook for engagement detail operations, organized by domain.
- * Returns namespaced handlers: phase.*, activity.*, owner.*, integrations.*, details.*, view.*
+ * Hook for engagement detail operations including phases, activities, comments, and notes
  * 
  * @param {Object} params - Hook parameters
- * @param {Object} params.selectedEngagement - Currently selected engagement
- * @param {Function} params.updateEngagementInState - Function to update single engagement
  * @param {Object} params.currentUser - Current logged-in user
- * @param {Object} params.engagementViews - Map of engagement views
- * @param {Function} params.setEngagementViews - Setter for engagement views
- * @param {Function} params.logChangeAsync - Function to log changes
- * @param {Function} params.getOwnerInfo - Function to get owner info by ID
- * @param {Object} params.client - Amplify data client
- * @returns {Object} Namespaced detail operations
+ * @param {Function} params.updateEngagementInState - Function to update engagement in parent state
+ * @param {Function} params.logChangeAsync - Function to log changes asynchronously
+ * @returns {Object} Engagement detail operations
  */
-const useEngagementDetail = ({
-  selectedEngagement,
-  updateEngagementInState,
-  currentUser,
-  engagementViews,
-  setEngagementViews,
-  logChangeAsync,
-  getOwnerInfo,
-  client
-}) => {
+const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAsync }) => {
 
-  // ============================================
-  // PHASE OPERATIONS
-  // ============================================
+  // ============ PHASE OPERATIONS ============
 
-  const handleSavePhase = useCallback(async (phaseId, phaseData) => {
-    if (!selectedEngagement || !phaseId) return;
-    
-    const engagementId = selectedEngagement.id;
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const previousStatus = existingPhase?.status || 'PENDING';
-    const previousNotes = existingPhase?.notes || '';
-    
-    // Calculate new current phase if completing
-    let newCurrentPhase = selectedEngagement.currentPhase;
-    if (phaseData.status === 'COMPLETE') {
-      const phaseIndex = phaseConfig.findIndex(p => p.id === phaseId);
-      if (phaseIndex < phaseConfig.length - 1) {
-        newCurrentPhase = phaseConfig[phaseIndex + 1].id;
-      }
-    }
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, (eng) => ({
-      ...eng,
-      currentPhase: newCurrentPhase,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          status: phaseData.status,
-          notes: phaseData.notes,
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : eng.phases[phaseId]?.completedDate
-        }
-      }
-    }));
-    
+  /**
+   * Update phase status
+   */
+  const updatePhaseStatus = useCallback(async (engagementId, phaseId, phaseType, newStatus, previousStatus) => {
     try {
-      if (existingPhase && existingPhase.id) {
-        await client.models.Phase.update({
-          id: existingPhase.id,
-          status: phaseData.status,
-          notes: phaseData.notes,
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : existingPhase.completedDate
-        });
-      } else {
-        await client.models.Phase.create({
-          engagementId: engagementId,
-          phaseType: phaseId,
-          status: phaseData.status || 'PENDING',
-          completedDate: phaseData.status === 'COMPLETE' ? getTodayDate() : null,
-          notes: phaseData.notes || null,
-          links: null
-        });
-      }
+      const updateData = { status: newStatus };
       
-      if (newCurrentPhase !== selectedEngagement.currentPhase) {
-        await client.models.Engagement.update({
-          id: engagementId,
-          currentPhase: newCurrentPhase
-        });
+      if (newStatus === 'COMPLETE') {
+        updateData.completedDate = new Date().toISOString().split('T')[0];
+      } else if (previousStatus === 'COMPLETE') {
+        updateData.completedDate = null;
       }
-      
-      if (phaseData.status !== previousStatus) {
-        logChangeAsync(
-          engagementId,
-          'PHASE_UPDATE',
-          `${phaseLabels[phaseId]} phase changed to ${phaseData.status.toLowerCase().replace('_', ' ')}`,
-          previousStatus,
-          phaseData.status
-        );
-      }
-      
-    } catch (error) {
-      console.error('Error updating phase:', error);
-      // Rollback
+
+      await client.models.Phase.update({
+        id: phaseId,
+        ...updateData
+      });
+
+      // Update local state
       updateEngagementInState(engagementId, (eng) => ({
         ...eng,
-        currentPhase: selectedEngagement.currentPhase,
         phases: {
           ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            status: previousStatus,
-            notes: previousNotes
+          [phaseType]: {
+            ...eng.phases[phaseType],
+            status: newStatus,
+            completedDate: updateData.completedDate !== undefined 
+              ? updateData.completedDate 
+              : eng.phases[phaseType].completedDate
           }
         }
       }));
-    }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
-  const handleAddLink = useCallback(async (phaseId, linkData) => {
-    if (!linkData?.title || !linkData?.url || !selectedEngagement || !phaseId) {
-      return;
+      // Log the change
+      logChangeAsync(
+        engagementId,
+        'PHASE_UPDATE',
+        `Updated ${phaseType} phase to ${newStatus}`,
+        previousStatus,
+        newStatus
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating phase status:', error);
+      return { success: false, error };
     }
-    
-    const engagementId = selectedEngagement.id;
-    const linkToAdd = { title: linkData.title, url: linkData.url };
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const currentLinks = parseLinks(existingPhase?.links);
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, (eng) => ({
-      ...eng,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          links: [...currentLinks, linkToAdd]
-        }
-      }
-    }));
-    
+  }, [updateEngagementInState, logChangeAsync]);
+
+  /**
+   * Add link to a phase
+   */
+  const addPhaseLink = useCallback(async (engagementId, phaseId, phaseType, currentLinks, newLink) => {
     try {
-      // Fetch fresh phase data from database
-      const { data: freshPhases } = await client.models.Phase.list({
-        filter: { engagementId: { eq: engagementId } }
+      const updatedLinks = [...currentLinks, newLink];
+      
+      await client.models.Phase.update({
+        id: phaseId,
+        links: JSON.stringify(updatedLinks)
       });
-      const freshPhase = freshPhases.find(p => p.phaseType === phaseId);
-      
-      const freshLinks = parseLinks(freshPhase?.links);
-      const updatedLinks = [...freshLinks, linkToAdd];
-      
-      if (freshPhase && freshPhase.id) {
-        await client.models.Phase.update({
-          id: freshPhase.id,
-          links: JSON.stringify(updatedLinks)
-        });
-      } else {
-        await client.models.Phase.create({
-          engagementId: engagementId,
-          phaseType: phaseId,
-          status: 'PENDING',
-          completedDate: null,
-          notes: null,
-          links: JSON.stringify(updatedLinks)
-        });
-      }
-      
+
+      updateEngagementInState(engagementId, (eng) => ({
+        ...eng,
+        phases: {
+          ...eng.phases,
+          [phaseType]: {
+            ...eng.phases[phaseType],
+            links: updatedLinks
+          }
+        }
+      }));
+
       logChangeAsync(
         engagementId,
         'LINK_ADDED',
-        `Added link "${linkToAdd.title}" to ${phaseLabels[phaseId]} phase`
+        `Added link "${newLink.title}" to ${phaseType} phase`
       );
-      
+
+      return { success: true };
     } catch (error) {
-      console.error('Error adding link:', error);
-      // Rollback
+      console.error('Error adding phase link:', error);
+      return { success: false, error };
+    }
+  }, [updateEngagementInState, logChangeAsync]);
+
+  /**
+   * Remove link from a phase
+   */
+  const removePhaseLink = useCallback(async (engagementId, phaseId, phaseType, currentLinks, linkIndex) => {
+    try {
+      const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
+      
+      await client.models.Phase.update({
+        id: phaseId,
+        links: JSON.stringify(updatedLinks)
+      });
+
       updateEngagementInState(engagementId, (eng) => ({
         ...eng,
         phases: {
           ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            links: currentLinks
+          [phaseType]: {
+            ...eng.phases[phaseType],
+            links: updatedLinks
           }
         }
       }));
-      alert('Error saving link: ' + error.message);
-    }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
-  const handleRemoveLink = useCallback(async (phaseId, linkIndex) => {
-    if (!selectedEngagement) return;
-    
-    const existingPhase = selectedEngagement.phases[phaseId];
-    const currentLinks = parseLinks(existingPhase?.links);
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      phases: {
-        ...eng.phases,
-        [phaseId]: {
-          ...eng.phases[phaseId],
-          links: currentLinks.filter((_, i) => i !== linkIndex)
-        }
-      }
-    }));
-    
-    try {
-      const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
-      
-      if (existingPhase.id) {
-        await client.models.Phase.update({
-          id: existingPhase.id,
-          links: JSON.stringify(updatedLinks)
-        });
-      }
-      
+      return { success: true };
     } catch (error) {
-      console.error('Error removing link:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        phases: {
-          ...eng.phases,
-          [phaseId]: {
-            ...eng.phases[phaseId],
-            links: currentLinks
-          }
-        }
-      }));
+      console.error('Error removing phase link:', error);
+      return { success: false, error };
     }
-  }, [selectedEngagement, updateEngagementInState, client]);
+  }, [updateEngagementInState]);
 
-  // ============================================
-  // ACTIVITY OPERATIONS
-  // ============================================
+  // ============ ACTIVITY OPERATIONS ============
 
-  const handleAddActivity = useCallback(async (activityData) => {
-    if (!activityData.date || !activityData.description || !selectedEngagement) return;
-    
-    const tempId = generateTempId();
-    const tempActivity = {
-      id: tempId,
-      engagementId: selectedEngagement.id,
-      date: activityData.date,
-      type: activityData.type,
-      description: activityData.description,
-      comments: [],
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: [tempActivity, ...eng.activities],
-      lastActivity: activityData.date,
-      isStale: false,
-      daysSinceActivity: 0
-    }));
-    
+  /**
+   * Add new activity to engagement
+   */
+  const addActivity = useCallback(async (engagementId, activityData) => {
     try {
-      const { data: createdActivity } = await client.models.Activity.create({
-        engagementId: selectedEngagement.id,
+      const { data: newActivity } = await client.models.Activity.create({
+        engagementId,
         date: activityData.date,
         type: activityData.type,
         description: activityData.description
       });
-      
+
+      // Update engagement's lastActivity date
       await client.models.Engagement.update({
-        id: selectedEngagement.id,
+        id: engagementId,
         lastActivity: activityData.date
       });
-      
-      // Replace temp with real
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
+
+      const activityWithComments = { ...newActivity, comments: [] };
+
+      updateEngagementInState(engagementId, (eng) => ({
         ...eng,
-        activities: eng.activities.map(a => 
-          a.id === tempId ? { ...createdActivity, comments: [] } : a
-        )
+        lastActivity: activityData.date,
+        activities: [activityWithComments, ...eng.activities],
+        isStale: false
       }));
-      
+
       logChangeAsync(
-        selectedEngagement.id, 
-        'ACTIVITY_ADDED', 
-        `Added ${activityTypeLabels[activityData.type]}: ${activityData.description.substring(0, 50)}${activityData.description.length > 50 ? '...' : ''}`
+        engagementId,
+        'ACTIVITY_ADDED',
+        `Added ${activityData.type}: ${activityData.description.substring(0, 50)}${activityData.description.length > 50 ? '...' : ''}`
       );
-      
-      return true; // Success indicator
-      
+
+      return { success: true, activity: activityWithComments };
     } catch (error) {
       console.error('Error adding activity:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.filter(a => a.id !== tempId)
-      }));
-      return false;
+      return { success: false, error };
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [updateEngagementInState, logChangeAsync]);
 
-  const handleAddComment = useCallback(async (activityId, commentText) => {
-    if (!commentText?.trim() || !currentUser || !selectedEngagement) return;
-    
-    const tempId = generateTempId();
-    const tempComment = {
-      id: tempId,
-      activityId: activityId,
-      authorId: currentUser.id,
-      text: commentText.trim(),
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: eng.activities.map(a => 
-        a.id === activityId 
-          ? { ...a, comments: [...(a.comments || []), tempComment] }
-          : a
-      )
-    }));
-    
+  // ============ COMMENT OPERATIONS ============
+
+  /**
+   * Add comment to an activity
+   */
+  const addComment = useCallback(async (engagementId, activityId, text) => {
+    if (!currentUser) return { success: false, error: 'No current user' };
+
     try {
-      const { data: createdComment } = await client.models.Comment.create({
-        activityId: activityId,
+      const { data: newComment } = await client.models.Comment.create({
+        activityId,
         authorId: currentUser.id,
-        text: commentText.trim()
+        text
       });
-      
-      // Replace temp with real
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
+
+      updateEngagementInState(engagementId, (eng) => ({
         ...eng,
         activities: eng.activities.map(a => 
           a.id === activityId 
-            ? { ...a, comments: a.comments.map(c => c.id === tempId ? createdComment : c) }
+            ? { ...a, comments: [...a.comments, newComment] }
             : a
         )
       }));
-      
+
       logChangeAsync(
-        selectedEngagement.id, 
-        'COMMENT_ADDED', 
-        `Added comment: ${commentText.substring(0, 50)}${commentText.length > 50 ? '...' : ''}`
+        engagementId,
+        'COMMENT_ADDED',
+        `Commented: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`
       );
-      
-      return true;
-      
+
+      return { success: true, comment: newComment };
     } catch (error) {
       console.error('Error adding comment:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === activityId 
-            ? { ...a, comments: a.comments.filter(c => c.id !== tempId) }
-            : a
-        )
-      }));
-      return false;
+      return { success: false, error };
     }
-  }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
+  }, [currentUser, updateEngagementInState, logChangeAsync]);
 
-  const handleDeleteComment = useCallback(async (commentId) => {
-    if (!selectedEngagement) return;
-    
-    // Find the activity and comment for rollback
-    let targetActivity = null;
-    let deletedComment = null;
-    
-    for (const activity of selectedEngagement.activities) {
-      const comment = activity.comments?.find(c => c.id === commentId);
-      if (comment) {
-        targetActivity = activity;
-        deletedComment = comment;
-        break;
-      }
-    }
-    
-    if (!targetActivity || !deletedComment) return;
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      activities: eng.activities.map(a => 
-        a.id === targetActivity.id 
-          ? { ...a, comments: a.comments.filter(c => c.id !== commentId) }
-          : a
-      )
-    }));
-    
+  // ============ PHASE NOTE OPERATIONS ============
+
+  /**
+   * Add a note to a phase
+   */
+  const addPhaseNote = useCallback(async (engagementId, phaseType, text) => {
+    if (!currentUser) return { success: false, error: 'No current user' };
+    if (!text.trim()) return { success: false, error: 'Note text is required' };
+
     try {
-      await client.models.Comment.delete({ id: commentId });
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        activities: eng.activities.map(a => 
-          a.id === targetActivity.id 
-            ? { ...a, comments: [...a.comments, deletedComment].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) }
-            : a
-        )
-      }));
-    }
-  }, [selectedEngagement, updateEngagementInState, client]);
-
-  // ============================================
-  // OWNER OPERATIONS
-  // ============================================
-
-  const handleAddOwner = useCallback(async (teamMemberId) => {
-    if (!selectedEngagement || selectedEngagement.ownerIds?.includes(teamMemberId)) return;
-    
-    const tempId = generateTempId();
-    const addedMember = getOwnerInfo(teamMemberId);
-    
-    // Optimistic update
-    const newOwnerIds = [...(selectedEngagement.ownerIds || []), teamMemberId];
-    const tempOwnershipRecord = {
-      id: tempId,
-      engagementId: selectedEngagement.id,
-      teamMemberId: teamMemberId,
-      role: 'secondary',
-      addedAt: new Date().toISOString()
-    };
-    
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      ownerIds: newOwnerIds,
-      ownershipRecords: [...(eng.ownershipRecords || []), tempOwnershipRecord]
-    }));
-    
-    try {
-      const { data: newRecord } = await client.models.EngagementOwner.create({
-        engagementId: selectedEngagement.id,
-        teamMemberId: teamMemberId,
-        role: 'secondary',
-        addedAt: new Date().toISOString()
+      const { data: newNote } = await client.models.PhaseNote.create({
+        engagementId,
+        phaseType,
+        text: text.trim(),
+        authorId: currentUser.id
       });
-      
-      // Replace temp record with real one
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownershipRecords: eng.ownershipRecords.map(r => 
-          r.id === tempId ? newRecord : r
-        )
-      }));
-      
-      logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', `Added ${addedMember.name} as owner`);
-      
-    } catch (error) {
-      console.error('Error adding owner:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
-        ownershipRecords: eng.ownershipRecords.filter(r => r.id !== tempId)
-      }));
-    }
-  }, [selectedEngagement, updateEngagementInState, getOwnerInfo, logChangeAsync, client]);
 
-  const handleRemoveOwner = useCallback(async (teamMemberId) => {
-    if (!selectedEngagement) return;
-    
-    if (selectedEngagement.ownerIds?.length <= 1) {
-      alert('Cannot remove the last owner. Add another owner first.');
-      return;
-    }
-    
-    const removedMember = getOwnerInfo(teamMemberId);
-    const ownershipRecord = selectedEngagement.ownershipRecords?.find(
-      o => o.teamMemberId === teamMemberId
-    );
-    
-    // Store for rollback
-    const previousOwnerIds = [...selectedEngagement.ownerIds];
-    const previousOwnershipRecords = [...(selectedEngagement.ownershipRecords || [])];
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, (eng) => ({
-      ...eng,
-      ownerIds: eng.ownerIds.filter(id => id !== teamMemberId),
-      ownershipRecords: eng.ownershipRecords?.filter(r => r.teamMemberId !== teamMemberId) || []
-    }));
-    
-    try {
-      if (ownershipRecord) {
-        await client.models.EngagementOwner.delete({ id: ownershipRecord.id });
-      }
-      
-      logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', `Removed ${removedMember.name} as owner`);
-      
-    } catch (error) {
-      console.error('Error removing owner:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, (eng) => ({
-        ...eng,
-        ownerIds: previousOwnerIds,
-        ownershipRecords: previousOwnershipRecords
-      }));
-    }
-  }, [selectedEngagement, updateEngagementInState, getOwnerInfo, logChangeAsync, client]);
-
-  // ============================================
-  // INTEGRATIONS OPERATIONS
-  // ============================================
-
-  const handleUpdateIntegrations = useCallback(async (updates) => {
-    if (!selectedEngagement) return;
-    
-    const previousValues = {
-      salesforceId: selectedEngagement.salesforceId,
-      salesforceUrl: selectedEngagement.salesforceUrl,
-      jiraTicket: selectedEngagement.jiraTicket,
-      jiraUrl: selectedEngagement.jiraUrl,
-      driveFolderName: selectedEngagement.driveFolderName,
-      driveFolderUrl: selectedEngagement.driveFolderUrl,
-      docsName: selectedEngagement.docsName,
-      docsUrl: selectedEngagement.docsUrl,
-      slidesName: selectedEngagement.slidesName,
-      slidesUrl: selectedEngagement.slidesUrl,
-      sheetsName: selectedEngagement.sheetsName,
-      sheetsUrl: selectedEngagement.sheetsUrl,
-      slackChannel: selectedEngagement.slackChannel,
-      slackUrl: selectedEngagement.slackUrl
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, updates);
-    
-    try {
-      await client.models.Engagement.update({
-        id: selectedEngagement.id,
-        ...updates
+      // Update local state
+      updateEngagementInState(engagementId, (eng) => {
+        const updatedPhaseNotes = [newNote, ...eng.phaseNotes];
+        const updatedNotesByPhase = { ...eng.notesByPhase };
+        updatedNotesByPhase[phaseType] = [newNote, ...(updatedNotesByPhase[phaseType] || [])];
+        
+        return {
+          ...eng,
+          phaseNotes: updatedPhaseNotes,
+          notesByPhase: updatedNotesByPhase,
+          totalNotesCount: eng.totalNotesCount + 1
+        };
       });
-      
-      logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integration links');
-      
+
+      // Log the change with truncated text
+      const truncatedText = text.length > 50 ? text.substring(0, 47) + '...' : text;
+      logChangeAsync(
+        engagementId,
+        'NOTE_ADDED',
+        `Added note to ${phaseType}: "${truncatedText}"`
+      );
+
+      return { success: true, note: newNote };
     } catch (error) {
-      console.error('Error updating integrations:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, previousValues);
+      console.error('Error adding phase note:', error);
+      return { success: false, error };
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [currentUser, updateEngagementInState, logChangeAsync]);
 
-  // ============================================
-  // DETAILS OPERATIONS
-  // ============================================
+  /**
+   * Update an existing phase note
+   */
+  const updatePhaseNote = useCallback(async (engagementId, noteId, phaseType, newText) => {
+    if (!newText.trim()) return { success: false, error: 'Note text is required' };
 
-  const handleUpdateDetails = useCallback(async (updates) => {
-    if (!selectedEngagement) return;
-    
-    const previousValues = {
-      company: selectedEngagement.company,
-      contactName: selectedEngagement.contactName,
-      contactEmail: selectedEngagement.contactEmail,
-      contactPhone: selectedEngagement.contactPhone,
-      industry: selectedEngagement.industry,
-      dealSize: selectedEngagement.dealSize
-    };
-    
-    // Optimistic update
-    updateEngagementInState(selectedEngagement.id, updates);
-    
     try {
-      await client.models.Engagement.update({
-        id: selectedEngagement.id,
-        ...updates
+      const { data: updatedNote } = await client.models.PhaseNote.update({
+        id: noteId,
+        text: newText.trim()
       });
-      
-      // Log changes for significant updates
-      const changes = [];
-      if (updates.company !== previousValues.company) changes.push(`company to "${updates.company}"`);
-      if (updates.contactName !== previousValues.contactName) changes.push(`contact to "${updates.contactName}"`);
-      if (updates.industry !== previousValues.industry) {
-        const { industryLabels } = require('../constants');
-        changes.push(`industry to ${industryLabels[updates.industry]}`);
-      }
-      if (updates.dealSize !== previousValues.dealSize) changes.push(`deal size to "${updates.dealSize || 'N/A'}"`);
-      
-      if (changes.length > 0) {
-        logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', `Updated ${changes.join(', ')}`);
-      }
-      
+
+      // Update local state
+      updateEngagementInState(engagementId, (eng) => {
+        const updatedPhaseNotes = eng.phaseNotes.map(n => 
+          n.id === noteId ? { ...n, text: newText.trim(), updatedAt: updatedNote.updatedAt } : n
+        );
+        const updatedNotesByPhase = { ...eng.notesByPhase };
+        updatedNotesByPhase[phaseType] = (updatedNotesByPhase[phaseType] || []).map(n =>
+          n.id === noteId ? { ...n, text: newText.trim(), updatedAt: updatedNote.updatedAt } : n
+        );
+        
+        return {
+          ...eng,
+          phaseNotes: updatedPhaseNotes,
+          notesByPhase: updatedNotesByPhase
+        };
+      });
+
+      // Log the change
+      logChangeAsync(
+        engagementId,
+        'NOTE_EDITED',
+        `Edited note in ${phaseType}`
+      );
+
+      return { success: true, note: updatedNote };
     } catch (error) {
-      console.error('Error updating details:', error);
-      // Rollback
-      updateEngagementInState(selectedEngagement.id, previousValues);
+      console.error('Error updating phase note:', error);
+      return { success: false, error };
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [updateEngagementInState, logChangeAsync]);
 
-  // ============================================
-  // VIEW OPERATIONS
-  // ============================================
+  /**
+   * Delete a phase note (hard delete)
+   */
+  const deletePhaseNote = useCallback(async (engagementId, noteId, phaseType) => {
+    try {
+      await client.models.PhaseNote.delete({ id: noteId });
 
-  const updateEngagementView = useCallback(async (engagementId) => {
+      // Update local state
+      updateEngagementInState(engagementId, (eng) => {
+        const updatedPhaseNotes = eng.phaseNotes.filter(n => n.id !== noteId);
+        const updatedNotesByPhase = { ...eng.notesByPhase };
+        updatedNotesByPhase[phaseType] = (updatedNotesByPhase[phaseType] || []).filter(n => n.id !== noteId);
+        
+        return {
+          ...eng,
+          phaseNotes: updatedPhaseNotes,
+          notesByPhase: updatedNotesByPhase,
+          totalNotesCount: eng.totalNotesCount - 1
+        };
+      });
+
+      // Log the change
+      logChangeAsync(
+        engagementId,
+        'NOTE_DELETED',
+        `Deleted note from ${phaseType}`
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting phase note:', error);
+      return { success: false, error };
+    }
+  }, [updateEngagementInState, logChangeAsync]);
+
+  // ============ ENGAGEMENT VIEW TRACKING ============
+
+  /**
+   * Mark engagement as viewed (for unread tracking)
+   */
+  const markEngagementViewed = useCallback(async (engagementId, existingView, setEngagementViews) => {
     if (!currentUser) return;
-    
+
     try {
-      const existingView = engagementViews[engagementId];
+      const now = new Date().toISOString();
       
       if (existingView) {
         await client.models.EngagementView.update({
           id: existingView.id,
-          lastViewedAt: new Date().toISOString()
+          lastViewedAt: now
         });
+        setEngagementViews(prev => ({
+          ...prev,
+          [engagementId]: { ...existingView, lastViewedAt: now }
+        }));
       } else {
-        await client.models.EngagementView.create({
-          engagementId: engagementId,
+        const { data: newView } = await client.models.EngagementView.create({
+          engagementId,
           visitorId: currentUser.id,
-          lastViewedAt: new Date().toISOString()
+          lastViewedAt: now
         });
+        setEngagementViews(prev => ({
+          ...prev,
+          [engagementId]: newView
+        }));
       }
-      
-      setEngagementViews(prev => ({
-        ...prev,
-        [engagementId]: { ...prev[engagementId], lastViewedAt: new Date().toISOString() }
-      }));
-      
-      updateEngagementInState(engagementId, { unreadChanges: 0 });
-    } catch (e) {
-      console.error('Error updating view:', e);
-    }
-  }, [currentUser, engagementViews, setEngagementViews, updateEngagementInState, client]);
 
-  // Return namespaced operations
-  return {
-    phase: {
-      save: handleSavePhase,
-      addLink: handleAddLink,
-      removeLink: handleRemoveLink
-    },
-    activity: {
-      add: handleAddActivity,
-      addComment: handleAddComment,
-      deleteComment: handleDeleteComment
-    },
-    owner: {
-      add: handleAddOwner,
-      remove: handleRemoveOwner
-    },
-    integrations: {
-      update: handleUpdateIntegrations
-    },
-    details: {
-      update: handleUpdateDetails
-    },
-    view: {
-      update: updateEngagementView
+      // Clear unread count in local state
+      updateEngagementInState(engagementId, { unreadChanges: 0 });
+    } catch (error) {
+      console.error('Error marking engagement viewed:', error);
     }
+  }, [currentUser, updateEngagementInState]);
+
+  return {
+    // Phase operations
+    updatePhaseStatus,
+    addPhaseLink,
+    removePhaseLink,
+    
+    // Activity operations
+    addActivity,
+    
+    // Comment operations
+    addComment,
+    
+    // Phase note operations
+    addPhaseNote,
+    updatePhaseNote,
+    deletePhaseNote,
+    
+    // View tracking
+    markEngagementViewed
   };
 };
 
