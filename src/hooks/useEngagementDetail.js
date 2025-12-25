@@ -515,6 +515,10 @@ const useEngagementDetail = ({
       salesforceUrl: selectedEngagement.salesforceUrl,
       jiraTicket: selectedEngagement.jiraTicket,
       jiraUrl: selectedEngagement.jiraUrl,
+      driveFolderName: selectedEngagement.driveFolderName,
+      driveFolderUrl: selectedEngagement.driveFolderUrl,
+      slidesName: selectedEngagement.slidesName,
+      slidesUrl: selectedEngagement.slidesUrl,
       slackChannel: selectedEngagement.slackChannel,
       slackUrl: selectedEngagement.slackUrl
     };
