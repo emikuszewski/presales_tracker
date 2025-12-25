@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 
 /**
- * Modal for editing integration links (Drive, Docs, Slides, Slack)
+ * Modal for editing integration links (Drive, Docs, Slides, Sheets, Slack)
  * Manages its own local form state
- * Grouped by: Documents (Drive, Docs, Slides) → Communication (Slack)
+ * Grouped by: Documents (Drive, Docs, Slides, Sheets) → Communication (Slack)
  */
 const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -18,6 +18,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     docsUrl: '',
     slidesName: '',
     slidesUrl: '',
+    sheetsName: '',
+    sheetsUrl: '',
     slackChannel: '',
     slackUrl: ''
   });
@@ -36,6 +38,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
         docsUrl: initialData.docsUrl || '',
         slidesName: initialData.slidesName || '',
         slidesUrl: initialData.slidesUrl || '',
+        sheetsName: initialData.sheetsName || '',
+        sheetsUrl: initialData.sheetsUrl || '',
         slackChannel: initialData.slackChannel || '',
         slackUrl: initialData.slackUrl || ''
       });
@@ -55,6 +59,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
       docsUrl: formData.docsUrl || null,
       slidesName: formData.slidesName || null,
       slidesUrl: formData.slidesUrl || null,
+      sheetsName: formData.sheetsName || null,
+      sheetsUrl: formData.sheetsUrl || null,
       slackChannel: formData.slackChannel || null,
       slackUrl: formData.slackUrl || null
     });
@@ -168,6 +174,32 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               onChange={e => updateField('slidesUrl', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="https://docs.google.com/presentation/d/..." 
+            />
+          </div>
+
+          {/* Documents: Google Sheets */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Sheet Name
+            </label>
+            <input 
+              type="text" 
+              value={formData.sheetsName}
+              onChange={e => updateField('sheetsName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="POC Tracker" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Sheet URL
+            </label>
+            <input 
+              type="url" 
+              value={formData.sheetsUrl}
+              onChange={e => updateField('sheetsUrl', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://docs.google.com/spreadsheets/d/..." 
             />
           </div>
 
