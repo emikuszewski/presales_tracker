@@ -237,22 +237,6 @@ const DetailView = ({
             </button>
           </div>
           <div className="space-y-1">
-            {engagement.salesforceId ? (
-              <a href={engagement.salesforceUrl || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800">
-                Salesforce: {engagement.salesforceId}
-              </a>
-            ) : (
-              <p className="text-sm text-gray-400">No Salesforce linked</p>
-            )}
-            {engagement.jiraTicket ? (
-              <a href={engagement.jiraUrl || '#'} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800">
-                Jira: {engagement.jiraTicket}
-              </a>
-            ) : (
-              <p className="text-sm text-gray-400">No Jira ticket linked</p>
-            )}
             {engagement.driveFolderName ? (
               engagement.driveFolderUrl ? (
                 <a 
