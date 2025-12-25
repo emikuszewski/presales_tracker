@@ -8,6 +8,7 @@ export {
   NotificationBadge,
   SlackIcon,
   DriveIcon,
+  SlidesIcon,
   LinkifyText
 } from './ui';
 
