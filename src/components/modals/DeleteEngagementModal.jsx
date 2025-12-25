@@ -54,6 +54,7 @@ const DeleteEngagementModal = ({
           <li>• {cascadeInfo.phases} phase record{cascadeInfo.phases !== 1 ? 's' : ''}</li>
           <li>• {cascadeInfo.activities} activit{cascadeInfo.activities !== 1 ? 'ies' : 'y'}</li>
           <li>• {cascadeInfo.comments} comment{cascadeInfo.comments !== 1 ? 's' : ''}</li>
+          <li>• {cascadeInfo.notes || 0} note{(cascadeInfo.notes || 0) !== 1 ? 's' : ''}</li>
           <li>• {cascadeInfo.changeLogs} change log entr{cascadeInfo.changeLogs !== 1 ? 'ies' : 'y'}</li>
           <li>• {cascadeInfo.owners} owner assignment{cascadeInfo.owners !== 1 ? 's' : ''}</li>
         </ul>
