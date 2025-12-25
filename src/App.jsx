@@ -49,6 +49,7 @@ function PresalesTracker() {
     driveFolderName: '', driveFolderUrl: '',
     docsName: '', docsUrl: '',
     slidesName: '', slidesUrl: '',
+    sheetsName: '', sheetsUrl: '',
     slackChannel: '', slackUrl: ''
   });
 
