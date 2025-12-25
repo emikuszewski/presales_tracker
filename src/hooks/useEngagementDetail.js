@@ -79,10 +79,25 @@ var useEngagementDetail = function(params) {
         completedDate: updateData.completedDate
       });
 
+      // Update currentPhase on the engagement when a phase is set to IN_PROGRESS
+      var shouldUpdateCurrentPhase = phaseData.status === 'IN_PROGRESS';
+      if (shouldUpdateCurrentPhase) {
+        await dataClient.models.Engagement.update({
+          id: selectedEngagement.id,
+          currentPhase: phaseType
+        });
+      }
+
       updateEngagementInState(selectedEngagement.id, function(eng) {
         var newPhases = Object.assign({}, eng.phases);
         newPhases[phaseType] = Object.assign({}, eng.phases[phaseType], updateData);
-        return Object.assign({}, eng, { phases: newPhases });
+        
+        var updates = { phases: newPhases };
+        if (shouldUpdateCurrentPhase) {
+          updates.currentPhase = phaseType;
+        }
+        
+        return Object.assign({}, eng, updates);
       });
 
       if (logChangeAsync) {
