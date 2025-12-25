@@ -37,5 +37,8 @@ export const changeTypeLabels = {
   LINK_ADDED: 'Added link',
   INTEGRATION_UPDATE: 'Updated integrations',
   ARCHIVED: 'Archived',
-  RESTORED: 'Restored'
+  RESTORED: 'Restored',
+  NOTE_ADDED: 'Added note',
+  NOTE_EDITED: 'Edited note',
+  NOTE_DELETED: 'Deleted note'
 };
