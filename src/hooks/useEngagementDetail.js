@@ -196,6 +196,132 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
+  var activityEdit = useCallback(async function(activityId, updates) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      // Update activity in DB
+      await dataClient.models.Activity.update({
+        id: activityId,
+        type: updates.type,
+        date: updates.date,
+        description: updates.description
+      });
+
+      // Check if we need to update engagement.lastActivity
+      var activities = selectedEngagement.activities;
+      var updatedActivities = activities.map(function(a) {
+        if (a.id === activityId) {
+          return Object.assign({}, a, updates);
+        }
+        return a;
+      });
+
+      // Recalculate lastActivity from all activities
+      var newLastActivity = updatedActivities.reduce(function(latest, a) {
+        return a.date > latest ? a.date : latest;
+      }, updatedActivities[0]?.date || selectedEngagement.startDate);
+
+      // Update engagement.lastActivity if changed
+      if (newLastActivity !== selectedEngagement.lastActivity) {
+        await dataClient.models.Engagement.update({
+          id: selectedEngagement.id,
+          lastActivity: newLastActivity
+        });
+      }
+
+      // Update local state
+      updateEngagementInState(selectedEngagement.id, function(eng) {
+        var newActivities = eng.activities.map(function(a) {
+          if (a.id === activityId) {
+            return Object.assign({}, a, updates);
+          }
+          return a;
+        });
+        // Re-sort by date (newest first)
+        newActivities.sort(function(a, b) {
+          return new Date(b.date) - new Date(a.date);
+        });
+        return Object.assign({}, eng, {
+          activities: newActivities,
+          lastActivity: newLastActivity
+        });
+      });
+
+      if (logChangeAsync) {
+        var truncated = updates.description.length > 40 
+          ? updates.description.substring(0, 40) + '...' 
+          : updates.description;
+        logChangeAsync(selectedEngagement.id, 'ACTIVITY_EDITED', 'Edited activity: "' + truncated + '"');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error editing activity:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+
+  var activityDelete = useCallback(async function(activityId) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      // Find the activity to get its info for logging
+      var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
+      if (!activity) return false;
+
+      // Delete all comments for this activity first
+      var comments = activity.comments || [];
+      for (var i = 0; i < comments.length; i++) {
+        await dataClient.models.Comment.delete({ id: comments[i].id });
+      }
+
+      // Delete the activity
+      await dataClient.models.Activity.delete({ id: activityId });
+
+      // Recalculate lastActivity from remaining activities
+      var remainingActivities = selectedEngagement.activities.filter(function(a) { 
+        return a.id !== activityId; 
+      });
+      var newLastActivity = remainingActivities.length > 0
+        ? remainingActivities.reduce(function(latest, a) {
+            return a.date > latest ? a.date : latest;
+          }, remainingActivities[0].date)
+        : selectedEngagement.startDate;
+
+      // Update engagement.lastActivity in DB
+      await dataClient.models.Engagement.update({
+        id: selectedEngagement.id,
+        lastActivity: newLastActivity
+      });
+
+      // Update local state
+      updateEngagementInState(selectedEngagement.id, function(eng) {
+        return Object.assign({}, eng, {
+          activities: eng.activities.filter(function(a) { return a.id !== activityId; }),
+          lastActivity: newLastActivity
+        });
+      });
+
+      if (logChangeAsync) {
+        logChangeAsync(
+          selectedEngagement.id, 
+          'ACTIVITY_DELETED', 
+          'Deleted ' + activity.type + ' activity from ' + activity.date
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+
   var activityAddComment = useCallback(async function(activityId, commentText) {
     if (!selectedEngagement || !currentUser || !commentText) return false;
 
@@ -505,6 +631,8 @@ var useEngagementDetail = function(params) {
     },
     activity: {
       add: activityAdd,
+      edit: activityEdit,
+      delete: activityDelete,
       addComment: activityAddComment,
       deleteComment: activityDeleteComment
     },
