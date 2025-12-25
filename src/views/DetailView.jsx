@@ -1,583 +1,381 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  OwnersDisplay,
-  StaleBadge,
   SlackIcon,
   DriveIcon,
   DocsIcon,
   SlidesIcon,
   SheetsIcon,
-  LinkifyText,
-  ActivityModal,
-  PhaseEditModal,
-  LinkModal,
-  IntegrationsModal,
   EditDetailsModal,
   OwnersModal,
-  HistoryModal
+  IntegrationsModal
 } from '../components';
-import { parseLinks, getAvatarColorClasses } from '../utils';
-import { industryLabels, phaseConfig, activityTypeLabels } from '../constants';
+import { phaseLabels } from '../constants';
+
+// Import tab components
+import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab } from '../components/engagement';
 
 /**
- * Detail view for a single engagement
- * Shows phases, activities, and allows editing
- * System users display with blue avatar styling in comments
+ * Detail header component - compact header with back, owners, company, phase
+ */
+const DetailHeader = ({ engagement, owners, onBack, onEdit, onArchive, isStale, daysSinceActivity }) => {
+  const currentPhase = engagement?.currentPhase || 'DISCOVER';
+
+  const integrations = [
+    { url: engagement?.driveFolderUrl, name: engagement?.driveFolderName || 'Drive', Icon: DriveIcon },
+    { url: engagement?.docsUrl, name: engagement?.docsName || 'Docs', Icon: DocsIcon },
+    { url: engagement?.slidesUrl, name: engagement?.slidesName || 'Slides', Icon: SlidesIcon },
+    { url: engagement?.sheetsUrl, name: engagement?.sheetsName || 'Sheets', Icon: SheetsIcon },
+    { url: engagement?.slackUrl, name: engagement?.slackChannel || 'Slack', Icon: SlackIcon }
+  ];
+
+  const hasIntegrations = integrations.some(i => i.url);
+
+  return (
+    <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Back button */}
+          <button
+            onClick={onBack}
+            className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+            title="Back to list"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Owner avatars */}
+          <div className="flex -space-x-2 flex-shrink-0">
+            {owners.slice(0, 3).map((owner, idx) => (
+              <div
+                key={owner.id || idx}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 border-white ${
+                  owner.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
+                }`}
+                title={owner.name}
+              >
+                {owner.initials}
+              </div>
+            ))}
+            {owners.length > 3 && (
+              <div className="w-7 h-7 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-medium border-2 border-white">
+                +{owners.length - 3}
+              </div>
+            )}
+          </div>
+
+          {/* Company name */}
+          <h1 className="text-lg font-semibold text-gray-900 truncate">
+            {engagement?.company || 'Engagement'}
+          </h1>
+
+          {/* Phase badge */}
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
+            {phaseLabels[currentPhase] || currentPhase}
+          </span>
+
+          {/* Deal size */}
+          {engagement?.dealSize && (
+            <span className="text-sm text-gray-500 flex-shrink-0 hidden sm:inline">
+              {engagement.dealSize}
+            </span>
+          )}
+
+          {/* Stale indicator */}
+          {isStale && (
+            <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline" title={`${daysSinceActivity} days since last activity`}>
+              ⚠️ {daysSinceActivity}d stale
+            </span>
+          )}
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Integration icons */}
+          {hasIntegrations && (
+            <div className="hidden sm:flex items-center gap-0.5 mr-2">
+              {integrations.map((integration, idx) => {
+                if (!integration.url) return null;
+                const IconComp = integration.Icon;
+                return (
+                  <a
+                    key={idx}
+                    href={integration.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                    title={integration.name}
+                  >
+                    <IconComp className="w-4 h-4" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Edit button */}
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            title="Edit engagement"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+
+          {/* Archive button */}
+          <button
+            onClick={onArchive}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            title={engagement?.isArchived ? 'Restore engagement' : 'Archive engagement'}
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Main engagement detail view with vertical tab navigation
  */
 const DetailView = ({
   engagement,
   teamMembers,
   currentUser,
   getOwnerInfo,
-  detail, // Namespaced hook object: detail.phase.save, detail.activity.add, etc.
+  detail,
   navigationOptions,
   onClearNavigationOptions,
   onToggleArchive,
   onBack
 }) => {
-  // Modal states - owned by this view
-  const [showActivityModal, setShowActivityModal] = useState(false);
-  const [showPhaseModal, setShowPhaseModal] = useState(null);
-  const [showLinkModal, setShowLinkModal] = useState(null);
-  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
-  const [showOwnersModal, setShowOwnersModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
-  
-  // Local UI state
-  const [newComment, setNewComment] = useState({});
-  const [expandedActivities, setExpandedActivities] = useState({});
-  const [highlightedActivityId, setHighlightedActivityId] = useState(null);
+  // Tab state
+  const [activeTab, setActiveTab] = useState('progress');
+  const [highlightActivityId, setHighlightActivityId] = useState(null);
+  const [scrollToPhase, setScrollToPhase] = useState(null);
 
-  // Handle navigation options (scroll to activity)
+  // Modal states
+  const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
+  const [showOwnersModal, setShowOwnersModal] = useState(false);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+
+  // Get owners with full info
+  const owners = useMemo(() => {
+    if (!engagement?.ownerIds) return [];
+    return engagement.ownerIds.map(ownerId => getOwnerInfo(ownerId));
+  }, [engagement, getOwnerInfo]);
+
+  // Tab counts
+  const activityCount = engagement?.activities?.length || 0;
+  const unreadCount = engagement?.unreadChanges || 0;
+  const notesCount = engagement?.totalNotesCount || 0;
+
+  // Handle navigation options
   useEffect(() => {
     if (navigationOptions?.scrollToActivityId) {
-      const activityId = navigationOptions.scrollToActivityId;
-      
-      // Auto-expand the activity
-      setExpandedActivities(prev => ({
-        ...prev,
-        [activityId]: true
-      }));
-      
-      // Set highlight
-      setHighlightedActivityId(activityId);
-      
-      // Scroll to the activity after DOM updates
-      requestAnimationFrame(() => {
-        const element = document.getElementById(`activity-${activityId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      });
-      
-      // Clear highlight after animation completes (2 seconds)
-      const highlightTimer = setTimeout(() => {
-        setHighlightedActivityId(null);
-      }, 2000);
-      
-      // Clear navigation options
-      onClearNavigationOptions();
-      
-      return () => clearTimeout(highlightTimer);
+      setActiveTab('activity');
+      setHighlightActivityId(navigationOptions.scrollToActivityId);
+      onClearNavigationOptions?.();
     }
   }, [navigationOptions, onClearNavigationOptions]);
 
-  const toggleActivityExpansion = (activityId) => {
-    setExpandedActivities(prev => ({
-      ...prev,
-      [activityId]: !prev[activityId]
-    }));
-  };
+  // Tab change handler
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    setHighlightActivityId(null);
+    setScrollToPhase(null);
+  }, []);
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'COMPLETE': return 'bg-emerald-500';
-      case 'IN_PROGRESS': return 'bg-blue-500';
-      default: return 'bg-gray-200';
+  // Notes click from Progress tab
+  const handleNotesClick = useCallback((phaseType) => {
+    setActiveTab('notes');
+    setScrollToPhase(phaseType);
+  }, []);
+
+  // Activity handlers
+  const handleAddActivity = useCallback(async (activityData) => {
+    if (detail?.activity?.add) {
+      return await detail.activity.add(activityData);
     }
-  };
+    return false;
+  }, [detail]);
 
-  const getStatusBadge = (status) => {
-    switch(status) {
-      case 'COMPLETE': return { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Complete' };
-      case 'IN_PROGRESS': return { bg: 'bg-blue-50', text: 'text-blue-700', label: 'In Progress' };
-      default: return { bg: 'bg-gray-50', text: 'text-gray-500', label: 'Pending' };
+  const handleAddComment = useCallback(async (activityId, text) => {
+    if (detail?.activity?.addComment) {
+      return await detail.activity.addComment(activityId, text);
     }
-  };
+    return false;
+  }, [detail]);
 
-  // Handlers that bridge modals to hook operations
-  const handleAddActivity = async (activityData) => {
-    const success = await detail.activity.add(activityData);
-    if (success) {
-      setShowActivityModal(false);
+  // Mark viewed handler
+  const handleMarkViewed = useCallback(() => {
+    if (detail?.view?.update && engagement) {
+      detail.view.update(engagement.id);
     }
-  };
+  }, [detail, engagement]);
 
-  const handleSavePhase = async (phaseData) => {
-    await detail.phase.save(showPhaseModal, phaseData);
-    setShowPhaseModal(null);
-  };
+  // Archive handler
+  const handleArchive = useCallback(() => {
+    if (engagement && onToggleArchive) {
+      onToggleArchive(engagement.id, !engagement.isArchived);
+    }
+  }, [engagement, onToggleArchive]);
 
-  const handleAddLink = async (linkData) => {
-    await detail.phase.addLink(showLinkModal, linkData);
-    setShowLinkModal(null);
-  };
-
-  const handleUpdateIntegrations = async (updates) => {
-    await detail.integrations.update(updates);
-    setShowIntegrationsModal(false);
-  };
-
-  const handleUpdateDetails = async (updates) => {
-    await detail.details.update(updates);
+  // Details save handler
+  const handleUpdateDetails = useCallback((updates) => {
+    if (detail?.details?.update) {
+      detail.details.update(updates);
+    }
     setShowEditDetailsModal(false);
-  };
+  }, [detail]);
 
-  const handleAddComment = async (activityId) => {
-    const commentText = newComment[activityId];
-    const success = await detail.activity.addComment(activityId, commentText);
-    if (success) {
-      setNewComment(prev => ({ ...prev, [activityId]: '' }));
+  // Integrations save handler
+  const handleUpdateIntegrations = useCallback((updates) => {
+    if (detail?.integrations?.update) {
+      detail.integrations.update(updates);
+    }
+    setShowIntegrationsModal(false);
+  }, [detail]);
+
+  // Note handlers (placeholder - implement if PhaseNote model exists)
+  const handleAddNote = useCallback(async (phaseType, text) => {
+    console.log('Add note:', phaseType, text);
+    return { success: true };
+  }, []);
+
+  const handleEditNote = useCallback(async (noteId, phaseType, text) => {
+    console.log('Edit note:', noteId, text);
+    return { success: true };
+  }, []);
+
+  const handleDeleteNote = useCallback(async (noteId, phaseType) => {
+    console.log('Delete note:', noteId);
+    return { success: true };
+  }, []);
+
+  // Render tab content
+  const renderTabContent = () => {
+    if (!engagement) return null;
+
+    switch (activeTab) {
+      case 'activity':
+        return (
+          <ActivityTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            onAddActivity={handleAddActivity}
+            onAddComment={handleAddComment}
+            highlightId={highlightActivityId}
+          />
+        );
+
+      case 'history':
+        return (
+          <HistoryTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            lastViewedAt={null}
+            currentUserId={currentUser?.id}
+            onMarkViewed={handleMarkViewed}
+          />
+        );
+
+      case 'notes':
+        return (
+          <NotesTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            onAddNote={handleAddNote}
+            onEditNote={handleEditNote}
+            onDeleteNote={handleDeleteNote}
+            scrollToPhase={scrollToPhase}
+          />
+        );
+
+      case 'progress':
+      default:
+        return (
+          <ProgressTab
+            engagement={engagement}
+            onStatusChange={(phaseType, newStatus) => {
+              if (detail?.phase?.save) {
+                detail.phase.save(phaseType, { 
+                  status: newStatus, 
+                  notes: engagement.phases?.[phaseType]?.notes || '' 
+                });
+              }
+            }}
+            onAddLink={(phaseType, link) => {
+              if (detail?.phase?.addLink) {
+                detail.phase.addLink(phaseType, link);
+              }
+            }}
+            onRemoveLink={(phaseType, linkIndex) => {
+              if (detail?.phase?.removeLink) {
+                detail.phase.removeLink(phaseType, linkIndex);
+              }
+            }}
+            onNotesClick={handleNotesClick}
+          />
+        );
     }
   };
+
+  if (!engagement) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Loading engagement...</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to Engagements
-      </button>
+    <div className="flex flex-col h-full bg-gray-50 -mx-6 -mt-10" style={{ minHeight: 'calc(100vh - 80px)' }}>
+      {/* Compact header */}
+      <DetailHeader
+        engagement={engagement}
+        owners={owners}
+        onBack={onBack}
+        onEdit={() => setShowEditDetailsModal(true)}
+        onArchive={handleArchive}
+        isStale={engagement.isStale}
+        daysSinceActivity={engagement.daysSinceActivity}
+      />
 
-      <div className="flex items-start justify-between mb-8">
-        <div className="flex items-start gap-4">
-          <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-medium text-gray-900">{engagement.company}</h2>
-              {engagement.isArchived && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded">Archived</span>
-              )}
-              {engagement.isStale && !engagement.isArchived && (
-                <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <p className="text-gray-500">
-                {industryLabels[engagement.industry] || engagement.industry} · Started {engagement.startDate}
-              </p>
-              <span className="text-gray-300">·</span>
-              <button
-                onClick={() => setShowEditDetailsModal(true)}
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                Edit Details
-              </button>
-              <span className="text-gray-300">·</span>
-              <button
-                onClick={() => setShowOwnersModal(true)}
-                className="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                Manage Owners ({engagement.ownerIds?.length || 1})
-              </button>
-              <span className="text-gray-300">·</span>
-              <button
-                onClick={() => setShowHistoryModal(true)}
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                History
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-medium text-gray-900">{engagement.dealSize || '—'}</p>
-          <button
-            onClick={() => onToggleArchive(engagement.id, !engagement.isArchived)}
-            className="mt-2 text-sm text-gray-500 hover:text-gray-900"
-          >
-            {engagement.isArchived ? 'Restore' : 'Archive'}
-          </button>
+      {/* Main content area with tabs */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop vertical tab sidebar */}
+        <TabSidebar
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          activityCount={activityCount}
+          unreadCount={unreadCount}
+          notesCount={notesCount}
+        />
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          {renderTabContent()}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-500">Primary Contact</p>
-            <button 
-              onClick={() => setShowEditDetailsModal(true)}
-              className="text-xs text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-          </div>
-          <p className="font-medium text-gray-900">{engagement.contactName}</p>
-          {engagement.contactEmail && (
-            <p className="text-sm text-gray-600">{engagement.contactEmail}</p>
-          )}
-          {engagement.contactPhone && (
-            <p className="text-sm text-gray-600">{engagement.contactPhone}</p>
-          )}
-        </div>
-
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-500">Integrations</p>
-            <button 
-              onClick={() => setShowIntegrationsModal(true)}
-              className="text-xs text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-          </div>
-          <div className="space-y-1">
-            {/* Google Drive */}
-            {engagement.driveFolderName ? (
-              engagement.driveFolderUrl ? (
-                <a 
-                  href={engagement.driveFolderUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <DriveIcon className="w-4 h-4" />
-                  {engagement.driveFolderName}
-                </a>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-gray-700">
-                  <DriveIcon className="w-4 h-4" />
-                  {engagement.driveFolderName}
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-400">No Drive folder linked</p>
-            )}
-            
-            {/* Google Docs */}
-            {engagement.docsName ? (
-              engagement.docsUrl ? (
-                <a 
-                  href={engagement.docsUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <DocsIcon className="w-4 h-4" />
-                  {engagement.docsName}
-                </a>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-gray-700">
-                  <DocsIcon className="w-4 h-4" />
-                  {engagement.docsName}
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-400">No Google Doc linked</p>
-            )}
-            
-            {/* Google Slides */}
-            {engagement.slidesName ? (
-              engagement.slidesUrl ? (
-                <a 
-                  href={engagement.slidesUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <SlidesIcon className="w-4 h-4" />
-                  {engagement.slidesName}
-                </a>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-gray-700">
-                  <SlidesIcon className="w-4 h-4" />
-                  {engagement.slidesName}
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-400">No Slides deck linked</p>
-            )}
-            
-            {/* Google Sheets */}
-            {engagement.sheetsName ? (
-              engagement.sheetsUrl ? (
-                <a 
-                  href={engagement.sheetsUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <SheetsIcon className="w-4 h-4" />
-                  {engagement.sheetsName}
-                </a>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-gray-700">
-                  <SheetsIcon className="w-4 h-4" />
-                  {engagement.sheetsName}
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-400">No Google Sheet linked</p>
-            )}
-            
-            {/* Slack */}
-            {engagement.slackChannel ? (
-              engagement.slackUrl ? (
-                <a 
-                  href={engagement.slackUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <SlackIcon className="w-4 h-4" />
-                  {engagement.slackChannel}
-                </a>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-gray-700">
-                  <SlackIcon className="w-4 h-4" />
-                  {engagement.slackChannel}
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-400">No Slack channel linked</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Phase Tracker */}
-      <div className="mb-10">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Engagement Progress</h3>
-        <div className="space-y-2">
-          {phaseConfig.map((phase, index) => {
-            const phaseData = engagement.phases[phase.id] || { status: 'PENDING', notes: '', links: [] };
-            const statusBadge = getStatusBadge(phaseData.status);
-            const links = parseLinks(phaseData.links);
-            
-            return (
-              <div 
-                key={phase.id}
-                className={`border rounded-xl p-5 transition-all ${
-                  phaseData.status === 'IN_PROGRESS' ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200 bg-white'
-                }`}
-              >
-                <div 
-                  className="flex items-center justify-between mb-2 cursor-pointer"
-                  onClick={() => setShowPhaseModal(phase.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold ${
-                      phaseData.status === 'COMPLETE' ? 'bg-emerald-100 text-emerald-700' :
-                      phaseData.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      {phaseData.status === 'COMPLETE' ? '✓' : index + 1}
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">{phase.label}</h4>
-                      <p className="text-sm text-gray-500">{phase.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {phaseData.completedDate && (
-                      <span className="text-xs text-gray-400">{phaseData.completedDate}</span>
-                    )}
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.bg} ${statusBadge.text}`}>
-                      {statusBadge.label}
-                    </span>
-                  </div>
-                </div>
-                
-                {phaseData.notes && (
-                  <p className="text-sm text-gray-600 mt-3 pl-11">
-                    <LinkifyText text={phaseData.notes} />
-                  </p>
-                )}
-                
-                <div className="mt-3 pl-11">
-                  {links.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {links.map((link, linkIndex) => (
-                        <div key={linkIndex} className="group flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-sm">
-                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                          </svg>
-                          <a href={link.url} target="_blank" rel="noopener noreferrer"
-                            className="text-gray-700 hover:text-blue-600" onClick={(e) => e.stopPropagation()}>
-                            {link.title}
-                          </a>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); detail.phase.removeLink(phase.id, linkIndex); }}
-                            className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowLinkModal(phase.id); }}
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                  >+ Add Link</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Activity Log */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Activity Log</h3>
-          <button 
-            onClick={() => setShowActivityModal(true)}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >+ Add Activity</button>
-        </div>
-        
-        <div className="space-y-3">
-          {engagement.activities.map((activity) => {
-            const isExpanded = expandedActivities[activity.id];
-            const isHighlighted = highlightedActivityId === activity.id;
-            const commentCount = activity.comments?.length || 0;
-            
-            return (
-              <div 
-                key={activity.id} 
-                id={`activity-${activity.id}`}
-                className={`bg-white border border-gray-200 rounded-xl overflow-hidden transition-all duration-500 ${
-                  isHighlighted ? 'activity-highlight' : ''
-                }`}
-              >
-                <div className="flex gap-4 p-4">
-                  <div className="text-sm text-gray-400 w-24 flex-shrink-0">{activity.date}</div>
-                  <div className="flex-1">
-                    <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded mb-1">
-                      {activityTypeLabels[activity.type] || activity.type}
-                    </span>
-                    <p className="text-gray-900">
-                      <LinkifyText text={activity.description} />
-                    </p>
-                    
-                    <button
-                      onClick={() => toggleActivityExpansion(activity.id)}
-                      className="mt-2 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                    >
-                      <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                      {commentCount} comment{commentCount !== 1 ? 's' : ''}
-                    </button>
-                  </div>
-                </div>
-                
-                {isExpanded && (
-                  <div className="border-t border-gray-100 bg-gray-50 p-4">
-                    {activity.comments?.length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        {activity.comments.map((comment) => {
-                          const author = getOwnerInfo(comment.authorId);
-                          const isOwnComment = comment.authorId === currentUser?.id;
-                          // Use centralized helper for color classes
-                          const colorClasses = getAvatarColorClasses(author, currentUser?.id);
-                          
-                          return (
-                            <div key={comment.id} className="flex gap-3">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${colorClasses}`}>
-                                {author.initials}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-gray-900">{author.name}</span>
-                                  <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
-                                  {isOwnComment && (
-                                    <button onClick={() => detail.activity.deleteComment(comment.id)}
-                                      className="text-xs text-gray-400 hover:text-red-500">Delete</button>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-700 mt-0.5">
-                                  <LinkifyText text={comment.text} />
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-3">
-                      <div className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-medium flex-shrink-0">
-                        {currentUser?.initials}
-                      </div>
-                      <div className="flex-1 flex gap-2">
-                        <input
-                          type="text"
-                          value={newComment[activity.id] || ''}
-                          onChange={(e) => setNewComment(prev => ({ ...prev, [activity.id]: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleAddComment(activity.id);
-                            }
-                          }}
-                          placeholder="Add a comment..."
-                          className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                        />
-                        <button
-                          onClick={() => handleAddComment(activity.id)}
-                          disabled={!newComment[activity.id]?.trim()}
-                          className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >Post</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {engagement.activities.length === 0 && (
-            <p className="text-gray-400 text-center py-8">No activities logged yet</p>
-          )}
-        </div>
-      </div>
-
-      {/* Modals - owned by this view */}
-      <ActivityModal
-        isOpen={showActivityModal}
-        onClose={() => setShowActivityModal(false)}
-        onSave={handleAddActivity}
+      {/* Mobile bottom tab bar */}
+      <TabBottomBar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        activityCount={activityCount}
+        unreadCount={unreadCount}
+        notesCount={notesCount}
       />
 
-      <PhaseEditModal
-        isOpen={showPhaseModal !== null}
-        onClose={() => setShowPhaseModal(null)}
-        phaseId={showPhaseModal}
-        initialStatus={engagement.phases[showPhaseModal]?.status}
-        initialNotes={engagement.phases[showPhaseModal]?.notes}
-        onSave={handleSavePhase}
-      />
-
-      <LinkModal
-        isOpen={showLinkModal !== null}
-        onClose={() => setShowLinkModal(null)}
-        phaseLabel={phaseConfig.find(p => p.id === showLinkModal)?.label || ''}
-        onAdd={handleAddLink}
-      />
-
-      <IntegrationsModal
-        isOpen={showIntegrationsModal}
-        onClose={() => setShowIntegrationsModal(false)}
-        initialData={engagement}
-        onSave={handleUpdateIntegrations}
-      />
-
+      {/* Modals */}
       <EditDetailsModal
         isOpen={showEditDetailsModal}
         onClose={() => setShowEditDetailsModal(false)}
@@ -592,33 +390,16 @@ const DetailView = ({
         teamMembers={teamMembers}
         currentUserId={currentUser?.id}
         getOwnerInfo={getOwnerInfo}
-        onAddOwner={detail.owner.add}
-        onRemoveOwner={detail.owner.remove}
+        onAddOwner={detail?.owner?.add || (() => {})}
+        onRemoveOwner={detail?.owner?.remove || (() => {})}
       />
 
-      <HistoryModal
-        isOpen={showHistoryModal}
-        onClose={() => setShowHistoryModal(false)}
-        changeLogs={engagement.changeLogs}
-        currentUserId={currentUser?.id}
-        getOwnerInfo={getOwnerInfo}
+      <IntegrationsModal
+        isOpen={showIntegrationsModal}
+        onClose={() => setShowIntegrationsModal(false)}
+        initialData={engagement}
+        onSave={handleUpdateIntegrations}
       />
-
-      {/* Highlight animation styles */}
-      <style>{`
-        @keyframes activityHighlight {
-          0% {
-            background-color: rgb(251 191 36 / 0.3);
-          }
-          100% {
-            background-color: white;
-          }
-        }
-        
-        .activity-highlight {
-          animation: activityHighlight 2s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };
