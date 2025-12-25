@@ -16,12 +16,13 @@ import {
   OwnersModal,
   HistoryModal
 } from '../components';
-import { parseLinks } from '../utils';
+import { parseLinks, getAvatarColorClasses } from '../utils';
 import { industryLabels, phaseConfig, activityTypeLabels } from '../constants';
 
 /**
  * Detail view for a single engagement
  * Shows phases, activities, and allows editing
+ * System users display with blue avatar styling in comments
  */
 const DetailView = ({
   engagement,
@@ -484,12 +485,14 @@ const DetailView = ({
                         {activity.comments.map((comment) => {
                           const author = getOwnerInfo(comment.authorId);
                           const isOwnComment = comment.authorId === currentUser?.id;
+                          // Use centralized helper for color classes
+                          const colorClasses = getAvatarColorClasses(author, currentUser?.id);
                           
                           return (
                             <div key={comment.id} className="flex gap-3">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                                isOwnComment ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
-                              }`}>{author.initials}</div>
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${colorClasses}`}>
+                                {author.initials}
+                              </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-gray-900">{author.name}</span>
