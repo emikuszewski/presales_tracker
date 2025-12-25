@@ -1,9 +1,11 @@
 import React from 'react';
 import Modal from '../ui/Modal';
+import { getAvatarColorClasses } from '../../utils';
 
 /**
  * Modal for managing engagement owners
  * No form state - just displays current owners and available team members
+ * System users display with blue avatar styling
  */
 const OwnersModal = ({ 
   isOpen, 
@@ -43,19 +45,20 @@ const OwnersModal = ({
           {currentOwnerIds?.map(ownerId => {
             const owner = getOwnerInfo(ownerId);
             const isInactive = owner.isActive === false;
+            const isSystemUser = owner.isSystemUser === true;
+            // Use centralized helper for color classes
+            const colorClasses = getAvatarColorClasses(owner, currentUserId);
             
             return (
               <div key={ownerId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    isInactive ? 'bg-gray-300 text-gray-500' :
-                    ownerId === currentUserId ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${colorClasses}`}>
                     {owner.initials}
                   </div>
                   <div>
                     <span className="font-medium text-gray-900">{owner.name}</span>
                     {isInactive && <span className="ml-2 text-xs text-gray-500">(Inactive)</span>}
+                    {isSystemUser && <span className="ml-2 text-xs text-blue-600">(Shared)</span>}
                   </div>
                 </div>
                 {!isOnlyOneOwner && (
@@ -75,22 +78,31 @@ const OwnersModal = ({
       <div>
         <p className="text-sm font-medium text-gray-700 mb-3">Add Owner</p>
         <div className="space-y-2">
-          {availableMembers.map(member => (
-            <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-medium">
-                  {member.initials}
+          {availableMembers.map(member => {
+            const isSystemUser = member.isSystemUser === true;
+            // Use centralized helper for color classes
+            const colorClasses = getAvatarColorClasses(member, currentUserId);
+            
+            return (
+              <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${colorClasses}`}>
+                    {member.initials}
+                  </div>
+                  <div>
+                    <span className="text-gray-900">{member.name}</span>
+                    {isSystemUser && <span className="ml-2 text-xs text-blue-600">(Shared)</span>}
+                  </div>
                 </div>
-                <span className="text-gray-900">{member.name}</span>
+                <button 
+                  onClick={() => onAddOwner(member.id)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Add
+                </button>
               </div>
-              <button 
-                onClick={() => onAddOwner(member.id)}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Add
-              </button>
-            </div>
-          ))}
+            );
+          })}
           {availableMembers.length === 0 && (
             <p className="text-sm text-gray-400 text-center py-2">
               All active team members are already owners
