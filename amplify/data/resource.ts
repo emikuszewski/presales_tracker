@@ -173,6 +173,7 @@ const schema = a.schema({
       'OWNER_ADDED',
       'OWNER_REMOVED',
       'COMMENT_ADDED',
+      'COMMENT_DELETED',
       'LINK_ADDED',
       'INTEGRATION_UPDATE',
       'ARCHIVED',
