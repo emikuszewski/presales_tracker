@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 
 /**
- * Modal for editing integration links (Salesforce, Jira, Drive, Slides, Slack)
+ * Modal for editing integration links (Drive, Slides, Slack)
  * Manages its own local form state
- * Grouped by: Tracking (SF, Jira) → Documents (Drive, Slides) → Communication (Slack)
+ * Grouped by: Documents (Drive, Slides) → Communication (Slack)
  */
 const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -62,61 +62,6 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Integrations">
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          {/* Tracking: Salesforce */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Salesforce Opportunity ID
-            </label>
-            <input 
-              type="text" 
-              value={formData.salesforceId}
-              onChange={e => updateField('salesforceId', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="006Dn000004XXXX" 
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Salesforce URL
-            </label>
-            <input 
-              type="url" 
-              value={formData.salesforceUrl}
-              onChange={e => updateField('salesforceUrl', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="https://plainid.lightning.force.com/..." 
-            />
-          </div>
-
-          {/* Tracking: Jira */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jira Ticket
-            </label>
-            <input 
-              type="text" 
-              value={formData.jiraTicket}
-              onChange={e => updateField('jiraTicket', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="SE-1234" 
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jira URL
-            </label>
-            <input 
-              type="url" 
-              value={formData.jiraUrl}
-              onChange={e => updateField('jiraUrl', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              placeholder="https://plainid.atlassian.net/browse/..." 
-            />
-          </div>
-
-          {/* Visual spacing before Documents group */}
-          <div className="pt-2"></div>
-
           {/* Documents: Google Drive */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
