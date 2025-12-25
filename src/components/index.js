@@ -10,6 +10,7 @@ export {
   DriveIcon,
   DocsIcon,
   SlidesIcon,
+  SheetsIcon,
   LinkifyText
 } from './ui';
 
