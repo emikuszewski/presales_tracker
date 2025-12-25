@@ -195,6 +195,28 @@ const schema = a.schema({
     visitorId: a.id().required(),
     lastViewedAt: a.datetime().required(),
   }).authorization(allow => [allow.authenticated()]),
+
+  // Deletion Audit Log - standalone model for tracking deleted engagements
+  // Not linked to Engagement since the engagement is deleted
+  // Uses TTL for automatic 365-day cleanup
+  DeletionLog: a.model({
+    // Who deleted it
+    deletedById: a.id().required(),
+    deletedByName: a.string().required(),
+    // Snapshot of deleted engagement data
+    companyName: a.string().required(),
+    contactName: a.string().required(),
+    industry: a.string(),
+    currentPhase: a.string(),
+    ownerNames: a.string(),
+    // Pre-formatted cascade summary: "5 activities, 8 comments, 3 notes"
+    cascadeSummary: a.string(),
+    // Original engagement creation date
+    engagementCreatedAt: a.date(),
+    // TTL field - Unix timestamp in seconds (deletedAt + 365 days)
+    // DynamoDB will auto-delete records after this time
+    expiresAt: a.integer(),
+  }).authorization(allow => [allow.authenticated()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
