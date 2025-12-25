@@ -17,14 +17,10 @@ export {
 
 // Modal components
 export { 
-  LinkModal, 
   DeleteEngagementModal, 
-  ActivityModal, 
-  PhaseEditModal, 
   IntegrationsModal, 
   EditDetailsModal, 
-  OwnersModal, 
-  HistoryModal 
+  OwnersModal 
 } from './modals';
 
 // Layout components
