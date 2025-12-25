@@ -70,6 +70,8 @@ const schema = a.schema({
     slackUrl: a.string(),
     driveFolderName: a.string(),
     driveFolderUrl: a.string(),
+    slidesName: a.string(),
+    slidesUrl: a.string(),
     
     // Archive support
     isArchived: a.boolean().default(false),
