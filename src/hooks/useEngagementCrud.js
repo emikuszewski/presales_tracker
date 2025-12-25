@@ -2,8 +2,6 @@ import { useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { phaseConfig } from '../constants';
 
-const client = generateClient();
-
 const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const createEngagement = useCallback(async (engagementData) => {
@@ -12,6 +10,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
     }
 
     try {
+      const client = generateClient();
       const { data: newEngagement } = await client.models.Engagement.create({
         company: engagementData.company,
         contactName: engagementData.contactName,
@@ -95,6 +94,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const updateEngagement = useCallback(async (engagementId, updates) => {
     try {
+      const client = generateClient();
       const { data: updatedEngagement } = await client.models.Engagement.update({
         id: engagementId,
         ...updates
@@ -113,6 +113,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const archiveEngagement = useCallback(async (engagementId) => {
     try {
+      const client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         isArchived: true
@@ -135,6 +136,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const restoreEngagement = useCallback(async (engagementId) => {
     try {
+      const client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         isArchived: false
@@ -157,6 +159,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const advancePhase = useCallback(async (engagementId, newPhase) => {
     try {
+      const client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         currentPhase: newPhase
@@ -183,6 +186,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const addOwner = useCallback(async (engagementId, teamMemberId) => {
     try {
+      const client = generateClient();
       const { data: ownership } = await client.models.EngagementOwner.create({
         engagementId,
         teamMemberId,
@@ -214,6 +218,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const removeOwner = useCallback(async (engagementId, teamMemberId, ownershipId) => {
     try {
+      const client = generateClient();
       await client.models.EngagementOwner.delete({ id: ownershipId });
 
       setEngagements(prev => prev.map(e => {
@@ -240,6 +245,7 @@ const useEngagementCrud = ({ currentUser, setEngagements, logChangeAsync }) => {
 
   const updateIntegrations = useCallback(async (engagementId, integrations) => {
     try {
+      const client = generateClient();
       await client.models.Engagement.update({
         id: engagementId,
         ...integrations
