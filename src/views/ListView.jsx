@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon, DocsIcon, SlidesIcon } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon, DocsIcon, SlidesIcon, SheetsIcon } from '../components';
 import { industryLabels, phaseConfig } from '../constants';
 
 /**
@@ -242,8 +242,8 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Integration badges: Drive → Docs → Slides → Slack */}
-              {(engagement.driveFolderUrl || engagement.docsUrl || engagement.slidesUrl || engagement.slackUrl) && (
+              {/* Integration badges: Drive → Docs → Slides → Sheets → Slack */}
+              {(engagement.driveFolderUrl || engagement.docsUrl || engagement.slidesUrl || engagement.sheetsUrl || engagement.slackUrl) && (
                 <div className="flex gap-2 mb-3">
                   {/* Drive icon - always clickable (only shows if URL exists) */}
                   {engagement.driveFolderUrl && (
@@ -284,6 +284,20 @@ const ListView = ({
                       title={engagement.slidesName || 'Open Google Slides'}
                     >
                       <SlidesIcon className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  
+                  {/* Sheets icon - always clickable (only shows if URL exists) */}
+                  {engagement.sheetsUrl && (
+                    <a
+                      href={engagement.sheetsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
+                      title={engagement.sheetsName || 'Open Google Sheet'}
+                    >
+                      <SheetsIcon className="w-3.5 h-3.5" />
                     </a>
                   )}
                   
