@@ -2,49 +2,56 @@ import { useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getInitials } from '../utils';
 
-const useTeamOperations = ({ setTeamMembers, setAllTeamMembers, currentUser }) => {
+const useTeamOperations = function(params) {
+  var setTeamMembers = params.setTeamMembers;
+  var setAllTeamMembers = params.setAllTeamMembers;
 
-  const addTeamMember = useCallback(async (memberData) => {
+  var addTeamMember = useCallback(async function(memberData) {
     try {
-      const client = generateClient();
-      const initials = memberData.initials || getInitials(memberData.name);
+      var client = generateClient();
+      var initials = memberData.initials || getInitials(memberData.name);
       
-      const { data: newMember } = await client.models.TeamMember.create({
+      var result = await client.models.TeamMember.create({
         email: memberData.email,
         name: memberData.name,
-        initials,
+        initials: initials,
         isAdmin: memberData.isAdmin || false,
         isActive: true,
         isSystemUser: false
       });
 
-      setAllTeamMembers(prev => [...prev, newMember]);
-      setTeamMembers(prev => [...prev, newMember]);
+      var newMember = result.data;
+      setAllTeamMembers(function(prev) { return [...prev, newMember]; });
+      setTeamMembers(function(prev) { return [...prev, newMember]; });
 
       return { success: true, member: newMember };
     } catch (error) {
       console.error('Error adding team member:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setTeamMembers, setAllTeamMembers]);
 
-  const updateTeamMember = useCallback(async (memberId, updates) => {
+  var updateTeamMember = useCallback(async function(memberId, updates) {
     try {
-      const client = generateClient();
-      const { data: updatedMember } = await client.models.TeamMember.update({
+      var client = generateClient();
+      var result = await client.models.TeamMember.update({
         id: memberId,
         ...updates
       });
 
-      const updateInList = (list) => list.map(m => 
-        m.id === memberId ? { ...m, ...updatedMember } : m
-      );
+      var updatedMember = result.data;
+
+      var updateInList = function(list) {
+        return list.map(function(m) {
+          return m.id === memberId ? { ...m, ...updatedMember } : m;
+        });
+      };
 
       setAllTeamMembers(updateInList);
-      setTeamMembers(prev => {
-        const updated = updateInList(prev);
+      setTeamMembers(function(prev) {
+        var updated = updateInList(prev);
         if (updates.isActive === false) {
-          return updated.filter(m => m.id !== memberId);
+          return updated.filter(function(m) { return m.id !== memberId; });
         }
         return updated;
       });
@@ -52,28 +59,28 @@ const useTeamOperations = ({ setTeamMembers, setAllTeamMembers, currentUser }) =
       return { success: true, member: updatedMember };
     } catch (error) {
       console.error('Error updating team member:', error);
-      return { success: false, error };
+      return { success: false, error: error };
     }
   }, [setTeamMembers, setAllTeamMembers]);
 
-  const deactivateTeamMember = useCallback(async (memberId) => {
+  var deactivateTeamMember = useCallback(async function(memberId) {
     return updateTeamMember(memberId, { isActive: false });
   }, [updateTeamMember]);
 
-  const reactivateTeamMember = useCallback(async (memberId) => {
+  var reactivateTeamMember = useCallback(async function(memberId) {
     return updateTeamMember(memberId, { isActive: true });
   }, [updateTeamMember]);
 
-  const toggleAdmin = useCallback(async (memberId, isAdmin) => {
-    return updateTeamMember(memberId, { isAdmin });
+  var toggleAdmin = useCallback(async function(memberId, isAdmin) {
+    return updateTeamMember(memberId, { isAdmin: isAdmin });
   }, [updateTeamMember]);
 
   return {
-    addTeamMember,
-    updateTeamMember,
-    deactivateTeamMember,
-    reactivateTeamMember,
-    toggleAdmin
+    addTeamMember: addTeamMember,
+    updateTeamMember: updateTeamMember,
+    deactivateTeamMember: deactivateTeamMember,
+    reactivateTeamMember: reactivateTeamMember,
+    toggleAdmin: toggleAdmin
   };
 };
 
