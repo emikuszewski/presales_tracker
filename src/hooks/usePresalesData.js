@@ -34,7 +34,7 @@ const usePresalesData = (selectedEngagementId = null) => {
     return member || { name: 'Unknown', initials: '?' };
   }, [allTeamMembers]);
 
-  const logChangeAsync = useCallback((engagementId, changeType, description, previousValue = null, newValue = null) => {
+  const logChangeAsync = useCallback((engagementId, changeType, description, previousValue, newValue) => {
     if (!currentUser) return;
     
     const client = generateClient();
@@ -43,8 +43,8 @@ const usePresalesData = (selectedEngagementId = null) => {
       userId: currentUser.id,
       changeType: changeType,
       description: description,
-      previousValue: previousValue,
-      newValue: newValue
+      previousValue: previousValue || null,
+      newValue: newValue || null
     }).catch(e => console.error('Error logging change:', e));
   }, [currentUser]);
 
@@ -71,7 +71,7 @@ const usePresalesData = (selectedEngagementId = null) => {
       console.log('Created SE Team system user:', newSeTeam.id);
       return [...existingMembers, newSeTeam];
     } catch (error) {
-      if (error.message?.includes('unique') || error.message?.includes('duplicate')) {
+      if (error.message && error.message.includes('unique')) {
         console.log('SE Team already created by another session');
         const client = generateClient();
         const { data: refreshedMembers } = await client.models.TeamMember.list();
@@ -86,17 +86,7 @@ const usePresalesData = (selectedEngagementId = null) => {
     try {
       const client = generateClient();
       
-      const [
-        membersResult,
-        engagementsResult,
-        phasesResult,
-        activitiesResult,
-        ownershipResult,
-        commentsResult,
-        changeLogsResult,
-        viewsResult,
-        phaseNotesResult
-      ] = await Promise.all([
+      const results = await Promise.all([
         client.models.TeamMember.list(),
         client.models.Engagement.list(),
         client.models.Phase.list(),
@@ -105,22 +95,20 @@ const usePresalesData = (selectedEngagementId = null) => {
         client.models.Comment.list(),
         client.models.ChangeLog.list(),
         userId 
-          ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } })
-              .catch(() => ({ data: [] }))
+          ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } }).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] }),
-        client.models.PhaseNote.list()
-          .catch(() => ({ data: [] }))
+        client.models.PhaseNote.list().catch(() => ({ data: [] }))
       ]);
 
-      let allMembersData = membersResult.data;
-      const engagementData = engagementsResult.data;
-      const allPhases = phasesResult.data;
-      const allActivities = activitiesResult.data;
-      const allOwnershipRecords = ownershipResult.data;
-      const allComments = commentsResult.data;
-      const allChangeLogs = changeLogsResult.data;
-      const allViews = viewsResult.data;
-      const allPhaseNotes = phaseNotesResult.data;
+      let allMembersData = results[0].data;
+      const engagementData = results[1].data;
+      const allPhases = results[2].data;
+      const allActivities = results[3].data;
+      const allOwnershipRecords = results[4].data;
+      const allComments = results[5].data;
+      const allChangeLogs = results[6].data;
+      const allViews = results[7].data;
+      const allPhaseNotes = results[8].data;
 
       allMembersData = await ensureSystemUser(allMembersData);
 
@@ -132,39 +120,41 @@ const usePresalesData = (selectedEngagementId = null) => {
       const phaseNotesByEngagement = groupBy(allPhaseNotes, 'engagementId');
       
       const viewsMap = {};
-      allViews.forEach(v => {
+      allViews.forEach(function(v) {
         viewsMap[v.engagementId] = v;
       });
       setEngagementViews(viewsMap);
 
       setAllTeamMembers(allMembersData);
-      const activeMembers = allMembersData.filter(m => m.isActive !== false);
+      const activeMembers = allMembersData.filter(function(m) { return m.isActive !== false; });
       setTeamMembers(activeMembers);
 
       const systemUserIds = allMembersData
-        .filter(m => m.isSystemUser === true)
-        .map(m => m.id);
+        .filter(function(m) { return m.isSystemUser === true; })
+        .map(function(m) { return m.id; });
 
-      const enrichedEngagements = engagementData.map((eng) => {
+      const enrichedEngagements = engagementData.map(function(eng) {
         const phases = phasesByEngagement[eng.id] || [];
         const activities = activitiesByEngagement[eng.id] || [];
         const ownershipRecords = ownershipByEngagement[eng.id] || [];
         const changeLogs = (changeLogsByEngagement[eng.id] || [])
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
         const phaseNotes = (phaseNotesByEngagement[eng.id] || [])
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
 
         const activitiesWithComments = activities
-          .map((activity) => ({
-            ...activity,
-            comments: (commentsByActivity[activity.id] || [])
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-          }))
-          .sort((a, b) => new Date(b.date) - new Date(a.date));
+          .map(function(activity) {
+            return {
+              ...activity,
+              comments: (commentsByActivity[activity.id] || [])
+                .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); })
+            };
+          })
+          .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
         const phasesObj = {};
-        phaseConfig.forEach(p => {
-          const existingPhase = phases.find(ph => ph.phaseType === p.id);
+        phaseConfig.forEach(function(p) {
+          const existingPhase = phases.find(function(ph) { return ph.phaseType === p.id; });
           if (existingPhase) {
             const parsedLinks = parseLinks(existingPhase.links);
             phasesObj[p.id] = {
@@ -182,7 +172,7 @@ const usePresalesData = (selectedEngagementId = null) => {
           }
         });
 
-        const ownerIds = ownershipRecords.map(o => o.teamMemberId);
+        const ownerIds = ownershipRecords.map(function(o) { return o.teamMemberId; });
         if (ownerIds.length === 0 && eng.ownerId) {
           ownerIds.push(eng.ownerId);
         }
@@ -191,11 +181,65 @@ const usePresalesData = (selectedEngagementId = null) => {
         let unreadChanges = 0;
         if (userView && userId) {
           const lastViewed = new Date(userView.lastViewedAt);
-          unreadChanges = changeLogs.filter(log => 
-            new Date(log.createdAt) > lastViewed && log.userId !== userId
-          ).length;
+          unreadChanges = changeLogs.filter(function(log) {
+            return new Date(log.createdAt) > lastViewed && log.userId !== userId;
+          }).length;
         } else if (changeLogs.length > 0 && userId) {
-          unreadChanges = changeLogs.filter(log => log.userId !== userId).length;
+          unreadChanges = changeLogs.filter(function(log) { return log.userId !== userId; }).length;
         }
 
-        const hasSystemOwne
+        const hasSystemOwner = ownerIds.some(function(id) { return systemUserIds.includes(id); });
+
+        const notesByPhase = {};
+        phaseConfig.forEach(function(p) {
+          notesByPhase[p.id] = phaseNotes.filter(function(n) { return n.phaseType === p.id; });
+        });
+
+        const totalNotesCount = phaseNotes.length;
+
+        return {
+          ...eng,
+          phases: phasesObj,
+          activities: activitiesWithComments,
+          ownerIds: ownerIds,
+          ownershipRecords: ownershipRecords,
+          changeLogs: changeLogs,
+          phaseNotes: phaseNotes,
+          notesByPhase: notesByPhase,
+          totalNotesCount: totalNotesCount,
+          unreadChanges: unreadChanges,
+          isStale: isEngagementStale(eng),
+          daysSinceActivity: getDaysSinceActivity(eng),
+          hasSystemOwner: hasSystemOwner
+        };
+      });
+
+      setEngagements(enrichedEngagements);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }, [ensureSystemUser]);
+
+  return {
+    currentUser,
+    setCurrentUser,
+    teamMembers,
+    setTeamMembers,
+    allTeamMembers,
+    setAllTeamMembers,
+    engagements,
+    setEngagements,
+    engagementViews,
+    setEngagementViews,
+    loading,
+    setLoading,
+    selectedEngagement,
+    updateEngagementInState,
+    getOwnerInfo,
+    logChangeAsync,
+    fetchAllData
+  };
+};
+
+export default usePresalesData;
