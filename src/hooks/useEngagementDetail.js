@@ -1,28 +1,11 @@
 import { useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { phaseConfig } from '../constants';
-import { parseLinks } from '../utils';
 
-const client = generateClient();
-
-/**
- * Hook for engagement detail operations including phases, activities, comments, and notes
- * 
- * @param {Object} params - Hook parameters
- * @param {Object} params.currentUser - Current logged-in user
- * @param {Function} params.updateEngagementInState - Function to update engagement in parent state
- * @param {Function} params.logChangeAsync - Function to log changes asynchronously
- * @returns {Object} Engagement detail operations
- */
 const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAsync }) => {
 
-  // ============ PHASE OPERATIONS ============
-
-  /**
-   * Update phase status
-   */
   const updatePhaseStatus = useCallback(async (engagementId, phaseId, phaseType, newStatus, previousStatus) => {
     try {
+      const client = generateClient();
       const updateData = { status: newStatus };
       
       if (newStatus === 'COMPLETE') {
@@ -36,7 +19,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         ...updateData
       });
 
-      // Update local state
       updateEngagementInState(engagementId, (eng) => ({
         ...eng,
         phases: {
@@ -51,7 +33,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         }
       }));
 
-      // Log the change
       logChangeAsync(
         engagementId,
         'PHASE_UPDATE',
@@ -67,11 +48,9 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState, logChangeAsync]);
 
-  /**
-   * Add link to a phase
-   */
   const addPhaseLink = useCallback(async (engagementId, phaseId, phaseType, currentLinks, newLink) => {
     try {
+      const client = generateClient();
       const updatedLinks = [...currentLinks, newLink];
       
       await client.models.Phase.update({
@@ -103,11 +82,9 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState, logChangeAsync]);
 
-  /**
-   * Remove link from a phase
-   */
   const removePhaseLink = useCallback(async (engagementId, phaseId, phaseType, currentLinks, linkIndex) => {
     try {
+      const client = generateClient();
       const updatedLinks = currentLinks.filter((_, i) => i !== linkIndex);
       
       await client.models.Phase.update({
@@ -133,13 +110,9 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState]);
 
-  // ============ ACTIVITY OPERATIONS ============
-
-  /**
-   * Add new activity to engagement
-   */
   const addActivity = useCallback(async (engagementId, activityData) => {
     try {
+      const client = generateClient();
       const { data: newActivity } = await client.models.Activity.create({
         engagementId,
         date: activityData.date,
@@ -147,7 +120,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         description: activityData.description
       });
 
-      // Update engagement's lastActivity date
       await client.models.Engagement.update({
         id: engagementId,
         lastActivity: activityData.date
@@ -175,15 +147,11 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState, logChangeAsync]);
 
-  // ============ COMMENT OPERATIONS ============
-
-  /**
-   * Add comment to an activity
-   */
   const addComment = useCallback(async (engagementId, activityId, text) => {
     if (!currentUser) return { success: false, error: 'No current user' };
 
     try {
+      const client = generateClient();
       const { data: newComment } = await client.models.Comment.create({
         activityId,
         authorId: currentUser.id,
@@ -212,16 +180,12 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [currentUser, updateEngagementInState, logChangeAsync]);
 
-  // ============ PHASE NOTE OPERATIONS ============
-
-  /**
-   * Add a note to a phase
-   */
   const addPhaseNote = useCallback(async (engagementId, phaseType, text) => {
     if (!currentUser) return { success: false, error: 'No current user' };
     if (!text.trim()) return { success: false, error: 'Note text is required' };
 
     try {
+      const client = generateClient();
       const { data: newNote } = await client.models.PhaseNote.create({
         engagementId,
         phaseType,
@@ -229,7 +193,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         authorId: currentUser.id
       });
 
-      // Update local state
       updateEngagementInState(engagementId, (eng) => {
         const updatedPhaseNotes = [newNote, ...eng.phaseNotes];
         const updatedNotesByPhase = { ...eng.notesByPhase };
@@ -243,7 +206,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         };
       });
 
-      // Log the change with truncated text
       const truncatedText = text.length > 50 ? text.substring(0, 47) + '...' : text;
       logChangeAsync(
         engagementId,
@@ -258,19 +220,16 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [currentUser, updateEngagementInState, logChangeAsync]);
 
-  /**
-   * Update an existing phase note
-   */
   const updatePhaseNote = useCallback(async (engagementId, noteId, phaseType, newText) => {
     if (!newText.trim()) return { success: false, error: 'Note text is required' };
 
     try {
+      const client = generateClient();
       const { data: updatedNote } = await client.models.PhaseNote.update({
         id: noteId,
         text: newText.trim()
       });
 
-      // Update local state
       updateEngagementInState(engagementId, (eng) => {
         const updatedPhaseNotes = eng.phaseNotes.map(n => 
           n.id === noteId ? { ...n, text: newText.trim(), updatedAt: updatedNote.updatedAt } : n
@@ -287,7 +246,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         };
       });
 
-      // Log the change
       logChangeAsync(
         engagementId,
         'NOTE_EDITED',
@@ -301,14 +259,11 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState, logChangeAsync]);
 
-  /**
-   * Delete a phase note (hard delete)
-   */
   const deletePhaseNote = useCallback(async (engagementId, noteId, phaseType) => {
     try {
+      const client = generateClient();
       await client.models.PhaseNote.delete({ id: noteId });
 
-      // Update local state
       updateEngagementInState(engagementId, (eng) => {
         const updatedPhaseNotes = eng.phaseNotes.filter(n => n.id !== noteId);
         const updatedNotesByPhase = { ...eng.notesByPhase };
@@ -322,7 +277,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         };
       });
 
-      // Log the change
       logChangeAsync(
         engagementId,
         'NOTE_DELETED',
@@ -336,15 +290,11 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
     }
   }, [updateEngagementInState, logChangeAsync]);
 
-  // ============ ENGAGEMENT VIEW TRACKING ============
-
-  /**
-   * Mark engagement as viewed (for unread tracking)
-   */
   const markEngagementViewed = useCallback(async (engagementId, existingView, setEngagementViews) => {
     if (!currentUser) return;
 
     try {
+      const client = generateClient();
       const now = new Date().toISOString();
       
       if (existingView) {
@@ -368,7 +318,6 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
         }));
       }
 
-      // Clear unread count in local state
       updateEngagementInState(engagementId, { unreadChanges: 0 });
     } catch (error) {
       console.error('Error marking engagement viewed:', error);
@@ -376,23 +325,14 @@ const useEngagementDetail = ({ currentUser, updateEngagementInState, logChangeAs
   }, [currentUser, updateEngagementInState]);
 
   return {
-    // Phase operations
     updatePhaseStatus,
     addPhaseLink,
     removePhaseLink,
-    
-    // Activity operations
     addActivity,
-    
-    // Comment operations
     addComment,
-    
-    // Phase note operations
     addPhaseNote,
     updatePhaseNote,
     deletePhaseNote,
-    
-    // View tracking
     markEngagementViewed
   };
 };
