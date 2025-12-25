@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { getAvatarColorClasses } from '../utils';
 
 /**
  * Admin view for team management
  * Allows admins to activate/deactivate users and manage admin roles
+ * System users (like SE Team) are hidden from this list
  */
 const AdminView = ({
   currentUser,
@@ -14,9 +16,16 @@ const AdminView = ({
 }) => {
   const [showInactive, setShowInactive] = useState(false);
 
+  // Filter out system users from the admin panel entirely
+  const nonSystemMembers = allTeamMembers.filter(m => m.isSystemUser !== true);
+  
   const displayedMembers = showInactive 
-    ? allTeamMembers 
-    : allTeamMembers.filter(m => m.isActive !== false);
+    ? nonSystemMembers 
+    : nonSystemMembers.filter(m => m.isActive !== false);
+
+  // Count only non-system users for display
+  const activeCount = nonSystemMembers.filter(m => m.isActive !== false).length;
+  const inactiveCount = nonSystemMembers.filter(m => m.isActive === false).length;
 
   return (
     <div>
@@ -34,7 +43,7 @@ const AdminView = ({
         <div>
           <h2 className="text-2xl font-medium text-gray-900">Team Management</h2>
           <p className="text-gray-500 mt-1">
-            {allTeamMembers.filter(m => m.isActive !== false).length} active · {allTeamMembers.filter(m => m.isActive === false).length} inactive
+            {activeCount} active · {inactiveCount} inactive
           </p>
         </div>
       </div>
@@ -68,6 +77,9 @@ const AdminView = ({
             e.ownerIds?.includes(member.id) || e.ownerId === member.id
           ).length;
           
+          // Use centralized helper for color classes
+          const colorClasses = getAvatarColorClasses(member, currentUser?.id);
+          
           return (
             <div
               key={member.id}
@@ -77,10 +89,7 @@ const AdminView = ({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${
-                    isInactive ? 'bg-gray-300 text-gray-500' :
-                    isSelf ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${colorClasses}`}>
                     {member.initials}
                   </div>
                   <div>
@@ -139,6 +148,7 @@ const AdminView = ({
           <li>• <strong>Deactivated users</strong> cannot be assigned as owners but their existing engagements remain.</li>
           <li>• <strong>Admins</strong> can manage team members and access this panel.</li>
           <li>• <strong>Users</strong> automatically join when they sign up with a @plainid.com email.</li>
+          <li>• <strong>SE Team</strong> is a shared pool for unassigned engagements visible to everyone.</li>
         </ul>
       </div>
     </div>
