@@ -1,126 +1,90 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getCurrentUser, signOut, fetchUserAttributes } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/data';
-import { ADMIN_EMAIL, ALLOWED_DOMAIN } from '../constants';
+import { useCallback } from 'react';
+import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
+import { ADMIN_EMAIL } from '../constants';
 
-const useAuth = (setCurrentUser, teamMembers) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
-  const [userEmail, setUserEmail] = useState(null);
+var useAuth = function(params) {
+  var user = params.user;
+  var setCurrentUser = params.setCurrentUser;
+  var setLoading = params.setLoading;
+  var setNewEngagement = params.setNewEngagement;
+  var fetchAllData = params.fetchAllData;
+  var client = params.client;
 
-  const members = teamMembers || [];
+  var initializeUser = useCallback(async function() {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-  const isAllowedDomain = useCallback(function(email) {
-    if (!email) return false;
-    var domain = email.split('@')[1];
-    return domain === ALLOWED_DOMAIN;
-  }, []);
-
-  const isAdmin = useCallback(function(email) {
-    return email === ADMIN_EMAIL;
-  }, []);
-
-  const findOrCreateTeamMember = useCallback(async function(email, name) {
     try {
-      var existingMember = members.find(function(m) { return m.email === email; });
-      if (existingMember) {
-        return existingMember;
-      }
+      setLoading(true);
+      var attributes = await fetchUserAttributes();
+      var email = attributes.email;
+      var givenName = attributes.given_name || '';
+      var familyName = attributes.family_name || '';
+      var fullName = (givenName + ' ' + familyName).trim() || email.split('@')[0];
 
-      var client = generateClient();
-      var result = await client.models.TeamMember.list({
+      // Get the client
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      // Check if user exists in TeamMember table
+      var existingResult = await dataClient.models.TeamMember.list({
         filter: { email: { eq: email } }
       });
 
-      if (result.data && result.data.length > 0) {
-        return result.data[0];
+      var teamMember;
+      if (existingResult.data && existingResult.data.length > 0) {
+        teamMember = existingResult.data[0];
+      } else {
+        // Create new team member
+        var initials = '';
+        if (givenName && familyName) {
+          initials = (givenName[0] + familyName[0]).toUpperCase();
+        } else {
+          initials = email.substring(0, 2).toUpperCase();
+        }
+
+        var createResult = await dataClient.models.TeamMember.create({
+          email: email,
+          name: fullName,
+          initials: initials,
+          isAdmin: email === ADMIN_EMAIL,
+          isActive: true,
+          isSystemUser: false
+        });
+        teamMember = createResult.data;
       }
 
-      var initials = name
-        ? name.split(' ').map(function(n) { return n[0]; }).join('').toUpperCase().slice(0, 2)
-        : email.substring(0, 2).toUpperCase();
+      setCurrentUser(teamMember);
 
-      var createResult = await client.models.TeamMember.create({
-        email: email,
-        name: name || email.split('@')[0],
-        initials: initials,
-        isAdmin: isAdmin(email),
-        isActive: true,
-        isSystemUser: false
-      });
+      // Set default owner for new engagements
+      if (setNewEngagement && teamMember) {
+        setNewEngagement(function(prev) {
+          return Object.assign({}, prev, { ownerIds: [teamMember.id] });
+        });
+      }
 
-      return createResult.data;
-    } catch (error) {
-      console.error('Error finding/creating team member:', error);
-      return null;
-    }
-  }, [members, isAdmin]);
-
-  const checkAuth = useCallback(async function() {
-    try {
-      setIsLoading(true);
-      await getCurrentUser();
-      var attributes = await fetchUserAttributes();
+      // Fetch all data
+      await fetchAllData(teamMember.id);
       
-      var email = attributes.email;
-      setUserEmail(email);
-
-      if (!isAllowedDomain(email)) {
-        setAuthError('Unauthorized domain');
-        setIsAuthenticated(false);
-        await signOut();
-        return;
-      }
-
-      setIsAuthenticated(true);
-      
-      var teamMember = await findOrCreateTeamMember(email, attributes.name);
-      if (teamMember && setCurrentUser) {
-        setCurrentUser(teamMember);
-      }
+      setLoading(false);
     } catch (error) {
-      setIsAuthenticated(false);
-      setUserEmail(null);
-    } finally {
-      setIsLoading(false);
+      console.error('Error initializing user:', error);
+      setLoading(false);
     }
-  }, [isAllowedDomain, findOrCreateTeamMember, setCurrentUser]);
+  }, [user, setCurrentUser, setLoading, setNewEngagement, fetchAllData, client]);
 
-  const handleSignOut = useCallback(async function() {
+  var handleSignOut = useCallback(async function() {
     try {
       await signOut();
-      setIsAuthenticated(false);
-      setUserEmail(null);
-      if (setCurrentUser) {
-        setCurrentUser(null);
-      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  }, [setCurrentUser]);
-
-  useEffect(function() {
-    checkAuth();
-  }, [checkAuth]);
-
-  useEffect(function() {
-    if (isAuthenticated && userEmail && members.length > 0) {
-      var member = members.find(function(m) { return m.email === userEmail; });
-      if (member && setCurrentUser) {
-        setCurrentUser(member);
-      }
-    }
-  }, [isAuthenticated, userEmail, members, setCurrentUser]);
+  }, []);
 
   return {
-    isAuthenticated: isAuthenticated,
-    isLoading: isLoading,
-    authError: authError,
-    userEmail: userEmail,
-    isAdmin: isAdmin(userEmail),
-    checkAuth: checkAuth,
-    signOut: handleSignOut
+    initializeUser: initializeUser,
+    handleSignOut: handleSignOut
   };
 };
 
