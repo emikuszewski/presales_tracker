@@ -21,8 +21,6 @@ var useEngagementList = function(params) {
   var filterStale = filters.filterStale;
   var showArchived = filters.showArchived;
   var searchQuery = filters.searchQuery;
-  var engagementAdminFilter = filters.engagementAdminFilter;
-  var engagementAdminSearch = filters.engagementAdminSearch;
 
   // Compute filtered engagements for list view
   var filteredEngagements = useMemo(function() {
@@ -79,32 +77,6 @@ var useEngagementList = function(params) {
 
     return result;
   }, [engagements, showArchived, filterOwner, filterPhase, filterStale, searchQuery, currentUser]);
-
-  // Compute filtered engagements for admin view
-  var filteredEngagementsAdmin = useMemo(function() {
-    if (!engagements || !Array.isArray(engagements)) return [];
-    
-    var result = engagements.slice();
-
-    // Filter by admin filter
-    if (engagementAdminFilter === 'active') {
-      result = result.filter(function(e) { return e.isArchived !== true; });
-    } else if (engagementAdminFilter === 'archived') {
-      result = result.filter(function(e) { return e.isArchived === true; });
-    }
-
-    // Filter by admin search
-    if (engagementAdminSearch && engagementAdminSearch.trim()) {
-      var query = engagementAdminSearch.toLowerCase().trim();
-      result = result.filter(function(e) {
-        var companyMatch = e.company && e.company.toLowerCase().indexOf(query) !== -1;
-        var contactMatch = e.contactName && e.contactName.toLowerCase().indexOf(query) !== -1;
-        return companyMatch || contactMatch;
-      });
-    }
-
-    return result;
-  }, [engagements, engagementAdminFilter, engagementAdminSearch]);
 
   // Compute stale count (in current view mode)
   var staleCount = useMemo(function() {
@@ -406,7 +378,6 @@ var useEngagementList = function(params) {
 
   return {
     filteredEngagements: filteredEngagements,
-    filteredEngagementsAdmin: filteredEngagementsAdmin,
     staleCount: staleCount,
     totalInViewMode: totalInViewMode,
     inProgressInViewMode: inProgressInViewMode,
