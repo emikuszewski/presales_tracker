@@ -6,7 +6,7 @@ import {
   isEngagementStale,
   getDaysSinceActivity
 } from '../utils';
-import { phaseConfig } from '../constants';
+import { phaseConfig, SYSTEM_SE_TEAM } from '../constants';
 
 // Generate typed client
 const client = generateClient();
@@ -63,6 +63,49 @@ const usePresalesData = (selectedEngagementId = null) => {
     }).catch(e => console.error('Error logging change:', e));
   }, [currentUser]);
 
+  /**
+   * Ensure SE Team system user exists (auto-seed on first load)
+   * Self-healing: if deleted, recreates on next app load
+   * 
+   * @param {Array} existingMembers - Current team members from database
+   * @returns {Array} Updated members list including SE Team
+   */
+  const ensureSystemUser = useCallback(async (existingMembers) => {
+    // Check if SE Team already exists by email OR isSystemUser flag
+    const seTeamExists = existingMembers.some(
+      m => m.email === SYSTEM_SE_TEAM.EMAIL || m.isSystemUser === true
+    );
+
+    if (seTeamExists) {
+      return existingMembers;
+    }
+
+    // SE Team doesn't exist - create it
+    try {
+      const { data: newSeTeam } = await client.models.TeamMember.create({
+        email: SYSTEM_SE_TEAM.EMAIL,
+        name: SYSTEM_SE_TEAM.NAME,
+        initials: SYSTEM_SE_TEAM.INITIALS,
+        isAdmin: false,
+        isActive: true,
+        isSystemUser: true
+      });
+
+      console.log('Created SE Team system user:', newSeTeam.id);
+      return [...existingMembers, newSeTeam];
+    } catch (error) {
+      // Handle race condition: if another session created it, just log and continue
+      if (error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        console.log('SE Team already created by another session');
+        // Refetch to get the newly created record
+        const { data: refreshedMembers } = await client.models.TeamMember.list();
+        return refreshedMembers;
+      }
+      console.error('Error creating SE Team system user:', error);
+      return existingMembers;
+    }
+  }, []);
+
   // OPTIMIZED: Batch fetch all data in parallel to solve N+1 query problem
   const fetchAllData = useCallback(async (userId) => {
     try {
@@ -90,7 +133,7 @@ const usePresalesData = (selectedEngagementId = null) => {
           : Promise.resolve({ data: [] })
       ]);
 
-      const allMembersData = membersResult.data;
+      let allMembersData = membersResult.data;
       const engagementData = engagementsResult.data;
       const allPhases = phasesResult.data;
       const allActivities = activitiesResult.data;
@@ -98,6 +141,9 @@ const usePresalesData = (selectedEngagementId = null) => {
       const allComments = commentsResult.data;
       const allChangeLogs = changeLogsResult.data;
       const allViews = viewsResult.data;
+
+      // Ensure SE Team system user exists (auto-seed if needed)
+      allMembersData = await ensureSystemUser(allMembersData);
 
       // Create lookup maps for O(1) access instead of filtering per engagement
       const phasesByEngagement = groupBy(allPhases, 'engagementId');
@@ -115,8 +161,14 @@ const usePresalesData = (selectedEngagementId = null) => {
 
       // Set team members
       setAllTeamMembers(allMembersData);
+      // Active members excludes inactive but INCLUDES system users (they're always active)
       const activeMembers = allMembersData.filter(m => m.isActive !== false);
       setTeamMembers(activeMembers);
+
+      // Get system user IDs for hasSystemOwner computation
+      const systemUserIds = allMembersData
+        .filter(m => m.isSystemUser === true)
+        .map(m => m.id);
 
       // Enrich engagements WITHOUT additional queries - all data is already loaded
       const enrichedEngagements = engagementData.map((eng) => {
@@ -181,6 +233,9 @@ const usePresalesData = (selectedEngagementId = null) => {
           unreadChanges = changeLogs.filter(log => log.userId !== userId).length;
         }
 
+        // Compute hasSystemOwner - true if any owner is a system user
+        const hasSystemOwner = ownerIds.some(id => systemUserIds.includes(id));
+
         return {
           ...eng,
           phases: phasesObj,
@@ -190,7 +245,8 @@ const usePresalesData = (selectedEngagementId = null) => {
           changeLogs: changeLogs,
           unreadChanges: unreadChanges,
           isStale: isEngagementStale(eng),
-          daysSinceActivity: getDaysSinceActivity(eng)
+          daysSinceActivity: getDaysSinceActivity(eng),
+          hasSystemOwner: hasSystemOwner // NEW: Flag for filter logic
         };
       });
 
@@ -199,7 +255,7 @@ const usePresalesData = (selectedEngagementId = null) => {
     } catch (error) {
       console.error('Error fetching data:', error);
     }
-  }, []);
+  }, [ensureSystemUser]);
 
   return {
     // State
