@@ -247,6 +247,13 @@ const DetailView = ({
     return false;
   }, [detail]);
 
+  const handleDeleteComment = useCallback(async (commentId) => {
+    if (detail?.activity?.deleteComment) {
+      return await detail.activity.deleteComment(commentId);
+    }
+    return false;
+  }, [detail]);
+
   // Mark viewed handler
   const handleMarkViewed = useCallback(() => {
     if (detail?.view?.update && engagement) {
@@ -311,6 +318,7 @@ const DetailView = ({
             getOwnerInfo={getOwnerInfo}
             onAddActivity={handleAddActivity}
             onAddComment={handleAddComment}
+            onDeleteComment={handleDeleteComment}
             highlightId={highlightActivityId}
           />
         );
