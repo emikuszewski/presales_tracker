@@ -170,6 +170,8 @@ const schema = a.schema({
       'CREATED',
       'PHASE_UPDATE',
       'ACTIVITY_ADDED',
+      'ACTIVITY_EDITED',
+      'ACTIVITY_DELETED',
       'OWNER_ADDED',
       'OWNER_REMOVED',
       'COMMENT_ADDED',
