@@ -1,81 +1,154 @@
-import { useCallback } from 'react';
-import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
-import { generateInitials } from '../utils';
-import { ADMIN_EMAIL } from '../constants';
+import { useState, useEffect, useCallback } from 'react';
+import { getCurrentUser, signOut, fetchUserAttributes } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/data';
+import { ADMIN_EMAIL, ALLOWED_DOMAIN } from '../constants';
+
+const client = generateClient();
 
 /**
- * Authentication hook for user initialization and sign out.
+ * Authentication hook that manages user state and auth operations
  * 
- * @param {Object} params - Hook parameters
- * @param {Object} params.user - Amplify user object from useAuthenticator
- * @param {Function} params.setCurrentUser - Setter for current user
- * @param {Function} params.setLoading - Setter for loading state
- * @param {Function} params.setNewEngagement - Setter for new engagement form
- * @param {Function} params.fetchAllData - Function to fetch all data
- * @param {Object} params.client - Amplify data client
- * @returns {Object} Auth operations
+ * @param {Function} setCurrentUser - Setter for current user in parent state
+ * @param {Array} teamMembers - List of team members to find current user
+ * @returns {Object} Auth state and operations
  */
-const useAuth = ({
-  user,
-  setCurrentUser,
-  setLoading,
-  setNewEngagement,
-  fetchAllData,
-  client
-}) => {
-  
-  const initializeUser = useCallback(async () => {
+const useAuth = (setCurrentUser, teamMembers = []) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
+
+  /**
+   * Check if email domain is allowed
+   */
+  const isAllowedDomain = useCallback((email) => {
+    if (!email) return false;
+    const domain = email.split('@')[1];
+    return domain === ALLOWED_DOMAIN;
+  }, []);
+
+  /**
+   * Check if user is admin
+   */
+  const isAdmin = useCallback((email) => {
+    return email === ADMIN_EMAIL;
+  }, []);
+
+  /**
+   * Find or create team member for authenticated user
+   */
+  const findOrCreateTeamMember = useCallback(async (email, name) => {
     try {
-      setLoading(true);
-      
-      const attributes = await fetchUserAttributes();
-      const email = attributes.email;
-      const givenName = attributes.given_name || '';
-      const familyName = attributes.family_name || '';
-      const fullName = `${givenName} ${familyName}`.trim() || email.split('@')[0];
-      
-      const { data: existingMembers } = await client.models.TeamMember.list({
+      // First, try to find existing team member
+      const existingMember = teamMembers.find(m => m.email === email);
+      if (existingMember) {
+        return existingMember;
+      }
+
+      // If not found in local state, query the database
+      const { data: members } = await client.models.TeamMember.list({
         filter: { email: { eq: email } }
       });
-      
-      let member;
-      if (existingMembers.length > 0) {
-        member = existingMembers[0];
-      } else {
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-        const { data: newMember } = await client.models.TeamMember.create({
-          email: email,
-          name: fullName,
-          initials: generateInitials(fullName),
-          isAdmin: isAdmin,
-          isActive: true
-        });
-        member = newMember;
-      }
-      
-      setCurrentUser(member);
-      setNewEngagement(prev => ({ ...prev, ownerIds: [member.id] }));
-      
-      await fetchAllData(member.id);
-      
-    } catch (error) {
-      console.error('Error initializing user:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, setCurrentUser, setLoading, setNewEngagement, fetchAllData, client]);
 
+      if (members && members.length > 0) {
+        return members[0];
+      }
+
+      // Create new team member if doesn't exist
+      const initials = name
+        ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : email.substring(0, 2).toUpperCase();
+
+      const { data: newMember } = await client.models.TeamMember.create({
+        email,
+        name: name || email.split('@')[0],
+        initials,
+        isAdmin: isAdmin(email),
+        isActive: true,
+        isSystemUser: false
+      });
+
+      return newMember;
+    } catch (error) {
+      console.error('Error finding/creating team member:', error);
+      return null;
+    }
+  }, [teamMembers, isAdmin]);
+
+  /**
+   * Initialize auth state on mount
+   */
+  const checkAuth = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const user = await getCurrentUser();
+      const attributes = await fetchUserAttributes();
+      
+      const email = attributes.email;
+      setUserEmail(email);
+
+      if (!isAllowedDomain(email)) {
+        setAuthError('Unauthorized domain');
+        setIsAuthenticated(false);
+        await signOut();
+        return;
+      }
+
+      setIsAuthenticated(true);
+      
+      // Find or create team member
+      const teamMember = await findOrCreateTeamMember(email, attributes.name);
+      if (teamMember && setCurrentUser) {
+        setCurrentUser(teamMember);
+      }
+    } catch (error) {
+      // Not authenticated
+      setIsAuthenticated(false);
+      setUserEmail(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAllowedDomain, findOrCreateTeamMember, setCurrentUser]);
+
+  /**
+   * Handle sign out
+   */
   const handleSignOut = useCallback(async () => {
     try {
       await signOut();
+      setIsAuthenticated(false);
+      setUserEmail(null);
+      if (setCurrentUser) {
+        setCurrentUser(null);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  }, []);
+  }, [setCurrentUser]);
+
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Re-check when team members load (to set current user)
+  useEffect(() => {
+    if (isAuthenticated && userEmail && teamMembers.length > 0) {
+      const member = teamMembers.find(m => m.email === userEmail);
+      if (member && setCurrentUser) {
+        setCurrentUser(member);
+      }
+    }
+  }, [isAuthenticated, userEmail, teamMembers, setCurrentUser]);
 
   return {
-    initializeUser,
-    handleSignOut
+    isAuthenticated,
+    isLoading,
+    authError,
+    userEmail,
+    isAdmin: isAdmin(userEmail),
+    checkAuth,
+    signOut: handleSignOut
   };
 };
 
