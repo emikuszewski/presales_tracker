@@ -11,11 +11,31 @@ const ActivityIcon = ({ type }) => {
   return <span className="text-lg">{icons[type] || '📋'}</span>;
 };
 
-const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, highlightId, scrollRef }) => {
+const ActivityCard = ({ 
+  activity, 
+  getOwnerInfo, 
+  onAddComment, 
+  onDeleteComment, 
+  onEditActivity,
+  onDeleteActivity,
+  highlightId, 
+  scrollRef 
+}) => {
   const [showComments, setShowComments] = useState(activity.comments?.length > 0);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Delete state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const isHighlighted = activity.id === highlightId;
+  const commentCount = activity.comments?.length || 0;
 
   const handleSubmitComment = async () => {
     if (!newComment.trim() || isSubmitting) return;
@@ -31,10 +51,126 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, h
     }
   };
 
+  // Edit handlers
+  const handleEditClick = () => {
+    setEditData({
+      type: activity.type,
+      date: activity.date,
+      description: activity.description
+    });
+    setIsEditing(true);
+    setShowDeleteConfirm(false); // Close delete confirm if open
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditData(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editData.description.trim() || isSaving) return;
+    setIsSaving(true);
+    const success = await onEditActivity(activity.id, {
+      type: editData.type,
+      date: editData.date,
+      description: editData.description.trim()
+    });
+    setIsSaving(false);
+    if (success) {
+      setIsEditing(false);
+      setEditData(null);
+    }
+  };
+
+  const updateEditField = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Delete handlers
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+    setIsEditing(false); // Close edit if open
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    await onDeleteActivity(activity.id);
+    // Component will unmount after deletion, no need to reset state
+  };
+
+  // Editing mode - render inline form
+  if (isEditing) {
+    return (
+      <div 
+        ref={isHighlighted ? scrollRef : null}
+        className="bg-white rounded-lg border border-blue-300 p-4"
+      >
+        <h3 className="font-medium text-gray-900 mb-3">Edit Activity</h3>
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select 
+                value={editData.type} 
+                onChange={(e) => updateEditField('type', e.target.value)} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {activityTypes.map(t => <option key={t} value={t}>{activityTypeLabels[t]}</option>)}
+              </select>
+            </div>
+            <div className="w-40">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input 
+                type="date" 
+                value={editData.date} 
+                onChange={(e) => updateEditField('date', e.target.value)} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea 
+              value={editData.description} 
+              onChange={(e) => updateEditField('description', e.target.value)} 
+              placeholder="What happened?" 
+              rows={3} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" 
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button 
+              type="button" 
+              onClick={handleCancelEdit} 
+              disabled={isSaving}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSaveEdit}
+              disabled={!editData.description.trim() || isSaving} 
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal display mode
   return (
     <div 
       ref={isHighlighted ? scrollRef : null}
-      className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-500 ${isHighlighted ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+      className={`bg-white rounded-lg border border-gray-200 p-4 transition-all duration-500 group ${isHighlighted ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -47,14 +183,61 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, h
           </div>
           <p className="text-gray-700 mt-1"><LinkifyText text={activity.description} /></p>
         </div>
+        
+        {/* Edit/Delete buttons - hover reveal */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button
+            onClick={handleEditClick}
+            className="p-1 text-gray-400 hover:text-blue-600 rounded"
+            title="Edit activity"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            className="p-1 text-gray-400 hover:text-red-600 rounded"
+            title="Delete activity"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* Delete confirmation bar */}
+      {showDeleteConfirm && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between mt-3">
+          <span className="text-sm text-red-700">
+            Delete this activity{commentCount > 0 ? ` and ${commentCount} comment${commentCount !== 1 ? 's' : ''}` : ''}?
+          </span>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleCancelDelete} 
+              disabled={isDeleting}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleConfirmDelete} 
+              disabled={isDeleting}
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 pl-13">
         <button onClick={() => setShowComments(!showComments)} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
           <svg className={`w-4 h-4 transition-transform ${showComments ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          {activity.comments?.length || 0} comment{activity.comments?.length !== 1 ? 's' : ''}
+          {commentCount} comment{commentCount !== 1 ? 's' : ''}
         </button>
 
         {showComments && (
@@ -62,7 +245,7 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, h
             {activity.comments?.map((comment) => {
               const author = getOwnerInfo(comment.authorId);
               return (
-                <div key={comment.id} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2 group">
+                <div key={comment.id} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2 group/comment">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${author.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`} title={author.name}>
                     {author.initials}
                   </div>
@@ -73,7 +256,7 @@ const ActivityCard = ({ activity, getOwnerInfo, onAddComment, onDeleteComment, h
                   {/* Delete button - visible on hover */}
                   <button
                     onClick={() => handleDeleteComment(comment.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    className="p-1 text-gray-400 hover:text-red-600 rounded opacity-0 group-hover/comment:opacity-100 transition-opacity flex-shrink-0"
                     title="Delete comment"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -154,7 +337,16 @@ const AddActivityForm = ({ onAdd, onCancel }) => {
   );
 };
 
-const ActivityTab = ({ engagement, getOwnerInfo, onAddActivity, onAddComment, onDeleteComment, highlightId }) => {
+const ActivityTab = ({ 
+  engagement, 
+  getOwnerInfo, 
+  onAddActivity, 
+  onAddComment, 
+  onDeleteComment,
+  onEditActivity,
+  onDeleteActivity,
+  highlightId 
+}) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const scrollRef = useRef(null);
 
@@ -188,6 +380,8 @@ const ActivityTab = ({ engagement, getOwnerInfo, onAddActivity, onAddComment, on
               getOwnerInfo={getOwnerInfo} 
               onAddComment={onAddComment} 
               onDeleteComment={onDeleteComment}
+              onEditActivity={onEditActivity}
+              onDeleteActivity={onDeleteActivity}
               highlightId={highlightId} 
               scrollRef={scrollRef} 
             />
