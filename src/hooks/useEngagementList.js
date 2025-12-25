@@ -148,6 +148,8 @@ const useEngagementList = ({
         jiraUrl: newEngagement.jiraUrl || null,
         driveFolderName: newEngagement.driveFolderName || null,
         driveFolderUrl: newEngagement.driveFolderUrl || null,
+        slidesName: newEngagement.slidesName || null,
+        slidesUrl: newEngagement.slidesUrl || null,
         slackChannel: newEngagement.slackChannel || null,
         slackUrl: newEngagement.slackUrl || null,
         isArchived: false
@@ -182,6 +184,7 @@ const useEngagementList = ({
         industry: 'TECHNOLOGY', dealSize: '', ownerIds: [currentUser?.id],
         salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
         driveFolderName: '', driveFolderUrl: '',
+        slidesName: '', slidesUrl: '',
         slackChannel: '', slackUrl: ''
       });
       setView('list');
