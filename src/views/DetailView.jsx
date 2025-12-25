@@ -15,9 +15,29 @@ import { phaseLabels } from '../constants';
 import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab } from '../components/engagement';
 
 /**
+ * Gear/cog icon for integrations editing
+ */
+const GearIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+/**
  * Detail header component - compact header with back, owners, company, phase
  */
-const DetailHeader = ({ engagement, owners, onBack, onEdit, onArchive, isStale, daysSinceActivity }) => {
+const DetailHeader = ({ 
+  engagement, 
+  owners, 
+  onBack, 
+  onEdit, 
+  onArchive, 
+  onManageOwners,
+  onEditIntegrations,
+  isStale, 
+  daysSinceActivity 
+}) => {
   const currentPhase = engagement?.currentPhase || 'DISCOVER';
 
   const integrations = [
@@ -46,15 +66,19 @@ const DetailHeader = ({ engagement, owners, onBack, onEdit, onArchive, isStale, 
             </svg>
           </button>
 
-          {/* Owner avatars */}
-          <div className="flex -space-x-2 flex-shrink-0">
+          {/* Owner avatars - clickable to manage owners */}
+          <button
+            onClick={onManageOwners}
+            className="flex -space-x-2 flex-shrink-0 rounded-full hover:ring-2 hover:ring-gray-300 transition-all cursor-pointer"
+            title="Manage owners"
+            aria-label="Manage owners"
+          >
             {owners.slice(0, 3).map((owner, idx) => (
               <div
                 key={owner.id || idx}
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 border-white ${
                   owner.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
                 }`}
-                title={owner.name}
               >
                 {owner.initials}
               </div>
@@ -64,7 +88,7 @@ const DetailHeader = ({ engagement, owners, onBack, onEdit, onArchive, isStale, 
                 +{owners.length - 3}
               </div>
             )}
-          </div>
+          </button>
 
           {/* Company name */}
           <h1 className="text-lg font-semibold text-gray-900 truncate">
@@ -93,27 +117,36 @@ const DetailHeader = ({ engagement, owners, onBack, onEdit, onArchive, isStale, 
 
         {/* Right side */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Integration icons */}
-          {hasIntegrations && (
-            <div className="hidden sm:flex items-center gap-0.5 mr-2">
-              {integrations.map((integration, idx) => {
-                if (!integration.url) return null;
-                const IconComp = integration.Icon;
-                return (
-                  <a
-                    key={idx}
-                    href={integration.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
-                    title={integration.name}
-                  >
-                    <IconComp className="w-4 h-4" />
-                  </a>
-                );
-              })}
-            </div>
-          )}
+          {/* Integration icons + gear button */}
+          <div className="hidden sm:flex items-center gap-0.5 mr-2">
+            {/* Existing integration links */}
+            {integrations.map((integration, idx) => {
+              if (!integration.url) return null;
+              const IconComp = integration.Icon;
+              return (
+                <a
+                  key={idx}
+                  href={integration.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                  title={integration.name}
+                >
+                  <IconComp className="w-4 h-4" />
+                </a>
+              );
+            })}
+
+            {/* Gear icon - always visible for adding/editing integrations */}
+            <button
+              onClick={onEditIntegrations}
+              className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+              title={hasIntegrations ? "Edit integrations" : "Add integrations"}
+              aria-label={hasIntegrations ? "Edit integrations" : "Add integrations"}
+            >
+              <GearIcon className="w-4 h-4" />
+            </button>
+          </div>
 
           {/* Edit button */}
           <button
@@ -351,6 +384,8 @@ const DetailView = ({
         onBack={onBack}
         onEdit={() => setShowEditDetailsModal(true)}
         onArchive={handleArchive}
+        onManageOwners={() => setShowOwnersModal(true)}
+        onEditIntegrations={() => setShowIntegrationsModal(true)}
         isStale={engagement.isStale}
         daysSinceActivity={engagement.daysSinceActivity}
       />
