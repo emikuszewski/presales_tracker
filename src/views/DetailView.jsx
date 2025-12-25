@@ -244,21 +244,27 @@ const DetailView = ({
     setShowIntegrationsModal(false);
   }, [detail]);
 
-  // Note handlers (placeholder - implement if PhaseNote model exists)
+  // Note handlers - wired to detail.note.*
   const handleAddNote = useCallback(async (phaseType, text) => {
-    console.log('Add note:', phaseType, text);
-    return { success: true };
-  }, []);
+    if (detail?.note?.add) {
+      return await detail.note.add(phaseType, text);
+    }
+    return false;
+  }, [detail]);
 
   const handleEditNote = useCallback(async (noteId, phaseType, text) => {
-    console.log('Edit note:', noteId, text);
-    return { success: true };
-  }, []);
+    if (detail?.note?.edit) {
+      return await detail.note.edit(noteId, phaseType, text);
+    }
+    return false;
+  }, [detail]);
 
   const handleDeleteNote = useCallback(async (noteId, phaseType) => {
-    console.log('Delete note:', noteId);
-    return { success: true };
-  }, []);
+    if (detail?.note?.delete) {
+      return await detail.note.delete(noteId, phaseType);
+    }
+    return false;
+  }, [detail]);
 
   // Render tab content
   const renderTabContent = () => {
