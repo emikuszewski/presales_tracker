@@ -1,16 +1,41 @@
 import { useState, useMemo, useCallback } from 'react';
 
-const useEngagementList = (engagements = []) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [phaseFilter, setPhaseFilter] = useState('ALL');
-  const [ownerFilter, setOwnerFilter] = useState('ALL');
-  const [industryFilter, setIndustryFilter] = useState('ALL');
-  const [showArchived, setShowArchived] = useState(false);
-  const [showStaleOnly, setShowStaleOnly] = useState(false);
-  const [sortField, setSortField] = useState('lastActivity');
-  const [sortDirection, setSortDirection] = useState('desc');
+var useEngagementList = function(engagements) {
+  var list = engagements || [];
+  
+  var searchQueryState = useState('');
+  var searchQuery = searchQueryState[0];
+  var setSearchQuery = searchQueryState[1];
+  
+  var phaseFilterState = useState('ALL');
+  var phaseFilter = phaseFilterState[0];
+  var setPhaseFilter = phaseFilterState[1];
+  
+  var ownerFilterState = useState('ALL');
+  var ownerFilter = ownerFilterState[0];
+  var setOwnerFilter = ownerFilterState[1];
+  
+  var industryFilterState = useState('ALL');
+  var industryFilter = industryFilterState[0];
+  var setIndustryFilter = industryFilterState[1];
+  
+  var showArchivedState = useState(false);
+  var showArchived = showArchivedState[0];
+  var setShowArchived = showArchivedState[1];
+  
+  var showStaleOnlyState = useState(false);
+  var showStaleOnly = showStaleOnlyState[0];
+  var setShowStaleOnly = showStaleOnlyState[1];
+  
+  var sortFieldState = useState('lastActivity');
+  var sortField = sortFieldState[0];
+  var setSortField = sortFieldState[1];
+  
+  var sortDirectionState = useState('desc');
+  var sortDirection = sortDirectionState[0];
+  var setSortDirection = sortDirectionState[1];
 
-  const clearFilters = useCallback(() => {
+  var clearFilters = useCallback(function() {
     setSearchQuery('');
     setPhaseFilter('ALL');
     setOwnerFilter('ALL');
@@ -19,53 +44,55 @@ const useEngagementList = (engagements = []) => {
     setShowStaleOnly(false);
   }, []);
 
-  const handleSort = useCallback((field) => {
+  var handleSort = useCallback(function(field) {
     if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection(function(prev) { return prev === 'asc' ? 'desc' : 'asc'; });
     } else {
       setSortField(field);
       setSortDirection('desc');
     }
   }, [sortField]);
 
-  const filteredEngagements = useMemo(() => {
-    if (!engagements || !Array.isArray(engagements)) return [];
-    let result = [...engagements];
+  var filteredEngagements = useMemo(function() {
+    if (!list || !Array.isArray(list)) return [];
+    var result = list.slice();
 
     if (!showArchived) {
-      result = result.filter(e => !e.isArchived);
+      result = result.filter(function(e) { return !e.isArchived; });
     }
 
     if (showStaleOnly) {
-      result = result.filter(e => e.isStale);
+      result = result.filter(function(e) { return e.isStale; });
     }
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(e =>
-        e.company?.toLowerCase().includes(query) ||
-        e.contactName?.toLowerCase().includes(query) ||
-        e.contactEmail?.toLowerCase().includes(query)
-      );
+      var query = searchQuery.toLowerCase();
+      result = result.filter(function(e) {
+        var companyMatch = e.company && e.company.toLowerCase().includes(query);
+        var contactMatch = e.contactName && e.contactName.toLowerCase().includes(query);
+        var emailMatch = e.contactEmail && e.contactEmail.toLowerCase().includes(query);
+        return companyMatch || contactMatch || emailMatch;
+      });
     }
 
     if (phaseFilter !== 'ALL') {
-      result = result.filter(e => e.currentPhase === phaseFilter);
+      result = result.filter(function(e) { return e.currentPhase === phaseFilter; });
     }
 
     if (ownerFilter !== 'ALL') {
-      result = result.filter(e => 
-        e.ownerIds?.includes(ownerFilter) || e.ownerId === ownerFilter
-      );
+      result = result.filter(function(e) {
+        var hasOwner = e.ownerIds && e.ownerIds.includes(ownerFilter);
+        return hasOwner || e.ownerId === ownerFilter;
+      });
     }
 
     if (industryFilter !== 'ALL') {
-      result = result.filter(e => e.industry === industryFilter);
+      result = result.filter(function(e) { return e.industry === industryFilter; });
     }
 
-    result.sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
+    result.sort(function(a, b) {
+      var aVal = a[sortField];
+      var bVal = b[sortField];
 
       if (sortField === 'lastActivity' || sortField === 'startDate' || sortField === 'createdAt') {
         aVal = aVal ? new Date(aVal).getTime() : 0;
@@ -83,20 +110,10 @@ const useEngagementList = (engagements = []) => {
     });
 
     return result;
-  }, [
-    engagements,
-    searchQuery,
-    phaseFilter,
-    ownerFilter,
-    industryFilter,
-    showArchived,
-    showStaleOnly,
-    sortField,
-    sortDirection
-  ]);
+  }, [list, searchQuery, phaseFilter, ownerFilter, industryFilter, showArchived, showStaleOnly, sortField, sortDirection]);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
+  var activeFilterCount = useMemo(function() {
+    var count = 0;
     if (searchQuery.trim()) count++;
     if (phaseFilter !== 'ALL') count++;
     if (ownerFilter !== 'ALL') count++;
@@ -106,8 +123,8 @@ const useEngagementList = (engagements = []) => {
     return count;
   }, [searchQuery, phaseFilter, ownerFilter, industryFilter, showArchived, showStaleOnly]);
 
-  const stats = useMemo(() => {
-    if (!engagements || !Array.isArray(engagements)) {
+  var stats = useMemo(function() {
+    if (!list || !Array.isArray(list)) {
       return {
         total: 0,
         stale: 0,
@@ -120,40 +137,40 @@ const useEngagementList = (engagements = []) => {
         }
       };
     }
-    const active = engagements.filter(e => !e.isArchived);
+    var active = list.filter(function(e) { return !e.isArchived; });
     return {
       total: active.length,
-      stale: active.filter(e => e.isStale).length,
+      stale: active.filter(function(e) { return e.isStale; }).length,
       byPhase: {
-        DISCOVER: active.filter(e => e.currentPhase === 'DISCOVER').length,
-        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').length,
-        DEMONSTRATE: active.filter(e => e.currentPhase === 'DEMONSTRATE').length,
-        VALIDATE: active.filter(e => e.currentPhase === 'VALIDATE').length,
-        ENABLE: active.filter(e => e.currentPhase === 'ENABLE').length
+        DISCOVER: active.filter(function(e) { return e.currentPhase === 'DISCOVER'; }).length,
+        DESIGN: active.filter(function(e) { return e.currentPhase === 'DESIGN'; }).length,
+        DEMONSTRATE: active.filter(function(e) { return e.currentPhase === 'DEMONSTRATE'; }).length,
+        VALIDATE: active.filter(function(e) { return e.currentPhase === 'VALIDATE'; }).length,
+        ENABLE: active.filter(function(e) { return e.currentPhase === 'ENABLE'; }).length
       }
     };
-  }, [engagements]);
+  }, [list]);
 
   return {
-    searchQuery,
-    setSearchQuery,
-    phaseFilter,
-    setPhaseFilter,
-    ownerFilter,
-    setOwnerFilter,
-    industryFilter,
-    setIndustryFilter,
-    showArchived,
-    setShowArchived,
-    showStaleOnly,
-    setShowStaleOnly,
-    sortField,
-    sortDirection,
-    handleSort,
-    filteredEngagements,
-    activeFilterCount,
-    stats,
-    clearFilters
+    searchQuery: searchQuery,
+    setSearchQuery: setSearchQuery,
+    phaseFilter: phaseFilter,
+    setPhaseFilter: setPhaseFilter,
+    ownerFilter: ownerFilter,
+    setOwnerFilter: setOwnerFilter,
+    industryFilter: industryFilter,
+    setIndustryFilter: setIndustryFilter,
+    showArchived: showArchived,
+    setShowArchived: setShowArchived,
+    showStaleOnly: showStaleOnly,
+    setShowStaleOnly: setShowStaleOnly,
+    sortField: sortField,
+    sortDirection: sortDirection,
+    handleSort: handleSort,
+    filteredEngagements: filteredEngagements,
+    activeFilterCount: activeFilterCount,
+    stats: stats,
+    clearFilters: clearFilters
   };
 };
 
