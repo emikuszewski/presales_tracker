@@ -196,6 +196,29 @@ const NewEngagementView = ({
               />
             </div>
 
+            {/* Documents: Google Docs */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Google Doc Name</label>
+              <input 
+                type="text" 
+                value={newEngagement.docsName}
+                onChange={e => updateField('docsName', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="Running Notes" 
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Google Doc URL</label>
+              <input 
+                type="url" 
+                value={newEngagement.docsUrl}
+                onChange={e => updateField('docsUrl', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                placeholder="https://docs.google.com/document/d/..." 
+              />
+            </div>
+
             {/* Documents: Google Slides */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Slides Deck Name</label>
