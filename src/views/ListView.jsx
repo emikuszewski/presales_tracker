@@ -1,5 +1,5 @@
 import React from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon, SlidesIcon } from '../components';
 import { industryLabels, phaseConfig } from '../constants';
 
 /**
@@ -242,8 +242,8 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Integration badges: SF → Jira → Drive → Slack */}
-              {(engagement.salesforceId || engagement.jiraTicket || engagement.driveFolderUrl || engagement.slackUrl) && (
+              {/* Integration badges: SF → Jira → Drive → Slides → Slack */}
+              {(engagement.salesforceId || engagement.jiraTicket || engagement.driveFolderUrl || engagement.slidesUrl || engagement.slackUrl) && (
                 <div className="flex gap-2 mb-3">
                   {/* Salesforce badge - clickable if URL exists */}
                   {engagement.salesforceId && (
@@ -296,6 +296,20 @@ const ListView = ({
                       title={engagement.driveFolderName || 'Open Google Drive'}
                     >
                       <DriveIcon className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  
+                  {/* Slides icon - always clickable (only shows if URL exists) */}
+                  {engagement.slidesUrl && (
+                    <a
+                      href={engagement.slidesUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors"
+                      title={engagement.slidesName || 'Open Google Slides'}
+                    >
+                      <SlidesIcon className="w-3.5 h-3.5" />
                     </a>
                   )}
                   
