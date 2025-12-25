@@ -242,49 +242,9 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Integration badges: SF → Jira → Drive → Slides → Slack */}
-              {(engagement.salesforceId || engagement.jiraTicket || engagement.driveFolderUrl || engagement.slidesUrl || engagement.slackUrl) && (
+              {/* Integration badges: Drive → Slides → Slack */}
+              {(engagement.driveFolderUrl || engagement.slidesUrl || engagement.slackUrl) && (
                 <div className="flex gap-2 mb-3">
-                  {/* Salesforce badge - clickable if URL exists */}
-                  {engagement.salesforceId && (
-                    engagement.salesforceUrl ? (
-                      <a
-                        href={engagement.salesforceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition-colors"
-                        title="Open in Salesforce"
-                      >
-                        SF
-                      </a>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                        SF
-                      </span>
-                    )
-                  )}
-                  
-                  {/* Jira badge - clickable if URL exists */}
-                  {engagement.jiraTicket && (
-                    engagement.jiraUrl ? (
-                      <a
-                        href={engagement.jiraUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition-colors"
-                        title="Open in Jira"
-                      >
-                        {engagement.jiraTicket}
-                      </a>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                        {engagement.jiraTicket}
-                      </span>
-                    )
-                  )}
-                  
                   {/* Drive icon - always clickable (only shows if URL exists) */}
                   {engagement.driveFolderUrl && (
                     <a
