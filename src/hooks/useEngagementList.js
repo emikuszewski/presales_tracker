@@ -126,4 +126,35 @@ const useEngagementList = (engagements = []) => {
       stale: active.filter(e => e.isStale).length,
       byPhase: {
         DISCOVER: active.filter(e => e.currentPhase === 'DISCOVER').length,
-        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').le
+        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').length,
+        DEMONSTRATE: active.filter(e => e.currentPhase === 'DEMONSTRATE').length,
+        VALIDATE: active.filter(e => e.currentPhase === 'VALIDATE').length,
+        ENABLE: active.filter(e => e.currentPhase === 'ENABLE').length
+      }
+    };
+  }, [engagements]);
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    phaseFilter,
+    setPhaseFilter,
+    ownerFilter,
+    setOwnerFilter,
+    industryFilter,
+    setIndustryFilter,
+    showArchived,
+    setShowArchived,
+    showStaleOnly,
+    setShowStaleOnly,
+    sortField,
+    sortDirection,
+    handleSort,
+    filteredEngagements,
+    activeFilterCount,
+    stats,
+    clearFilters
+  };
+};
+
+export default useEngagementList;
