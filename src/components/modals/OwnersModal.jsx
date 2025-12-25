@@ -18,8 +18,25 @@ const OwnersModal = ({
   const availableMembers = teamMembers.filter(m => !currentOwnerIds?.includes(m.id));
   const isOnlyOneOwner = currentOwnerIds?.length === 1;
 
+  const footerContent = (
+    <div className="flex gap-3">
+      <button 
+        onClick={onClose}
+        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+      >
+        Done
+      </button>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Manage Owners">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title="Manage Owners"
+      scrollable
+      footer={footerContent}
+    >
       <div className="mb-6">
         <p className="text-sm font-medium text-gray-700 mb-3">Current Owners</p>
         <div className="space-y-2">
@@ -80,15 +97,6 @@ const OwnersModal = ({
             </p>
           )}
         </div>
-      </div>
-      
-      <div className="flex gap-3 mt-6">
-        <button 
-          onClick={onClose}
-          className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-        >
-          Done
-        </button>
       </div>
     </Modal>
   );
