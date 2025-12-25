@@ -521,6 +521,8 @@ const useEngagementDetail = ({
       docsUrl: selectedEngagement.docsUrl,
       slidesName: selectedEngagement.slidesName,
       slidesUrl: selectedEngagement.slidesUrl,
+      sheetsName: selectedEngagement.sheetsName,
+      sheetsUrl: selectedEngagement.sheetsUrl,
       slackChannel: selectedEngagement.slackChannel,
       slackUrl: selectedEngagement.slackUrl
     };
