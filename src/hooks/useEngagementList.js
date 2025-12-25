@@ -1,361 +1,185 @@
-import { useCallback, useMemo } from 'react';
-import { getTodayDate } from '../utils';
-import { phaseConfig, industryLabels } from '../constants';
+import { useState, useMemo, useCallback } from 'react';
 
 /**
- * Hook for engagement list operations (create, archive, delete) and filtering.
+ * Hook for engagement list filtering, sorting, and selection
  * 
- * @param {Object} params - Hook parameters
- * @param {Array} params.engagements - All engagements
- * @param {Function} params.setEngagements - Setter for engagements
- * @param {Object} params.currentUser - Current logged-in user
- * @param {Object} params.newEngagement - New engagement form data
- * @param {Function} params.setNewEngagement - Setter for new engagement form
- * @param {Function} params.setView - Setter for current view
- * @param {string|null} params.selectedEngagementId - Currently selected engagement ID
- * @param {Function} params.setSelectedEngagementId - Setter for selected engagement ID
- * @param {Function} params.updateEngagementInState - Function to update single engagement
- * @param {Function} params.fetchAllData - Function to refetch all data
- * @param {Function} params.logChangeAsync - Function to log changes
- * @param {Object} params.client - Amplify data client
- * @param {Object} params.filters - Current filter state
- * @returns {Object} List operations and filtered data
+ * @param {Array} engagements - Full list of engagements
+ * @returns {Object} List state and operations
  */
-const useEngagementList = ({
-  engagements,
-  setEngagements,
-  currentUser,
-  newEngagement,
-  setNewEngagement,
-  setView,
-  selectedEngagementId,
-  setSelectedEngagementId,
-  updateEngagementInState,
-  fetchAllData,
-  logChangeAsync,
-  client,
-  filters
-}) => {
-  const { 
-    filterPhase, 
-    filterOwner, 
-    filterStale, 
-    showArchived, 
-    searchQuery,
-    engagementAdminFilter,
-    engagementAdminSearch
-  } = filters;
+const useEngagementList = (engagements = []) => {
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [phaseFilter, setPhaseFilter] = useState('ALL');
+  const [ownerFilter, setOwnerFilter] = useState('ALL');
+  const [industryFilter, setIndustryFilter] = useState('ALL');
+  const [showArchived, setShowArchived] = useState(false);
+  const [showStaleOnly, setShowStaleOnly] = useState(false);
 
-  // MEMOIZED: Engagements in current view mode (owner + archived only, no phase/stale/search filters)
-  // This gives us the "total" for "Showing X of Y"
-  const engagementsInViewMode = useMemo(() => {
-    return engagements.filter(e => {
-      // Archived filter
-      if (showArchived !== (e.isArchived || false)) return false;
-      
-      // Owner filter (view mode, not a "filter")
-      if (filterOwner === 'mine') {
-        const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-        const hasSystemOwner = e.hasSystemOwner === true;
-        if (!isOwner && !hasSystemOwner) return false;
-      } else if (filterOwner !== 'all') {
-        const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
-        if (!isOwner) return false;
-      }
-      
-      return true;
-    });
-  }, [engagements, showArchived, filterOwner, currentUser?.id]);
+  // Sort state
+  const [sortField, setSortField] = useState('lastActivity');
+  const [sortDirection, setSortDirection] = useState('desc');
 
-  // MEMOIZED: Total count in current view mode
-  const totalInViewMode = useMemo(() => {
-    return engagementsInViewMode.length;
-  }, [engagementsInViewMode]);
-
-  // MEMOIZED: In-progress count in current view mode (for unfiltered subtitle)
-  const inProgressInViewMode = useMemo(() => {
-    return engagementsInViewMode.filter(e => 
-      e.phases[e.currentPhase]?.status === 'IN_PROGRESS'
-    ).length;
-  }, [engagementsInViewMode]);
-
-  // MEMOIZED: Filtered engagements for main list view
-  const filteredEngagements = useMemo(() => {
-    return engagements
-      .filter(e => {
-        if (showArchived !== (e.isArchived || false)) return false;
-        if (filterPhase !== 'all' && e.currentPhase !== filterPhase) return false;
-        if (filterStale && !e.isStale) return false;
-        
-        if (filterOwner === 'mine') {
-          // "My Engagements" includes:
-          // 1. Engagements where current user is an owner
-          // 2. Engagements with system owner (SE Team) - shared inbox model
-          const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-          const hasSystemOwner = e.hasSystemOwner === true;
-          if (!isOwner && !hasSystemOwner) return false;
-        } else if (filterOwner !== 'all') {
-          const isOwner = e.ownerIds?.includes(filterOwner) || e.ownerId === filterOwner;
-          if (!isOwner) return false;
-        }
-        
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          const matchesCompany = e.company.toLowerCase().includes(query);
-          const matchesContact = e.contactName.toLowerCase().includes(query);
-          const matchesIndustry = (industryLabels[e.industry] || '').toLowerCase().includes(query);
-          if (!matchesCompany && !matchesContact && !matchesIndustry) return false;
-        }
-        
-        return true;
-      })
-      .sort((a, b) => new Date(b.lastActivity || b.startDate) - new Date(a.lastActivity || a.startDate));
-  }, [engagements, showArchived, filterPhase, filterStale, filterOwner, currentUser?.id, searchQuery]);
-
-  // MEMOIZED: Filtered engagements for admin view
-  const filteredEngagementsAdmin = useMemo(() => {
-    return engagements
-      .filter(e => {
-        // Filter by status
-        if (engagementAdminFilter === 'active' && e.isArchived) return false;
-        if (engagementAdminFilter === 'archived' && !e.isArchived) return false;
-        
-        // Search filter
-        if (engagementAdminSearch) {
-          const query = engagementAdminSearch.toLowerCase();
-          const matchesCompany = e.company.toLowerCase().includes(query);
-          const matchesContact = e.contactName.toLowerCase().includes(query);
-          if (!matchesCompany && !matchesContact) return false;
-        }
-        
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
-  }, [engagements, engagementAdminFilter, engagementAdminSearch]);
-
-  // MEMOIZED: Stale count - includes SE Team engagements for everyone
-  const staleCount = useMemo(() => {
-    return engagements.filter(e => {
-      if (e.isArchived || !e.isStale) return false;
-      
-      // Include stale engagements that are:
-      // 1. Owned by current user
-      // 2. Owned by SE Team (shared responsibility)
-      // 3. All engagements if filterOwner is 'all'
-      if (filterOwner === 'all') return true;
-      
-      const isOwner = e.ownerIds?.includes(currentUser?.id) || e.ownerId === currentUser?.id;
-      const hasSystemOwner = e.hasSystemOwner === true;
-      
-      return isOwner || hasSystemOwner;
-    }).length;
-  }, [engagements, filterOwner, currentUser?.id]);
-
-  // Get cascade info for an engagement (for delete confirmation)
-  const getCascadeInfo = useCallback((engagement) => {
-    if (!engagement) return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0 };
-    
-    const phaseCount = Object.keys(engagement.phases || {}).filter(k => engagement.phases[k]?.id).length;
-    const activityCount = engagement.activities?.length || 0;
-    const commentCount = engagement.activities?.reduce((sum, a) => sum + (a.comments?.length || 0), 0) || 0;
-    const changeLogCount = engagement.changeLogs?.length || 0;
-    const ownerCount = engagement.ownershipRecords?.length || engagement.ownerIds?.length || 0;
-    
-    return {
-      phases: phaseCount,
-      activities: activityCount,
-      comments: commentCount,
-      changeLogs: changeLogCount,
-      owners: ownerCount
-    };
+  /**
+   * Clear all filters
+   */
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    setPhaseFilter('ALL');
+    setOwnerFilter('ALL');
+    setIndustryFilter('ALL');
+    setShowArchived(false);
+    setShowStaleOnly(false);
   }, []);
 
-  // Create engagement
-  const handleCreateEngagement = useCallback(async () => {
-    if (!newEngagement.company || !newEngagement.contactName) return;
-    if (newEngagement.ownerIds.length === 0) return;
-    
-    try {
-      const today = getTodayDate();
-      
-      const { data: engagement } = await client.models.Engagement.create({
-        company: newEngagement.company,
-        contactName: newEngagement.contactName,
-        contactEmail: newEngagement.contactEmail || null,
-        contactPhone: newEngagement.contactPhone || null,
-        industry: newEngagement.industry,
-        dealSize: newEngagement.dealSize || null,
-        currentPhase: 'DISCOVER',
-        startDate: today,
-        lastActivity: today,
-        ownerId: newEngagement.ownerIds[0],
-        salesforceId: newEngagement.salesforceId || null,
-        salesforceUrl: newEngagement.salesforceUrl || null,
-        jiraTicket: newEngagement.jiraTicket || null,
-        jiraUrl: newEngagement.jiraUrl || null,
-        driveFolderName: newEngagement.driveFolderName || null,
-        driveFolderUrl: newEngagement.driveFolderUrl || null,
-        docsName: newEngagement.docsName || null,
-        docsUrl: newEngagement.docsUrl || null,
-        slidesName: newEngagement.slidesName || null,
-        slidesUrl: newEngagement.slidesUrl || null,
-        sheetsName: newEngagement.sheetsName || null,
-        sheetsUrl: newEngagement.sheetsUrl || null,
-        slackChannel: newEngagement.slackChannel || null,
-        slackUrl: newEngagement.slackUrl || null,
-        isArchived: false
-      });
-      
-      for (const ownerId of newEngagement.ownerIds) {
-        await client.models.EngagementOwner.create({
-          engagementId: engagement.id,
-          teamMemberId: ownerId,
-          role: ownerId === newEngagement.ownerIds[0] ? 'primary' : 'secondary',
-          addedAt: new Date().toISOString()
-        });
-      }
-      
-      for (const phase of phaseConfig) {
-        await client.models.Phase.create({
-          engagementId: engagement.id,
-          phaseType: phase.id,
-          status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
-          completedDate: null,
-          notes: null,
-          links: null
-        });
-      }
-      
-      logChangeAsync(engagement.id, 'CREATED', `Created engagement for ${newEngagement.company}`);
-      
-      await fetchAllData(currentUser?.id);
-      
-      setNewEngagement({
-        company: '', contactName: '', contactEmail: '', contactPhone: '',
-        industry: 'TECHNOLOGY', dealSize: '', ownerIds: [currentUser?.id],
-        salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
-        driveFolderName: '', driveFolderUrl: '',
-        docsName: '', docsUrl: '',
-        slidesName: '', slidesUrl: '',
-        sheetsName: '', sheetsUrl: '',
-        slackChannel: '', slackUrl: ''
-      });
-      setView('list');
-      
-    } catch (error) {
-      console.error('Error creating engagement:', error);
+  /**
+   * Toggle sort direction or change sort field
+   */
+  const handleSort = useCallback((field) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
     }
-  }, [newEngagement, currentUser, setNewEngagement, setView, fetchAllData, logChangeAsync, client]);
+  }, [sortField]);
 
-  // Toggle archive status
-  const handleToggleArchive = useCallback(async (engagementId, archive) => {
-    const engagement = engagements.find(e => e.id === engagementId);
-    if (!engagement) return;
-    
-    const previousValue = engagement.isArchived;
-    
-    // Optimistic update
-    updateEngagementInState(engagementId, { isArchived: archive });
-    
-    if (selectedEngagementId === engagementId) {
-      setSelectedEngagementId(null);
-      setView('list');
+  /**
+   * Filtered engagements based on all criteria
+   */
+  const filteredEngagements = useMemo(() => {
+    let result = [...engagements];
+
+    // Filter by archived status
+    if (!showArchived) {
+      result = result.filter(e => !e.isArchived);
     }
-    
-    try {
-      await client.models.Engagement.update({
-        id: engagementId,
-        isArchived: archive
-      });
-      
-      logChangeAsync(
-        engagementId, 
-        archive ? 'ARCHIVED' : 'RESTORED', 
-        archive ? 'Engagement archived' : 'Engagement restored'
+
+    // Filter by stale status
+    if (showStaleOnly) {
+      result = result.filter(e => e.isStale);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(e =>
+        e.company?.toLowerCase().includes(query) ||
+        e.contactName?.toLowerCase().includes(query) ||
+        e.contactEmail?.toLowerCase().includes(query)
       );
-      
-    } catch (error) {
-      console.error('Error archiving engagement:', error);
-      // Rollback
-      updateEngagementInState(engagementId, { isArchived: previousValue });
     }
-  }, [engagements, selectedEngagementId, setSelectedEngagementId, setView, updateEngagementInState, logChangeAsync, client]);
 
-  // Delete engagement with cascade
-  const handleDeleteEngagement = useCallback(async (deleteModalEngagement, setDeleteModalEngagement, setIsDeleting) => {
-    if (!deleteModalEngagement || !currentUser?.isAdmin) return;
-    
-    setIsDeleting(true);
-    
-    try {
-      const engagementId = deleteModalEngagement.id;
-      
-      // 1. Delete all comments for all activities
-      for (const activity of (deleteModalEngagement.activities || [])) {
-        for (const comment of (activity.comments || [])) {
-          await client.models.Comment.delete({ id: comment.id });
-        }
-      }
-      
-      // 2. Delete all activities
-      for (const activity of (deleteModalEngagement.activities || [])) {
-        await client.models.Activity.delete({ id: activity.id });
-      }
-      
-      // 3. Delete all phases
-      for (const phaseKey of Object.keys(deleteModalEngagement.phases || {})) {
-        const phase = deleteModalEngagement.phases[phaseKey];
-        if (phase?.id) {
-          await client.models.Phase.delete({ id: phase.id });
-        }
-      }
-      
-      // 4. Delete all ownership records
-      for (const ownership of (deleteModalEngagement.ownershipRecords || [])) {
-        await client.models.EngagementOwner.delete({ id: ownership.id });
-      }
-      
-      // 5. Delete all change logs
-      for (const log of (deleteModalEngagement.changeLogs || [])) {
-        await client.models.ChangeLog.delete({ id: log.id });
-      }
-      
-      // 6. Delete engagement views
-      const { data: views } = await client.models.EngagementView.list({
-        filter: { engagementId: { eq: engagementId } }
-      });
-      for (const view of views) {
-        await client.models.EngagementView.delete({ id: view.id });
-      }
-      
-      // 7. Finally, delete the engagement itself
-      await client.models.Engagement.delete({ id: engagementId });
-      
-      // Update local state
-      setEngagements(prev => prev.filter(e => e.id !== engagementId));
-      setDeleteModalEngagement(null);
-      
-    } catch (error) {
-      console.error('Error deleting engagement:', error);
-      alert('Error deleting engagement: ' + error.message);
-    } finally {
-      setIsDeleting(false);
+    // Filter by phase
+    if (phaseFilter !== 'ALL') {
+      result = result.filter(e => e.currentPhase === phaseFilter);
     }
-  }, [currentUser, setEngagements, client]);
+
+    // Filter by owner
+    if (ownerFilter !== 'ALL') {
+      result = result.filter(e => 
+        e.ownerIds?.includes(ownerFilter) || e.ownerId === ownerFilter
+      );
+    }
+
+    // Filter by industry
+    if (industryFilter !== 'ALL') {
+      result = result.filter(e => e.industry === industryFilter);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      // Handle dates
+      if (sortField === 'lastActivity' || sortField === 'startDate' || sortField === 'createdAt') {
+        aVal = aVal ? new Date(aVal).getTime() : 0;
+        bVal = bVal ? new Date(bVal).getTime() : 0;
+      }
+
+      // Handle strings
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal || '').toLowerCase();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [
+    engagements,
+    searchQuery,
+    phaseFilter,
+    ownerFilter,
+    industryFilter,
+    showArchived,
+    showStaleOnly,
+    sortField,
+    sortDirection
+  ]);
+
+  /**
+   * Count of active filters
+   */
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (searchQuery.trim()) count++;
+    if (phaseFilter !== 'ALL') count++;
+    if (ownerFilter !== 'ALL') count++;
+    if (industryFilter !== 'ALL') count++;
+    if (showArchived) count++;
+    if (showStaleOnly) count++;
+    return count;
+  }, [searchQuery, phaseFilter, ownerFilter, industryFilter, showArchived, showStaleOnly]);
+
+  /**
+   * Aggregated stats for dashboard
+   */
+  const stats = useMemo(() => {
+    const active = engagements.filter(e => !e.isArchived);
+    return {
+      total: active.length,
+      stale: active.filter(e => e.isStale).length,
+      byPhase: {
+        DISCOVER: active.filter(e => e.currentPhase === 'DISCOVER').length,
+        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').length,
+        DEMONSTRATE: active.filter(e => e.currentPhase === 'DEMONSTRATE').length,
+        VALIDATE: active.filter(e => e.currentPhase === 'VALIDATE').length,
+        ENABLE: active.filter(e => e.currentPhase === 'ENABLE').length
+      }
+    };
+  }, [engagements]);
 
   return {
-    // Filtered/computed data
-    filteredEngagements,
-    filteredEngagementsAdmin,
-    staleCount,
-    totalInViewMode,
-    inProgressInViewMode,
+    // Filter state
+    searchQuery,
+    setSearchQuery,
+    phaseFilter,
+    setPhaseFilter,
+    ownerFilter,
+    setOwnerFilter,
+    industryFilter,
+    setIndustryFilter,
+    showArchived,
+    setShowArchived,
+    showStaleOnly,
+    setShowStaleOnly,
     
-    // Operations
-    getCascadeInfo,
-    handleCreateEngagement,
-    handleToggleArchive,
-    handleDeleteEngagement
+    // Sort state
+    sortField,
+    sortDirection,
+    handleSort,
+    
+    // Derived data
+    filteredEngagements,
+    activeFilterCount,
+    stats,
+    
+    // Actions
+    clearFilters
   };
 };
 
