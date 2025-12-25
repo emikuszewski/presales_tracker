@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 
 /**
- * Modal for editing integration links (Salesforce, Jira, Drive, Slack)
+ * Modal for editing integration links (Salesforce, Jira, Drive, Slides, Slack)
  * Manages its own local form state
- * Grouped by: Tracking (SF, Jira) → Documents (Drive) → Communication (Slack)
+ * Grouped by: Tracking (SF, Jira) → Documents (Drive, Slides) → Communication (Slack)
  */
 const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
   const [formData, setFormData] = useState({
@@ -14,6 +14,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     jiraUrl: '',
     driveFolderName: '',
     driveFolderUrl: '',
+    slidesName: '',
+    slidesUrl: '',
     slackChannel: '',
     slackUrl: ''
   });
@@ -28,6 +30,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
         jiraUrl: initialData.jiraUrl || '',
         driveFolderName: initialData.driveFolderName || '',
         driveFolderUrl: initialData.driveFolderUrl || '',
+        slidesName: initialData.slidesName || '',
+        slidesUrl: initialData.slidesUrl || '',
         slackChannel: initialData.slackChannel || '',
         slackUrl: initialData.slackUrl || ''
       });
@@ -43,6 +47,8 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
       jiraUrl: formData.jiraUrl || null,
       driveFolderName: formData.driveFolderName || null,
       driveFolderUrl: formData.driveFolderUrl || null,
+      slidesName: formData.slidesName || null,
+      slidesUrl: formData.slidesUrl || null,
       slackChannel: formData.slackChannel || null,
       slackUrl: formData.slackUrl || null
     });
@@ -134,6 +140,32 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               onChange={e => updateField('driveFolderUrl', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="https://drive.google.com/drive/folders/..." 
+            />
+          </div>
+
+          {/* Documents: Google Slides */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Slides Deck Name
+            </label>
+            <input 
+              type="text" 
+              value={formData.slidesName}
+              onChange={e => updateField('slidesName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Customer Demo Deck" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Slides Deck URL
+            </label>
+            <input 
+              type="url" 
+              value={formData.slidesUrl}
+              onChange={e => updateField('slidesUrl', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="https://docs.google.com/presentation/d/..." 
             />
           </div>
 
