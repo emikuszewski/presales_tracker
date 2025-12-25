@@ -29,6 +29,7 @@ const useEngagementList = (engagements = []) => {
   }, [sortField]);
 
   const filteredEngagements = useMemo(() => {
+    if (!engagements || !Array.isArray(engagements)) return [];
     let result = [...engagements];
 
     if (!showArchived) {
@@ -106,41 +107,23 @@ const useEngagementList = (engagements = []) => {
   }, [searchQuery, phaseFilter, ownerFilter, industryFilter, showArchived, showStaleOnly]);
 
   const stats = useMemo(() => {
+    if (!engagements || !Array.isArray(engagements)) {
+      return {
+        total: 0,
+        stale: 0,
+        byPhase: {
+          DISCOVER: 0,
+          DESIGN: 0,
+          DEMONSTRATE: 0,
+          VALIDATE: 0,
+          ENABLE: 0
+        }
+      };
+    }
     const active = engagements.filter(e => !e.isArchived);
     return {
       total: active.length,
       stale: active.filter(e => e.isStale).length,
       byPhase: {
         DISCOVER: active.filter(e => e.currentPhase === 'DISCOVER').length,
-        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').length,
-        DEMONSTRATE: active.filter(e => e.currentPhase === 'DEMONSTRATE').length,
-        VALIDATE: active.filter(e => e.currentPhase === 'VALIDATE').length,
-        ENABLE: active.filter(e => e.currentPhase === 'ENABLE').length
-      }
-    };
-  }, [engagements]);
-
-  return {
-    searchQuery,
-    setSearchQuery,
-    phaseFilter,
-    setPhaseFilter,
-    ownerFilter,
-    setOwnerFilter,
-    industryFilter,
-    setIndustryFilter,
-    showArchived,
-    setShowArchived,
-    showStaleOnly,
-    setShowStaleOnly,
-    sortField,
-    sortDirection,
-    handleSort,
-    filteredEngagements,
-    activeFilterCount,
-    stats,
-    clearFilters
-  };
-};
-
-export default useEngagementList;
+        DESIGN: active.filter(e => e.currentPhase === 'DESIGN').le
