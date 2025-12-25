@@ -249,12 +249,16 @@ var useEngagementDetail = function(params) {
         return Object.assign({}, eng, { activities: newActivities });
       });
 
+      if (logChangeAsync) {
+        logChangeAsync(selectedEngagement.id, 'COMMENT_DELETED', 'Deleted a comment');
+      }
+
       return true;
     } catch (error) {
       console.error('Error deleting comment:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
   // Note operations
   var noteAdd = useCallback(async function(phaseType, text) {
