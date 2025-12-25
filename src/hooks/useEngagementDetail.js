@@ -517,6 +517,8 @@ const useEngagementDetail = ({
       jiraUrl: selectedEngagement.jiraUrl,
       driveFolderName: selectedEngagement.driveFolderName,
       driveFolderUrl: selectedEngagement.driveFolderUrl,
+      docsName: selectedEngagement.docsName,
+      docsUrl: selectedEngagement.docsUrl,
       slidesName: selectedEngagement.slidesName,
       slidesUrl: selectedEngagement.slidesUrl,
       slackChannel: selectedEngagement.slackChannel,
