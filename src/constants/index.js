@@ -13,5 +13,6 @@ export {
   SYSTEM_SE_TEAM,
   phaseConfig,
   activityTypes,
-  industries
+  industries,
+  detailTabs
 } from './config';
