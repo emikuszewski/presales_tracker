@@ -138,7 +138,7 @@ const AdminView = ({
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• <strong>Deactivated users</strong> cannot be assigned as owners but their existing engagements remain.</li>
           <li>• <strong>Admins</strong> can manage team members and access this panel.</li>
-          <li>• Users automatically join when they sign up with a @plainid.com email.</li>
+          <li>• <strong>Users</strong> automatically join when they sign up with a @plainid.com email.</li>
         </ul>
       </div>
     </div>
