@@ -8,6 +8,8 @@ const schema = a.schema({
     initials: a.string().required(),
     isAdmin: a.boolean().default(false),
     isActive: a.boolean().default(true),
+    // NEW: System user flag for SE Team and future system users
+    isSystemUser: a.boolean().default(false),
     // Phase 1 legacy relationship (kept for backwards compatibility)
     engagements: a.hasMany('Engagement', 'ownerId'),
     // Phase 2: Co-ownership relationship
