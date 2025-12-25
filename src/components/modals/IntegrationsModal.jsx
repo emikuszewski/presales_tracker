@@ -64,9 +64,34 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const footerContent = (
+    <div className="flex gap-3">
+      <button 
+        type="button" 
+        onClick={onClose}
+        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+      >
+        Cancel
+      </button>
+      <button 
+        type="submit"
+        form="integrations-form"
+        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+      >
+        Save
+      </button>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Integrations">
-      <form onSubmit={handleSubmit}>
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title="Edit Integrations"
+      scrollable
+      footer={footerContent}
+    >
+      <form id="integrations-form" onSubmit={handleSubmit}>
         <div className="space-y-4">
           {/* Documents: Google Drive */}
           <div>
@@ -177,22 +202,6 @@ const IntegrationsModal = ({ isOpen, onClose, initialData, onSave }) => {
               Right-click the channel in Slack → Copy link
             </p>
           </div>
-        </div>
-        
-        <div className="flex gap-3 mt-6">
-          <button 
-            type="button" 
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit"
-            className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
-          >
-            Save
-          </button>
         </div>
       </form>
     </Modal>
