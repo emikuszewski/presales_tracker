@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { phaseConfig } from '../constants';
+import { phaseConfig, phaseLabels } from '../constants';
 
 var useEngagementList = function(params) {
   var engagements = params.engagements;
@@ -15,6 +15,7 @@ var useEngagementList = function(params) {
   var logChangeAsync = params.logChangeAsync;
   var client = params.client;
   var filters = params.filters || {};
+  var getOwnerInfo = params.getOwnerInfo;
 
   var filterPhase = filters.filterPhase;
   var filterOwner = filters.filterOwner;
@@ -150,7 +151,7 @@ var useEngagementList = function(params) {
   // Get cascade info for delete modal
   var getCascadeInfo = useCallback(function(engagement) {
     if (!engagement) {
-      return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0 };
+      return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0, notes: 0 };
     }
 
     var phases = engagement.phases ? Object.keys(engagement.phases).length : 0;
@@ -163,14 +164,56 @@ var useEngagementList = function(params) {
     }
     var changeLogs = engagement.changeLogs ? engagement.changeLogs.length : 0;
     var owners = engagement.ownerIds ? engagement.ownerIds.length : 0;
+    var notes = engagement.phaseNotes ? engagement.phaseNotes.length : 0;
 
     return {
       phases: phases,
       activities: activities,
       comments: comments,
       changeLogs: changeLogs,
-      owners: owners
+      owners: owners,
+      notes: notes
     };
+  }, []);
+
+  /**
+   * Build cascade summary string for deletion log
+   * e.g., "5 activities, 8 comments, 3 notes"
+   */
+  var buildCascadeSummary = useCallback(function(cascadeInfo) {
+    var parts = [];
+    
+    if (cascadeInfo.activities > 0) {
+      parts.push(cascadeInfo.activities + ' activit' + (cascadeInfo.activities === 1 ? 'y' : 'ies'));
+    }
+    if (cascadeInfo.comments > 0) {
+      parts.push(cascadeInfo.comments + ' comment' + (cascadeInfo.comments === 1 ? '' : 's'));
+    }
+    if (cascadeInfo.notes > 0) {
+      parts.push(cascadeInfo.notes + ' note' + (cascadeInfo.notes === 1 ? '' : 's'));
+    }
+    
+    if (parts.length === 0) {
+      return 'No related data';
+    }
+    
+    return parts.join(', ');
+  }, []);
+
+  /**
+   * Get owner names as comma-separated string
+   */
+  var getOwnerNamesString = useCallback(function(engagement, getOwnerInfoFn) {
+    if (!engagement.ownerIds || engagement.ownerIds.length === 0) {
+      return '';
+    }
+    
+    var names = engagement.ownerIds.map(function(ownerId) {
+      var owner = getOwnerInfoFn(ownerId);
+      return owner.name || 'Unknown';
+    });
+    
+    return names.join(', ');
   }, []);
 
   // Create new engagement
@@ -306,13 +349,18 @@ var useEngagementList = function(params) {
   }, [client, updateEngagementInState, logChangeAsync]);
 
   // Delete engagement
-  var handleDeleteEngagement = useCallback(async function(engagement, setDeleteModalEngagement, setIsDeleting) {
-    if (!engagement) return;
+  var handleDeleteEngagement = useCallback(async function(engagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfoFn) {
+    if (!engagement || !currentUser) return;
 
     setIsDeleting(true);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
+
+      // Gather cascade info BEFORE deletion for the audit log
+      var cascadeInfo = getCascadeInfo(engagement);
+      var cascadeSummary = buildCascadeSummary(cascadeInfo);
+      var ownerNames = getOwnerNamesString(engagement, getOwnerInfoFn || function() { return { name: 'Unknown' }; });
 
       // Delete all related records first
       // Delete phases
@@ -364,6 +412,24 @@ var useEngagementList = function(params) {
       // Finally delete the engagement
       await dataClient.models.Engagement.delete({ id: engagement.id });
 
+      // Create DeletionLog entry AFTER successful deletion
+      // Calculate expiresAt: current time + 365 days, as Unix timestamp in seconds
+      var now = new Date();
+      var expiresAt = Math.floor(now.getTime() / 1000) + (365 * 24 * 60 * 60);
+
+      await dataClient.models.DeletionLog.create({
+        deletedById: currentUser.id,
+        deletedByName: currentUser.name,
+        companyName: engagement.company,
+        contactName: engagement.contactName,
+        industry: engagement.industry || null,
+        currentPhase: engagement.currentPhase ? (phaseLabels[engagement.currentPhase] || engagement.currentPhase) : null,
+        ownerNames: ownerNames || null,
+        cascadeSummary: cascadeSummary,
+        engagementCreatedAt: engagement.startDate || null,
+        expiresAt: expiresAt
+      });
+
       setEngagements(function(prev) {
         return prev.filter(function(e) { return e.id !== engagement.id; });
       });
@@ -374,7 +440,7 @@ var useEngagementList = function(params) {
     } finally {
       setIsDeleting(false);
     }
-  }, [client, setEngagements]);
+  }, [client, setEngagements, currentUser, getCascadeInfo, buildCascadeSummary, getOwnerNamesString]);
 
   return {
     filteredEngagements: filteredEngagements,
