@@ -18,6 +18,8 @@ const schema = a.schema({
     comments: a.hasMany('Comment', 'authorId'),
     // Phase 3: Change logs authored
     changeLogs: a.hasMany('ChangeLog', 'userId'),
+    // Phase 4: Notes authored
+    phaseNotes: a.hasMany('PhaseNote', 'authorId'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase 2: Junction table for many-to-many engagement ownership
@@ -87,6 +89,8 @@ const schema = a.schema({
     activities: a.hasMany('Activity', 'engagementId'),
     // Phase 3: Change history
     changeLogs: a.hasMany('ChangeLog', 'engagementId'),
+    // Phase 4: Running notes per phase
+    phaseNotes: a.hasMany('PhaseNote', 'engagementId'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase model
@@ -106,9 +110,26 @@ const schema = a.schema({
       'COMPLETE'
     ]),
     completedDate: a.date(),
+    // Legacy notes field - kept for backwards compatibility, migrated to PhaseNote
     notes: a.string(),
     // Links stored as JSON array: [{title: string, url: string}]
     links: a.json(),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Phase 4: Running notes per phase
+  PhaseNote: a.model({
+    engagementId: a.id().required(),
+    engagement: a.belongsTo('Engagement', 'engagementId'),
+    phaseType: a.enum([
+      'DISCOVER',
+      'DESIGN',
+      'DEMONSTRATE',
+      'VALIDATE',
+      'ENABLE'
+    ]),
+    text: a.string().required(),
+    authorId: a.id().required(),
+    author: a.belongsTo('TeamMember', 'authorId'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Activity model
@@ -155,7 +176,10 @@ const schema = a.schema({
       'LINK_ADDED',
       'INTEGRATION_UPDATE',
       'ARCHIVED',
-      'RESTORED'
+      'RESTORED',
+      'NOTE_ADDED',
+      'NOTE_EDITED',
+      'NOTE_DELETED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
