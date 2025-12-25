@@ -11,7 +11,8 @@ export {
   DocsIcon,
   SlidesIcon,
   SheetsIcon,
-  LinkifyText
+  LinkifyText,
+  IntegrationLinksIndicator
 } from './ui';
 
 // Modal components
