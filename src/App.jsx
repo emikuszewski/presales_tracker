@@ -104,6 +104,8 @@ function PresalesTracker() {
     filteredEngagements,
     filteredEngagementsAdmin,
     staleCount,
+    totalInViewMode,
+    inProgressInViewMode,
     getCascadeInfo,
     handleCreateEngagement,
     handleToggleArchive,
@@ -143,6 +145,21 @@ function PresalesTracker() {
     getOwnerInfo,
     client
   });
+
+  // ============================================
+  // FILTER OPERATIONS
+  // ============================================
+
+  /**
+   * Clear all active filters (phase, stale, search) and reset owner to 'mine'
+   * Keeps archived mode as-is
+   */
+  const clearAllFilters = () => {
+    setFilterPhase('all');
+    setFilterStale(false);
+    setSearchQuery('');
+    setFilterOwner('mine');
+  };
 
   // ============================================
   // NAVIGATION HELPER
@@ -250,6 +267,8 @@ function PresalesTracker() {
             teamMembers={teamMembers}
             currentUser={currentUser}
             staleCount={staleCount}
+            totalInViewMode={totalInViewMode}
+            inProgressInViewMode={inProgressInViewMode}
             getOwnerInfo={getOwnerInfo}
             filters={{
               filterPhase,
@@ -263,7 +282,8 @@ function PresalesTracker() {
               setFilterOwner,
               setFilterStale,
               setShowArchived,
-              setSearchQuery
+              setSearchQuery,
+              clearAllFilters
             }}
             onSelectEngagement={(id) => navigateTo('detail', id)}
             onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivityId: activityId })}
