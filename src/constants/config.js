@@ -9,6 +9,13 @@ export const ALLOWED_DOMAIN = 'plainid.com';
 // Phase 3: Stale threshold in business days
 export const STALE_THRESHOLD_BUSINESS_DAYS = 14;
 
+// System user configuration for SE Team (shared pool for unassigned engagements)
+export const SYSTEM_SE_TEAM = {
+  EMAIL: 'se-team@system.local',
+  NAME: 'SE Team',
+  INITIALS: 'SE'
+};
+
 // Phase configuration with labels and descriptions
 export const phaseConfig = [
   { id: "DISCOVER", label: "Discover", description: "Technical qualification & requirements gathering" },
