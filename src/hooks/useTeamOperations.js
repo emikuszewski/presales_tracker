@@ -1,86 +1,87 @@
 import { useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import { getInitials } from '../utils';
 
-const useTeamOperations = function(params) {
-  var setTeamMembers = params.setTeamMembers;
+var useTeamOperations = function(params) {
+  var currentUser = params.currentUser;
+  var allTeamMembers = params.allTeamMembers;
   var setAllTeamMembers = params.setAllTeamMembers;
+  var setTeamMembers = params.setTeamMembers;
+  var fetchAllData = params.fetchAllData;
+  var client = params.client;
 
-  var addTeamMember = useCallback(async function(memberData) {
+  var handleToggleUserActive = useCallback(async function(memberId, isCurrentlyActive) {
     try {
-      var client = generateClient();
-      var initials = memberData.initials || getInitials(memberData.name);
+      var dataClient = typeof client === 'function' ? client() : client;
       
-      var result = await client.models.TeamMember.create({
-        email: memberData.email,
-        name: memberData.name,
-        initials: initials,
-        isAdmin: memberData.isAdmin || false,
-        isActive: true,
-        isSystemUser: false
-      });
-
-      var newMember = result.data;
-      setAllTeamMembers(function(prev) { return [...prev, newMember]; });
-      setTeamMembers(function(prev) { return [...prev, newMember]; });
-
-      return { success: true, member: newMember };
-    } catch (error) {
-      console.error('Error adding team member:', error);
-      return { success: false, error: error };
-    }
-  }, [setTeamMembers, setAllTeamMembers]);
-
-  var updateTeamMember = useCallback(async function(memberId, updates) {
-    try {
-      var client = generateClient();
-      var result = await client.models.TeamMember.update({
+      await dataClient.models.TeamMember.update({
         id: memberId,
-        ...updates
+        isActive: !isCurrentlyActive
       });
 
-      var updatedMember = result.data;
-
-      var updateInList = function(list) {
-        return list.map(function(m) {
-          return m.id === memberId ? { ...m, ...updatedMember } : m;
-        });
+      // Update local state
+      var updateMember = function(member) {
+        if (member.id === memberId) {
+          return Object.assign({}, member, { isActive: !isCurrentlyActive });
+        }
+        return member;
       };
 
-      setAllTeamMembers(updateInList);
-      setTeamMembers(function(prev) {
-        var updated = updateInList(prev);
-        if (updates.isActive === false) {
-          return updated.filter(function(m) { return m.id !== memberId; });
-        }
-        return updated;
+      setAllTeamMembers(function(prev) {
+        return prev.map(updateMember);
       });
 
-      return { success: true, member: updatedMember };
+      // Update active team members list
+      if (isCurrentlyActive) {
+        // User is being deactivated - remove from active list
+        setTeamMembers(function(prev) {
+          return prev.filter(function(m) { return m.id !== memberId; });
+        });
+      } else {
+        // User is being reactivated - add back to active list
+        var member = allTeamMembers.find(function(m) { return m.id === memberId; });
+        if (member) {
+          var updatedMember = Object.assign({}, member, { isActive: true });
+          setTeamMembers(function(prev) {
+            return prev.concat([updatedMember]);
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error updating team member:', error);
-      return { success: false, error: error };
+      console.error('Error toggling user active status:', error);
     }
-  }, [setTeamMembers, setAllTeamMembers]);
+  }, [client, allTeamMembers, setAllTeamMembers, setTeamMembers]);
 
-  var deactivateTeamMember = useCallback(async function(memberId) {
-    return updateTeamMember(memberId, { isActive: false });
-  }, [updateTeamMember]);
+  var handleToggleUserAdmin = useCallback(async function(memberId, isCurrentlyAdmin) {
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      
+      await dataClient.models.TeamMember.update({
+        id: memberId,
+        isAdmin: !isCurrentlyAdmin
+      });
 
-  var reactivateTeamMember = useCallback(async function(memberId) {
-    return updateTeamMember(memberId, { isActive: true });
-  }, [updateTeamMember]);
+      // Update local state
+      var updateMember = function(member) {
+        if (member.id === memberId) {
+          return Object.assign({}, member, { isAdmin: !isCurrentlyAdmin });
+        }
+        return member;
+      };
 
-  var toggleAdmin = useCallback(async function(memberId, isAdmin) {
-    return updateTeamMember(memberId, { isAdmin: isAdmin });
-  }, [updateTeamMember]);
+      setAllTeamMembers(function(prev) {
+        return prev.map(updateMember);
+      });
+
+      setTeamMembers(function(prev) {
+        return prev.map(updateMember);
+      });
+    } catch (error) {
+      console.error('Error toggling user admin status:', error);
+    }
+  }, [client, setAllTeamMembers, setTeamMembers]);
 
   return {
-    addTeamMember: addTeamMember,
-    updateTeamMember: updateTeamMember,
-    deactivateTeamMember: deactivateTeamMember,
-    reactivateTeamMember: reactivateTeamMember,
-    toggleAdmin: toggleAdmin
+    handleToggleUserActive: handleToggleUserActive,
+    handleToggleUserAdmin: handleToggleUserAdmin
   };
 };
 
