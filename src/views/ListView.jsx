@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, SlackIcon, DriveIcon, DocsIcon, SlidesIcon, SheetsIcon, FilterPanel } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator } from '../components';
 import { industryLabels, phaseConfig, phaseLabels } from '../constants';
 
 /**
@@ -266,121 +266,74 @@ const ListView = ({
                 <div className="text-right">
                   <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
                   <div className="flex items-center justify-end gap-2 mt-1">
-                    {engagement.isStale && (
-                      <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
-                    )}
-                    {!engagement.isStale && (
-                      hasActivities ? (
-                        <button
-                          onClick={(e) => handleLastActivityClick(e, engagement)}
-                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          Last activity: {engagement.lastActivity || engagement.startDate}
-                        </button>
-                      ) : (
-                        <p className="text-xs text-gray-400">
-                          Last activity: {engagement.lastActivity || engagement.startDate}
-                        </p>
-                      )
+                    {hasActivities ? (
+                      <button
+                        onClick={(e) => handleLastActivityClick(e, engagement)}
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        Last activity: {engagement.lastActivity || engagement.startDate}
+                      </button>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        Last activity: {engagement.lastActivity || engagement.startDate}
+                      </p>
                     )}
                   </div>
                 </div>
               </div>
               
-              {/* Integration badges */}
-              {(engagement.driveFolderUrl || engagement.docsUrl || engagement.slidesUrl || engagement.sheetsUrl || engagement.slackUrl) && (
-                <div className="flex gap-2 mb-3">
-                  {engagement.driveFolderUrl && (
-                    <a
-                      href={engagement.driveFolderUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded hover:bg-green-100 transition-colors"
-                      title={engagement.driveFolderName || 'Open Google Drive'}
-                    >
-                      <DriveIcon className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  
-                  {engagement.docsUrl && (
-                    <a
-                      href={engagement.docsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                      title={engagement.docsName || 'Open Google Doc'}
-                    >
-                      <DocsIcon className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  
-                  {engagement.slidesUrl && (
-                    <a
-                      href={engagement.slidesUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 rounded hover:bg-yellow-100 transition-colors"
-                      title={engagement.slidesName || 'Open Google Slides'}
-                    >
-                      <SlidesIcon className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  
-                  {engagement.sheetsUrl && (
-                    <a
-                      href={engagement.sheetsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 rounded hover:bg-emerald-100 transition-colors"
-                      title={engagement.sheetsName || 'Open Google Sheet'}
-                    >
-                      <SheetsIcon className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  
-                  {engagement.slackUrl && (
-                    <a
-                      href={engagement.slackUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 rounded hover:bg-purple-100 transition-colors"
-                      title={engagement.slackChannel || 'Open Slack'}
-                    >
-                      <SlackIcon className="w-3.5 h-3.5" />
-                    </a>
+              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Stale Badge + Links Indicator */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Compact Phase Dots */}
+                  <div className="flex items-center gap-1">
+                    {phaseConfig.map((phase) => {
+                      const phaseData = engagement.phases[phase.id];
+                      const status = phaseData?.status || 'PENDING';
+                      return (
+                        <div
+                          key={phase.id}
+                          className={`w-2.5 h-2.5 rounded-full ${getStatusColor(status)}`}
+                          title={`${phase.label}: ${status.toLowerCase().replace('_', ' ')}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Current Phase Badge */}
+                  {(() => {
+                    const currentPhaseData = engagement.phases[engagement.currentPhase];
+                    const currentStatus = currentPhaseData?.status || 'PENDING';
+                    const phaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
+                    
+                    let badgeClasses, dotClasses;
+                    if (currentStatus === 'COMPLETE') {
+                      badgeClasses = 'bg-emerald-50 text-emerald-700';
+                      dotClasses = 'bg-emerald-500';
+                    } else if (currentStatus === 'IN_PROGRESS') {
+                      badgeClasses = 'bg-blue-50 text-blue-700';
+                      dotClasses = 'bg-blue-500';
+                    } else {
+                      badgeClasses = 'bg-gray-100 text-gray-600';
+                      dotClasses = 'bg-gray-400';
+                    }
+
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+                        {phaseLabel}
+                      </span>
+                    );
+                  })()}
+
+                  {/* Stale Badge (after phase badge) */}
+                  {engagement.isStale && (
+                    <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
                   )}
                 </div>
-              )}
-              
-              {/* Phase Progress */}
-              <div className="flex items-center gap-1">
-                {phaseConfig.map((phase, index) => {
-                  const phaseData = engagement.phases[phase.id];
-                  const status = phaseData?.status || 'PENDING';
-                  return (
-                    <React.Fragment key={phase.id}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${getStatusColor(status)}`} />
-                        <span className={`text-xs font-medium ${
-                          status === 'COMPLETE' ? 'text-emerald-700' : 
-                          status === 'IN_PROGRESS' ? 'text-blue-700' : 'text-gray-400'
-                        }`}>
-                          {phase.label}
-                        </span>
-                      </div>
-                      {index < phaseConfig.length - 1 && (
-                        <div className={`flex-1 h-px mx-2 ${
-                          status === 'COMPLETE' ? 'bg-emerald-300' : 'bg-gray-200'
-                        }`} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+
+                {/* Integration Links Indicator */}
+                <IntegrationLinksIndicator engagement={engagement} />
               </div>
             </div>
           );
