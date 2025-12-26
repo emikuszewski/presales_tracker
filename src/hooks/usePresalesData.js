@@ -4,7 +4,8 @@ import {
   groupBy,
   parseLinks,
   isEngagementStale,
-  getDaysSinceActivity
+  getDaysSinceActivity,
+  safeJsonParse
 } from '../utils';
 import { phaseConfig, SYSTEM_SE_TEAM } from '../constants';
 
@@ -199,7 +200,10 @@ const usePresalesData = (selectedEngagementId) => {
         // Default engagementStatus to 'ACTIVE' if not set (backwards compatibility)
         var engagementStatus = eng.engagementStatus || 'ACTIVE';
 
-        // Build enriched engagement with new status fields
+        // Parse competitors from JSON string
+        var competitors = safeJsonParse(eng.competitors, []);
+
+        // Build enriched engagement with new status and competitor fields
         var enrichedEng = Object.assign({}, eng, {
           phases: phasesObj,
           activities: activitiesWithComments,
@@ -213,7 +217,11 @@ const usePresalesData = (selectedEngagementId) => {
           daysSinceActivity: getDaysSinceActivity(eng),
           hasSystemOwner: hasSystemOwner,
           engagementStatus: engagementStatus,
-          closedReason: eng.closedReason || null
+          closedReason: eng.closedReason || null,
+          // Competitor fields
+          competitors: competitors,
+          competitorNotes: eng.competitorNotes || null,
+          otherCompetitorName: eng.otherCompetitorName || null
         });
 
         // Calculate isStale using the enriched engagement (which includes engagementStatus)
