@@ -33,6 +33,30 @@ const schema = a.schema({
     addedAt: a.datetime(),
   }).authorization(allow => [allow.authenticated()]),
 
+  // Competitor enum for tracking competition
+  Competitor: a.enum([
+    'AMIDA',
+    'ASERTO',
+    'AWS_VERIFIED_PERMISSIONS',
+    'AXIOMATICS',
+    'CERBOS',
+    'CYBERARK',
+    'FORGEROCK',
+    'KEYCLOAK',
+    'MICROSOFT_ENTRA',
+    'NEXTLABS',
+    'OKTA',
+    'ONE_IDENTITY',
+    'ORY',
+    'PERMIT_IO',
+    'PING_IDENTITY',
+    'SAILPOINT',
+    'SAVIYNT',
+    'STYRA_OPA',
+    'ZANZIBAR',
+    'OTHER'
+  ]),
+
   // Engagement model
   Engagement: a.model({
     company: a.string().required(),
@@ -96,6 +120,11 @@ const schema = a.schema({
     ]),
     // Optional notes when engagement is closed
     closedReason: a.string(),
+    
+    // Competitor tracking fields
+    competitors: a.string(), // JSON array of competitor enum values
+    competitorNotes: a.string(), // General notes about competition
+    otherCompetitorName: a.string(), // Required when OTHER is selected
     
     // Relationships
     phases: a.hasMany('Phase', 'engagementId'),
@@ -198,7 +227,8 @@ const schema = a.schema({
       'NOTE_ADDED',
       'NOTE_EDITED',
       'NOTE_DELETED',
-      'STATUS_CHANGED'
+      'STATUS_CHANGED',
+      'COMPETITORS_UPDATED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
