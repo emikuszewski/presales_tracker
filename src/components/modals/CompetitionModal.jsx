@@ -1,0 +1,182 @@
+import React, { useState, useEffect } from 'react';
+import Modal from '../ui/Modal';
+import CompetitorLogo from '../ui/CompetitorLogo';
+import { competitorConfig } from '../../constants';
+
+/**
+ * Modal for managing competitor selection and notes
+ * Flat alphabetical checkbox list with inline "Other" text input
+ */
+const CompetitionModal = ({ 
+  isOpen, 
+  onClose, 
+  initialCompetitors = [], 
+  initialNotes = '',
+  initialOtherName = '',
+  onSave 
+}) => {
+  // Local state
+  const [selectedCompetitors, setSelectedCompetitors] = useState([]);
+  const [competitorNotes, setCompetitorNotes] = useState('');
+  const [otherCompetitorName, setOtherCompetitorName] = useState('');
+  const [showOtherError, setShowOtherError] = useState(false);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCompetitors(initialCompetitors || []);
+      setCompetitorNotes(initialNotes || '');
+      setOtherCompetitorName(initialOtherName || '');
+      setShowOtherError(false);
+    }
+  }, [isOpen, initialCompetitors, initialNotes, initialOtherName]);
+
+  // Check if OTHER is selected
+  const hasOther = selectedCompetitors.includes('OTHER');
+  
+  // Validation: OTHER selected but no name provided
+  const otherValidationError = hasOther && !otherCompetitorName.trim();
+
+  // Toggle competitor selection
+  const toggleCompetitor = (competitorId) => {
+    setSelectedCompetitors(prev => {
+      if (prev.includes(competitorId)) {
+        return prev.filter(c => c !== competitorId);
+      } else {
+        return [...prev, competitorId];
+      }
+    });
+    // Clear error when OTHER is toggled off
+    if (competitorId === 'OTHER') {
+      setShowOtherError(false);
+    }
+  };
+
+  // Handle save
+  const handleSave = () => {
+    // Validate OTHER requirement
+    if (otherValidationError) {
+      setShowOtherError(true);
+      return;
+    }
+
+    onSave({
+      competitors: selectedCompetitors,
+      competitorNotes: competitorNotes.trim() || null,
+      otherCompetitorName: hasOther ? otherCompetitorName.trim() : null
+    });
+    onClose();
+  };
+
+  const footerContent = (
+    <div className="flex gap-3">
+      <button 
+        type="button" 
+        onClick={onClose}
+        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+      >
+        Cancel
+      </button>
+      <button 
+        type="button"
+        onClick={handleSave}
+        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+      >
+        Save
+      </button>
+    </div>
+  );
+
+  return (
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title="Competition"
+      scrollable
+      footer={footerContent}
+    >
+      <div className="space-y-6">
+        {/* Competitor Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Select Competitors
+          </label>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+            {competitorConfig.map((competitor) => {
+              const isSelected = selectedCompetitors.includes(competitor.id);
+              const isOther = competitor.id === 'OTHER';
+              
+              return (
+                <div key={competitor.id}>
+                  <label 
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleCompetitor(competitor.id)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <CompetitorLogo competitor={competitor.id} size="sm" />
+                    <span className="text-sm text-gray-900">{competitor.label}</span>
+                  </label>
+                  
+                  {/* Inline text input for OTHER */}
+                  {isOther && isSelected && (
+                    <div className="ml-9 mt-2 mb-2">
+                      <input
+                        type="text"
+                        value={otherCompetitorName}
+                        onChange={(e) => {
+                          setOtherCompetitorName(e.target.value);
+                          if (e.target.value.trim()) {
+                            setShowOtherError(false);
+                          }
+                        }}
+                        placeholder="Enter competitor name"
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          showOtherError && otherValidationError
+                            ? 'border-red-300 bg-red-50'
+                            : 'border-gray-300'
+                        }`}
+                      />
+                      {showOtherError && otherValidationError && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Please enter a competitor name
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Competition Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Notes
+          </label>
+          <textarea
+            value={competitorNotes}
+            onChange={(e) => setCompetitorNotes(e.target.value)}
+            placeholder="Add notes about the competitive landscape..."
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Notes can be added even without selecting competitors
+          </p>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+export default CompetitionModal;
