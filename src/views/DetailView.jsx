@@ -10,14 +10,14 @@ import {
   OwnersModal,
   IntegrationsModal,
   CompetitionModal,
-  CompetitorChips,
-  EngagementStatusIcon
+  CompetitorChips
 } from '../components';
-import { phaseLabels, engagementStatusLabels } from '../constants';
+import { phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
 import { 
   isClosedStatus, 
   getEngagementStatusBadgeClasses, 
-  getClosedBannerClasses 
+  getClosedBannerClasses,
+  getPhaseBadgeClasses
 } from '../utils';
 
 // Import tab components
@@ -52,6 +52,15 @@ const RestoreIcon = ({ className = "w-5 h-5" }) => (
 );
 
 /**
+ * Competition/Swords icon for adding competitors
+ */
+const CompetitionIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+  </svg>
+);
+
+/**
  * All engagement status options
  */
 const ALL_STATUSES = ['ACTIVE', 'ON_HOLD', 'UNRESPONSIVE', 'WON', 'LOST', 'DISQUALIFIED', 'NO_DECISION'];
@@ -59,10 +68,10 @@ const ALL_STATUSES = ['ACTIVE', 'ON_HOLD', 'UNRESPONSIVE', 'WON', 'LOST', 'DISQU
 /**
  * Engagement Status Dropdown component
  * Click to change status, similar to phase status dropdown
- * Uses SVG icons instead of emojis for consistent styling
  */
 const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const statusIcon = engagementStatusIcons[currentStatus];
   const statusLabel = engagementStatusLabels[currentStatus];
 
   const handleSelect = (newStatus) => {
@@ -78,7 +87,7 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
         onClick={() => setIsOpen(!isOpen)}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full transition-colors hover:opacity-80 ${getEngagementStatusBadgeClasses(currentStatus)}`}
       >
-        <EngagementStatusIcon status={currentStatus} className="w-3.5 h-3.5" />
+        {statusIcon && <span>{statusIcon}</span>}
         {statusLabel}
         <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -90,6 +99,7 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
             {ALL_STATUSES.map(status => {
+              const icon = engagementStatusIcons[status];
               const label = engagementStatusLabels[status];
               const isSelected = status === currentStatus;
               
@@ -99,9 +109,7 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
                   onClick={() => handleSelect(status)}
                   className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${isSelected ? 'bg-gray-50 font-medium' : ''}`}
                 >
-                  <span className={getEngagementStatusBadgeClasses(status).replace('bg-', 'text-').split(' ')[1] || 'text-gray-600'}>
-                    <EngagementStatusIcon status={status} className="w-4 h-4" />
-                  </span>
+                  {icon && <span>{icon}</span>}
                   {label}
                 </button>
               );
@@ -116,7 +124,6 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
 /**
  * Closed Engagement Banner
  * Shown above tabs for WON/LOST/DISQUALIFIED/NO_DECISION statuses
- * Uses SVG icons instead of emojis
  */
 const ClosedBanner = ({ status, closedReason, onEditReason }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -137,9 +144,7 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
     <div className={`${bannerClasses.bg} border ${bannerClasses.border} rounded-lg p-4 mx-4 mt-4`}>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <span className={bannerClasses.text}>
-            <EngagementStatusIcon status={status} className="w-5 h-5" />
-          </span>
+          <span className="text-lg">{bannerClasses.icon}</span>
           <span className={`font-medium ${bannerClasses.text}`}>
             {engagementStatusLabels[status]}
           </span>
@@ -160,63 +165,221 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             placeholder="Add notes about why this engagement closed..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
             rows={3}
-            autoFocus
           />
-          <div className="flex gap-2 mt-2">
+          <div className="flex justify-end gap-2 mt-2">
             <button
               onClick={handleCancel}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+              className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800"
             >
               Save
             </button>
           </div>
         </div>
       ) : closedReason ? (
-        <p className={`mt-2 text-sm ${bannerClasses.text} opacity-80`}>
+        <p className={`mt-2 text-sm ${bannerClasses.text}`}>
           {closedReason}
         </p>
-      ) : null}
+      ) : (
+        <p className={`mt-2 text-sm ${bannerClasses.text} opacity-60`}>
+          No notes added
+        </p>
+      )}
     </div>
   );
 };
 
 /**
- * Competition indicator for header - shows competitor chips
+ * Detail header component - compact header with back, owners, company, phase, status dropdown, competitors
+ * Deal size removed from header (per spec)
  */
-const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => {
-  const hasCompetitors = competitors && competitors.length > 0;
+const DetailHeader = ({ 
+  engagement, 
+  owners, 
+  onBack, 
+  onEdit, 
+  onArchive, 
+  onManageOwners,
+  onEditIntegrations,
+  onEditCompetitors,
+  onStatusChange,
+  isStale, 
+  daysSinceActivity 
+}) => {
+  const currentPhase = engagement?.currentPhase || 'DISCOVER';
+  const isArchived = engagement?.isArchived === true;
+  const engagementStatus = engagement?.engagementStatus || 'ACTIVE';
+  const hasCompetitors = engagement?.competitors && engagement.competitors.length > 0;
   
-  if (!hasCompetitors) {
-    return (
-      <button
-        onClick={onClick}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
-        Competition
-      </button>
-    );
-  }
+  // Get the phase data and status for styling
+  const currentPhaseData = engagement?.phases?.[currentPhase];
+  const currentStatus = currentPhaseData?.status || 'PENDING';
+  const phaseLabel = phaseLabels[currentPhase] || currentPhase;
+  
+  // Get badge styling from utility function (handles all 5 statuses consistently)
+  const { badgeClasses, dotClasses } = getPhaseBadgeClasses(currentStatus);
+
+  const integrations = [
+    { url: engagement?.driveFolderUrl, name: engagement?.driveFolderName || 'Drive', Icon: DriveIcon },
+    { url: engagement?.docsUrl, name: engagement?.docsName || 'Docs', Icon: DocsIcon },
+    { url: engagement?.slidesUrl, name: engagement?.slidesName || 'Slides', Icon: SlidesIcon },
+    { url: engagement?.sheetsUrl, name: engagement?.sheetsName || 'Sheets', Icon: SheetsIcon },
+    { url: engagement?.slackUrl, name: engagement?.slackChannel || 'Slack', Icon: SlackIcon }
+  ];
+
+  const hasIntegrations = integrations.some(i => i.url);
 
   return (
-    <button onClick={onClick} className="hover:opacity-80 transition-opacity">
-      <CompetitorChips 
-        competitors={competitors}
-        otherCompetitorName={otherCompetitorName}
-        maxDisplay={3}
-        size="xs"
-      />
-    </button>
+    <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Back button */}
+          <button
+            onClick={onBack}
+            className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+            title="Back to list"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Owner avatars - clickable to manage owners */}
+          <button
+            onClick={onManageOwners}
+            className="flex -space-x-2 flex-shrink-0 rounded-full hover:ring-2 hover:ring-gray-300 transition-all cursor-pointer"
+            title="Manage owners"
+            aria-label="Manage owners"
+          >
+            {owners.slice(0, 3).map((owner, idx) => (
+              <div
+                key={owner.id || idx}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border-2 border-white ${
+                  owner.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {owner.initials}
+              </div>
+            ))}
+            {owners.length > 3 && (
+              <div className="w-7 h-7 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-medium border-2 border-white">
+                +{owners.length - 3}
+              </div>
+            )}
+          </button>
+
+          {/* Company name */}
+          <h1 className="text-lg font-semibold text-gray-900 truncate">
+            {engagement?.company || 'Engagement'}
+          </h1>
+
+          {/* Phase badge - styled based on status */}
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${badgeClasses}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+            {phaseLabel}
+          </span>
+
+          {/* Engagement Status Dropdown */}
+          <EngagementStatusDropdown
+            currentStatus={engagementStatus}
+            onStatusChange={onStatusChange}
+          />
+
+          {/* Competitor Chips or Add Button */}
+          {hasCompetitors ? (
+            <CompetitorChips
+              competitors={engagement.competitors}
+              otherCompetitorName={engagement.otherCompetitorName}
+              maxDisplay={3}
+              size="sm"
+              onClick={onEditCompetitors}
+            />
+          ) : (
+            <button
+              onClick={onEditCompetitors}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+              title="Add competitors"
+            >
+              <CompetitionIcon className="w-3.5 h-3.5" />
+              <span className="text-lg leading-none">+</span>
+            </button>
+          )}
+
+          {/* Stale indicator - only for ACTIVE status */}
+          {isStale && engagementStatus === 'ACTIVE' && (
+            <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline" title={`${daysSinceActivity} days since last activity`}>
+              ⚠️ {daysSinceActivity}d stale
+            </span>
+          )}
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Integration icons + gear button */}
+          <div className="hidden sm:flex items-center gap-0.5 mr-2">
+            {/* Existing integration links */}
+            {integrations.map((integration, idx) => {
+              if (!integration.url) return null;
+              const IconComp = integration.Icon;
+              return (
+                <a
+                  key={idx}
+                  href={integration.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+                  title={integration.name}
+                >
+                  <IconComp className="w-4 h-4" />
+                </a>
+              );
+            })}
+
+            {/* Gear icon - always visible for adding/editing integrations */}
+            <button
+              onClick={onEditIntegrations}
+              className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-600"
+              title={hasIntegrations ? "Edit integrations" : "Add integrations"}
+              aria-label={hasIntegrations ? "Edit integrations" : "Add integrations"}
+            >
+              <GearIcon className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Edit button */}
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            title="Edit engagement"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+
+          {/* Archive/Restore button - icon changes based on archived state */}
+          <button
+            onClick={onArchive}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            title={isArchived ? 'Restore engagement' : 'Archive engagement'}
+          >
+            {isArchived ? (
+              <RestoreIcon className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ArchiveIcon className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -236,11 +399,7 @@ const DetailView = ({
 }) => {
   // Tab state
   const [activeTab, setActiveTab] = useState('progress');
-  
-  // Highlight state for activities
-  const [highlightedActivityId, setHighlightedActivityId] = useState(null);
-  
-  // Scroll to phase state
+  const [highlightActivityId, setHighlightActivityId] = useState(null);
   const [scrollToPhase, setScrollToPhase] = useState(null);
 
   // Modal states
@@ -252,249 +411,262 @@ const DetailView = ({
 
   // Get owners with full info
   const owners = useMemo(() => {
-    if (!engagement || !engagement.ownerIds) return [];
+    if (!engagement?.ownerIds) return [];
     return engagement.ownerIds.map(ownerId => getOwnerInfo(ownerId));
   }, [engagement, getOwnerInfo]);
 
-  // Tab counts for badges
+  // Tab counts
   const activityCount = engagement?.activities?.length || 0;
   const unreadCount = engagement?.unreadChanges || 0;
-  const notesCount = engagement ? Object.values(engagement.phases || {}).filter(p => p?.notes?.trim()).length : 0;
+  const notesCount = engagement?.totalNotesCount || 0;
 
-  // Handle navigation options (scroll to activity, etc.)
+  // Engagement status
+  const engagementStatus = engagement?.engagementStatus || 'ACTIVE';
+  const isClosed = isClosedStatus(engagementStatus);
+
+  // Handle navigation options
   useEffect(() => {
-    if (navigationOptions?.scrollToActivity && engagement) {
-      const activityId = navigationOptions.scrollToActivity;
-      
-      // Switch to activity tab
+    if (navigationOptions?.scrollToActivityId) {
       setActiveTab('activity');
-      
-      // Set highlight
-      setHighlightedActivityId(activityId);
-      
-      // Clear after animation
-      const timer = setTimeout(() => {
-        setHighlightedActivityId(null);
-        if (onClearNavigationOptions) {
-          onClearNavigationOptions();
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timer);
+      setHighlightActivityId(navigationOptions.scrollToActivityId);
+      onClearNavigationOptions?.();
     }
-  }, [navigationOptions, engagement, onClearNavigationOptions]);
+  }, [navigationOptions, onClearNavigationOptions]);
 
-  // Handle scroll to phase (from activity links)
-  useEffect(() => {
-    if (scrollToPhase) {
-      setActiveTab('progress');
-      // Clear after a short delay to allow tab switch
-      const timer = setTimeout(() => {
-        setScrollToPhase(null);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [scrollToPhase]);
+  // Tab change handler
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    setHighlightActivityId(null);
+    setScrollToPhase(null);
+  }, []);
 
-  // Update handlers
-  const handleUpdateDetails = useCallback((updatedData) => {
-    if (detail?.details?.update) {
-      detail.details.update(updatedData);
+  // Notes click from Progress tab
+  const handleNotesClick = useCallback((phaseType) => {
+    setActiveTab('notes');
+    setScrollToPhase(phaseType);
+  }, []);
+
+  // Status change handler
+  const handleStatusChange = useCallback(async (newStatus) => {
+    if (detail?.status?.update) {
+      await detail.status.update(newStatus);
     }
-    setShowEditDetailsModal(false);
   }, [detail]);
 
-  const handleUpdateIntegrations = useCallback((updatedData) => {
-    if (detail?.integrations?.update) {
-      detail.integrations.update(updatedData);
+  // Closed reason update handler
+  const handleClosedReasonUpdate = useCallback(async (reason) => {
+    if (detail?.status?.updateReason) {
+      await detail.status.updateReason(reason);
     }
-    setShowIntegrationsModal(false);
   }, [detail]);
 
-  const handleUpdateCompetitors = useCallback((updatedData) => {
+  // Competitors update handler
+  const handleCompetitorsUpdate = useCallback(async (data) => {
     if (detail?.competitors?.update) {
-      detail.competitors.update(updatedData);
+      await detail.competitors.update(data);
     }
     setShowCompetitionModal(false);
   }, [detail]);
 
-  const handleStatusChange = useCallback((newStatus) => {
-    if (detail?.status?.update) {
-      detail.status.update(newStatus);
+  // Activity handlers
+  const handleAddActivity = useCallback(async (activityData) => {
+    if (detail?.activity?.add) {
+      return await detail.activity.add(activityData);
     }
+    return false;
   }, [detail]);
 
-  const handleClosedReasonUpdate = useCallback((reason) => {
-    if (detail?.status?.updateReason) {
-      detail.status.updateReason(reason);
+  const handleEditActivity = useCallback(async (activityId, updates) => {
+    if (detail?.activity?.edit) {
+      return await detail.activity.edit(activityId, updates);
     }
+    return false;
   }, [detail]);
 
+  const handleDeleteActivity = useCallback(async (activityId) => {
+    if (detail?.activity?.delete) {
+      return await detail.activity.delete(activityId);
+    }
+    return false;
+  }, [detail]);
+
+  const handleAddComment = useCallback(async (activityId, text) => {
+    if (detail?.activity?.addComment) {
+      return await detail.activity.addComment(activityId, text);
+    }
+    return false;
+  }, [detail]);
+
+  const handleDeleteComment = useCallback(async (commentId) => {
+    if (detail?.activity?.deleteComment) {
+      return await detail.activity.deleteComment(commentId);
+    }
+    return false;
+  }, [detail]);
+
+  // Mark viewed handler
+  const handleMarkViewed = useCallback(() => {
+    if (detail?.view?.update && engagement) {
+      detail.view.update(engagement.id);
+    }
+  }, [detail, engagement]);
+
+  // Archive handler - shows confirmation for archive, immediate for restore
   const handleArchive = useCallback(() => {
+    if (!engagement) return;
+    
     if (engagement.isArchived) {
-      // Restore immediately
-      onToggleArchive(engagement.id);
+      // Restoring - no confirmation needed, execute immediately
+      onToggleArchive(engagement.id, false);
     } else {
-      // Show confirmation modal for archive
+      // Archiving - show confirmation modal
       setShowArchiveConfirm(true);
     }
   }, [engagement, onToggleArchive]);
 
+  // Confirm archive handler
   const handleConfirmArchive = useCallback(() => {
-    onToggleArchive(engagement.id);
+    if (engagement && onToggleArchive) {
+      onToggleArchive(engagement.id, true);
+    }
     setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
 
-  // Early return if no engagement
+  // Details save handler
+  const handleUpdateDetails = useCallback((updates) => {
+    if (detail?.details?.update) {
+      detail.details.update(updates);
+    }
+    setShowEditDetailsModal(false);
+  }, [detail]);
+
+  // Integrations save handler
+  const handleUpdateIntegrations = useCallback((updates) => {
+    if (detail?.integrations?.update) {
+      detail.integrations.update(updates);
+    }
+    setShowIntegrationsModal(false);
+  }, [detail]);
+
+  // Note handlers - wired to detail.note.*
+  const handleAddNote = useCallback(async (phaseType, text) => {
+    if (detail?.note?.add) {
+      return await detail.note.add(phaseType, text);
+    }
+    return false;
+  }, [detail]);
+
+  const handleEditNote = useCallback(async (noteId, phaseType, text) => {
+    if (detail?.note?.edit) {
+      return await detail.note.edit(noteId, phaseType, text);
+    }
+    return false;
+  }, [detail]);
+
+  const handleDeleteNote = useCallback(async (noteId, phaseType) => {
+    if (detail?.note?.delete) {
+      return await detail.note.delete(noteId, phaseType);
+    }
+    return false;
+  }, [detail]);
+
+  // Render tab content
+  const renderTabContent = () => {
+    if (!engagement) return null;
+
+    switch (activeTab) {
+      case 'activity':
+        return (
+          <ActivityTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            onAddActivity={handleAddActivity}
+            onEditActivity={handleEditActivity}
+            onDeleteActivity={handleDeleteActivity}
+            onAddComment={handleAddComment}
+            onDeleteComment={handleDeleteComment}
+            highlightId={highlightActivityId}
+          />
+        );
+
+      case 'history':
+        return (
+          <HistoryTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            lastViewedAt={null}
+            currentUserId={currentUser?.id}
+            onMarkViewed={handleMarkViewed}
+          />
+        );
+
+      case 'notes':
+        return (
+          <NotesTab
+            engagement={engagement}
+            getOwnerInfo={getOwnerInfo}
+            onAddNote={handleAddNote}
+            onEditNote={handleEditNote}
+            onDeleteNote={handleDeleteNote}
+            scrollToPhase={scrollToPhase}
+          />
+        );
+
+      case 'progress':
+      default:
+        return (
+          <ProgressTab
+            engagement={engagement}
+            onStatusChange={(phaseType, newStatus) => {
+              if (detail?.phase?.save) {
+                detail.phase.save(phaseType, { 
+                  status: newStatus, 
+                  notes: engagement.phases?.[phaseType]?.notes || '' 
+                });
+              }
+            }}
+            onAddLink={(phaseType, link) => {
+              if (detail?.phase?.addLink) {
+                detail.phase.addLink(phaseType, link);
+              }
+            }}
+            onRemoveLink={(phaseType, linkIndex) => {
+              if (detail?.phase?.removeLink) {
+                detail.phase.removeLink(phaseType, linkIndex);
+              }
+            }}
+            onNotesClick={handleNotesClick}
+          />
+        );
+    }
+  };
+
   if (!engagement) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Loading engagement...</p>
+        <p className="text-gray-500">Loading engagement...</p>
       </div>
     );
   }
 
-  const engagementStatus = engagement.engagementStatus || 'ACTIVE';
-  const isClosed = isClosedStatus(engagementStatus);
-  const currentPhaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
-
-  // Check for integration links
-  const hasSlack = engagement.slackChannel;
-  const hasDrive = engagement.driveFolder;
-  const hasDocs = engagement.docLink;
-  const hasSlides = engagement.slidesLink;
-  const hasSheets = engagement.sheetsLink;
-  const hasAnyIntegration = hasSlack || hasDrive || hasDocs || hasSlides || hasSheets;
-
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Left: Back button + Company name + Phase + Status */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            
-            <div>
-              <h1 className="text-xl font-medium text-gray-900">{engagement.company}</h1>
-              <p className="text-sm text-gray-500">{engagement.contactName}</p>
-            </div>
+    <div className="flex flex-col h-full bg-gray-50 -mx-6 -mt-10" style={{ minHeight: 'calc(100vh - 80px)' }}>
+      {/* Compact header */}
+      <DetailHeader
+        engagement={engagement}
+        owners={owners}
+        onBack={onBack}
+        onEdit={() => setShowEditDetailsModal(true)}
+        onArchive={handleArchive}
+        onManageOwners={() => setShowOwnersModal(true)}
+        onEditIntegrations={() => setShowIntegrationsModal(true)}
+        onEditCompetitors={() => setShowCompetitionModal(true)}
+        onStatusChange={handleStatusChange}
+        isStale={engagement.isStale}
+        daysSinceActivity={engagement.daysSinceActivity}
+      />
 
-            {/* Phase badge */}
-            <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-              {currentPhaseLabel}
-            </span>
-
-            {/* Status dropdown */}
-            <EngagementStatusDropdown 
-              currentStatus={engagementStatus}
-              onStatusChange={handleStatusChange}
-            />
-
-            {/* Competition indicator */}
-            <CompetitionIndicator
-              competitors={engagement.competitors}
-              otherCompetitorName={engagement.otherCompetitorName}
-              onClick={() => setShowCompetitionModal(true)}
-            />
-          </div>
-
-          {/* Right: Integration links + Settings + Archive */}
-          <div className="flex items-center gap-2">
-            {/* Integration links */}
-            {hasAnyIntegration && (
-              <div className="flex items-center gap-1 mr-2">
-                {hasSlack && (
-                  <a
-                    href={engagement.slackChannel}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Slack Channel"
-                  >
-                    <SlackIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {hasDrive && (
-                  <a
-                    href={engagement.driveFolder}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Drive"
-                  >
-                    <DriveIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {hasDocs && (
-                  <a
-                    href={engagement.docLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Docs"
-                  >
-                    <DocsIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {hasSlides && (
-                  <a
-                    href={engagement.slidesLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Slides"
-                  >
-                    <SlidesIcon className="w-5 h-5" />
-                  </a>
-                )}
-                {hasSheets && (
-                  <a
-                    href={engagement.sheetsLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Sheets"
-                  >
-                    <SheetsIcon className="w-5 h-5" />
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* Settings button */}
-            <button
-              onClick={() => setShowIntegrationsModal(true)}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Edit Integrations"
-            >
-              <GearIcon className="w-5 h-5 text-gray-600" />
-            </button>
-
-            {/* Archive/Restore button */}
-            <button
-              onClick={handleArchive}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              title={engagement.isArchived ? 'Restore engagement' : 'Archive engagement'}
-            >
-              {engagement.isArchived ? (
-                <RestoreIcon className="w-5 h-5 text-gray-600" />
-              ) : (
-                <ArchiveIcon className="w-5 h-5 text-gray-600" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Closed Banner (for closed statuses) */}
+      {/* Closed Engagement Banner - shown for WON/LOST/DISQUALIFIED/NO_DECISION */}
       {isClosed && (
         <ClosedBanner
           status={engagementStatus}
@@ -503,70 +675,31 @@ const DetailView = ({
         />
       )}
 
-      {/* Main content area with sidebar tabs */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Desktop: Sidebar tabs */}
-        <div className="hidden md:block">
-          <TabSidebar
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            activityCount={activityCount}
-            unreadCount={unreadCount}
-            notesCount={notesCount}
-          />
-        </div>
-
-        {/* Tab content */}
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'progress' && (
-            <ProgressTab
-              engagement={engagement}
-              detail={detail}
-              scrollToPhase={scrollToPhase}
-              onEditDetails={() => setShowEditDetailsModal(true)}
-              onEditOwners={() => setShowOwnersModal(true)}
-              getOwnerInfo={getOwnerInfo}
-              owners={owners}
-            />
-          )}
-          
-          {activeTab === 'activity' && (
-            <ActivityTab
-              engagement={engagement}
-              detail={detail}
-              highlightedActivityId={highlightedActivityId}
-              getOwnerInfo={getOwnerInfo}
-              currentUser={currentUser}
-              onNavigateToPhase={setScrollToPhase}
-            />
-          )}
-          
-          {activeTab === 'history' && (
-            <HistoryTab
-              engagement={engagement}
-              getOwnerInfo={getOwnerInfo}
-            />
-          )}
-          
-          {activeTab === 'notes' && (
-            <NotesTab
-              engagement={engagement}
-              detail={detail}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Mobile: Bottom tab bar */}
-      <div className="md:hidden">
-        <TabBottomBar
+      {/* Main content area with tabs */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop vertical tab sidebar */}
+        <TabSidebar
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           activityCount={activityCount}
           unreadCount={unreadCount}
           notesCount={notesCount}
         />
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
+          {renderTabContent()}
+        </div>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <TabBottomBar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        activityCount={activityCount}
+        unreadCount={unreadCount}
+        notesCount={notesCount}
+      />
 
       {/* Modals */}
       <EditDetailsModal
@@ -598,9 +731,9 @@ const DetailView = ({
         isOpen={showCompetitionModal}
         onClose={() => setShowCompetitionModal(false)}
         initialCompetitors={engagement.competitors || []}
-        initialNotes={engagement.competitorNotes || ''}
-        initialOtherName={engagement.otherCompetitorName || ''}
-        onSave={handleUpdateCompetitors}
+        initialCompetitorNotes={engagement.competitorNotes || ''}
+        initialOtherCompetitorName={engagement.otherCompetitorName || ''}
+        onSave={handleCompetitorsUpdate}
       />
 
       {/* Archive Confirmation Modal */}
