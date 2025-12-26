@@ -57,6 +57,30 @@ export const engagementStatusIcons = {
   NO_DECISION: '➖'
 };
 
+// Competitor display labels
+export const competitorLabels = {
+  AMIDA: 'Amida',
+  ASERTO: 'Aserto',
+  AWS_VERIFIED_PERMISSIONS: 'AWS Verified Permissions',
+  AXIOMATICS: 'Axiomatics',
+  CERBOS: 'Cerbos',
+  CYBERARK: 'CyberArk',
+  FORGEROCK: 'ForgeRock',
+  KEYCLOAK: 'Keycloak',
+  MICROSOFT_ENTRA: 'Microsoft Entra',
+  NEXTLABS: 'NextLabs',
+  OKTA: 'Okta',
+  ONE_IDENTITY: 'One Identity',
+  ORY: 'Ory',
+  PERMIT_IO: 'Permit.io',
+  PING_IDENTITY: 'Ping Identity',
+  SAILPOINT: 'SailPoint',
+  SAVIYNT: 'Saviynt',
+  STYRA_OPA: 'Styra/OPA',
+  ZANZIBAR: 'Zanzibar',
+  OTHER: 'Other'
+};
+
 export const changeTypeLabels = {
   CREATED: 'Created engagement',
   PHASE_UPDATE: 'Updated phase',
@@ -74,5 +98,6 @@ export const changeTypeLabels = {
   NOTE_ADDED: 'Added note',
   NOTE_EDITED: 'Edited note',
   NOTE_DELETED: 'Deleted note',
-  STATUS_CHANGED: 'Changed status'
+  STATUS_CHANGED: 'Changed status',
+  COMPETITORS_UPDATED: 'Updated competitors'
 };
