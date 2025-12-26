@@ -1,4 +1,6 @@
 import { useCallback } from 'react';
+import { isClosedStatus } from '../utils';
+import { engagementStatusLabels } from '../constants';
 
 var useEngagementDetail = function(params) {
   var selectedEngagement = params.selectedEngagement;
@@ -47,6 +49,89 @@ var useEngagementDetail = function(params) {
       console.error('Error updating view:', error);
     }
   }, [currentUser, engagementViews, setEngagementViews, updateEngagementInState, client]);
+
+  // Engagement status operations
+  var statusUpdate = useCallback(async function(newStatus, closedReason) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      var oldStatus = selectedEngagement.engagementStatus || 'ACTIVE';
+      
+      // Prepare update data
+      var updateData = {
+        id: selectedEngagement.id,
+        engagementStatus: newStatus
+      };
+      
+      // If closing (WON/LOST/DISQUALIFIED/NO_DECISION), auto-archive
+      if (isClosedStatus(newStatus)) {
+        updateData.isArchived = true;
+      }
+      
+      // If providing a closed reason, include it
+      if (closedReason !== undefined) {
+        updateData.closedReason = closedReason || null;
+      }
+
+      await dataClient.models.Engagement.update(updateData);
+
+      // Update local state
+      var stateUpdate = {
+        engagementStatus: newStatus
+      };
+      
+      if (isClosedStatus(newStatus)) {
+        stateUpdate.isArchived = true;
+        stateUpdate.isStale = false; // Closed engagements are never stale
+      }
+      
+      if (closedReason !== undefined) {
+        stateUpdate.closedReason = closedReason || null;
+      }
+
+      updateEngagementInState(selectedEngagement.id, stateUpdate);
+
+      // Log the change
+      if (logChangeAsync) {
+        var oldLabel = engagementStatusLabels[oldStatus] || oldStatus;
+        var newLabel = engagementStatusLabels[newStatus] || newStatus;
+        var description = 'Changed status from ' + oldLabel + ' to ' + newLabel;
+        if (closedReason) {
+          description += ': "' + (closedReason.length > 50 ? closedReason.substring(0, 50) + '...' : closedReason) + '"';
+        }
+        logChangeAsync(selectedEngagement.id, 'STATUS_CHANGED', description, oldStatus, newStatus);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating status:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+
+  // Update closed reason only (for editing the reason after status is set)
+  var closedReasonUpdate = useCallback(async function(closedReason) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+
+      await dataClient.models.Engagement.update({
+        id: selectedEngagement.id,
+        closedReason: closedReason || null
+      });
+
+      updateEngagementInState(selectedEngagement.id, {
+        closedReason: closedReason || null
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error updating closed reason:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, client]);
 
   // Phase operations
   var phaseSave = useCallback(async function(phaseType, phaseData) {
@@ -638,6 +723,10 @@ var useEngagementDetail = function(params) {
   return {
     view: {
       update: viewUpdate
+    },
+    status: {
+      update: statusUpdate,
+      updateReason: closedReasonUpdate
     },
     phase: {
       save: phaseSave,
