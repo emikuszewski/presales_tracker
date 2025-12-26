@@ -2,93 +2,407 @@ import React from 'react';
 import { competitorConfigMap } from '../../constants';
 
 /**
- * Renders a competitor logo in monochrome gray
- * Uses SVG for known logos, initials fallback for others
+ * Renders a competitor logo in monochrome gray (#6B7280)
+ * Brand-accurate SVG logos optimized for 20-28px chip display
+ * 
+ * All 21 competitors implemented with recognizable brand logos
  */
 const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) => {
   const config = competitorConfigMap[competitor];
   if (!config) return null;
 
   const sizeClasses = {
-    xs: 'w-5 h-5 text-[10px]',
-    sm: 'w-6 h-6 text-xs',
-    md: 'w-7 h-7 text-xs'
+    xs: 'w-5 h-5',
+    sm: 'w-6 h-6',
+    md: 'w-7 h-7'
   };
 
   const sizeClass = sizeClasses[size] || sizeClasses.sm;
-  const iconSize = size === 'xs' ? 12 : size === 'sm' ? 14 : 16;
+  const fillColor = '#6B7280';
+  const strokeColor = '#6B7280';
 
-  // SVG logos - all rendered in monochrome gray (#6B7280)
-  const renderSvgLogo = () => {
+  // SVG logos - all rendered in monochrome gray
+  const renderLogo = () => {
     switch (competitor) {
+      // ============================================
+      // OKTA - Thick donut/ring
+      // ============================================
       case 'OKTA':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
             <path d="M12 0C5.389 0 0 5.389 0 12s5.389 12 12 12 12-5.389 12-12S18.611 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z"/>
           </svg>
         );
 
+      // ============================================
+      // MICROSOFT ENTRA - 2x2 grid of squares
+      // ============================================
       case 'MICROSOFT_ENTRA':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M11 11V0H0v11h11zm2 0h11V0H13v11zM11 24v-11H0v11h11zm2 0h11V13H13v11z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            <rect x="1" y="1" width="10" height="10" rx="1"/>
+            <rect x="13" y="1" width="10" height="10" rx="1"/>
+            <rect x="1" y="13" width="10" height="10" rx="1"/>
+            <rect x="13" y="13" width="10" height="10" rx="1"/>
           </svg>
         );
 
+      // ============================================
+      // AWS VERIFIED PERMISSIONS - Smile/arrow swoosh
+      // ============================================
       case 'AWS_VERIFIED_PERMISSIONS':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 0L1.5 6v12L12 24l10.5-6V6L12 0zm0 2.18l8.25 4.71v9.42L12 21.02l-8.25-4.71V6.89L12 2.18zm-1 5.32v9l-5-2.86V9.36l5-1.86zm2 0l5 1.86v4.28l-5 2.86v-9z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* AWS arrow/smile swoosh */}
+            <path d="M2 15.5c0 0 4-2 10-2s10 2 10 2" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round"/>
+            {/* Arrow head */}
+            <path d="M18 12l4 3.5-4 3.5" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Upper cloud/service indicator */}
+            <circle cx="12" cy="8" r="3" fill={fillColor}/>
+            <circle cx="7" cy="9" r="2" fill={fillColor}/>
+            <circle cx="17" cy="9" r="2" fill={fillColor}/>
           </svg>
         );
 
+      // ============================================
+      // PING IDENTITY - Bold "Ping" wordmark
+      // ============================================
       case 'PING_IDENTITY':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass}>
+            <text 
+              x="12" 
+              y="16" 
+              textAnchor="middle" 
+              fontFamily="Arial, sans-serif" 
+              fontWeight="900" 
+              fontSize="9"
+              fill={fillColor}
+            >
+              PING
+            </text>
           </svg>
         );
 
+      // ============================================
+      // KEYCLOAK - Key inside shield outline
+      // ============================================
       case 'KEYCLOAK':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4a3 3 0 110 6 3 3 0 010-6zm0 14c-2.67 0-8-1.33-8-4v-1c0-1.33 2.67-2 8-2s8 .67 8 2v1c0 2.67-5.33 4-8 4z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass} fill="none" stroke={strokeColor} strokeWidth="1.5">
+            {/* Shield outline */}
+            <path d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.5 4.6-1.35 8-6.25 8-11.5V6l-8-4z" strokeLinejoin="round"/>
+            {/* Key head (circle) */}
+            <circle cx="12" cy="9" r="2.5" fill={fillColor}/>
+            {/* Key shaft */}
+            <path d="M12 11.5v5" strokeWidth="2" strokeLinecap="round"/>
+            {/* Key teeth */}
+            <path d="M12 14.5h2M12 16.5h1.5" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         );
 
-      case 'STYRA_OPA':
-        return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-        );
-
-      // Simplified SVGs
-      case 'FORGEROCK':
-        return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-          </svg>
-        );
-
-      case 'SAILPOINT':
-        return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-1.06 13.54L7.4 12l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41-5.64 5.66z"/>
-          </svg>
-        );
-
+      // ============================================
+      // CYBERARK - Isometric nested cube (vault/ark)
+      // ============================================
       case 'CYBERARK':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass} fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinejoin="round">
+            {/* Outer cube - isometric view */}
+            <path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/>
+            {/* Top face lines */}
+            <path d="M12 2v6.5M4 6.5l8 4.5 8-4.5"/>
+            {/* Inner cube cutout */}
+            <path d="M12 11l4 2.25v4.5L12 20l-4-2.25v-4.5L12 11z"/>
+            {/* Inner cube top */}
+            <path d="M8 13.25l4 2.25 4-2.25"/>
           </svg>
         );
 
+      // ============================================
+      // FORGEROCK - Two interlocking angular pieces (gem/rock)
+      // ============================================
+      case 'FORGEROCK':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Left piece - solid angular chevron */}
+            <path d="M2 12l6-8v16l-6-8z"/>
+            {/* Right piece - hexagonal with stripe cutouts */}
+            <path d="M10 4l8 4v8l-8 4V4z"/>
+            {/* Diagonal stripe cutouts (negative space) */}
+            <path d="M12 6l4 2v2l-4-2V6z" fill="white"/>
+            <path d="M12 12l4 2v2l-4-2v-2z" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // SAILPOINT - Triangular sail/pyramid
+      // ============================================
+      case 'SAILPOINT':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Main triangle/sail shape */}
+            <path d="M12 2L3 20h18L12 2z"/>
+            {/* Inner facet lines for 3D effect */}
+            <path d="M12 2v18M12 20L3 20" fill="none" stroke="white" strokeWidth="1" opacity="0.5"/>
+            <path d="M12 20l9 0" fill="none" stroke="white" strokeWidth="1" opacity="0.3"/>
+          </svg>
+        );
+
+      // ============================================
+      // ORY - Vertical stack: chevron up + circle + chevron down
+      // ============================================
       case 'ORY':
         return (
-          <svg viewBox="0 0 24 24" className={`${sizeClass} ${className}`} fill="#6B7280">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Upward chevron */}
+            <path d="M6 9l6-5 6 5" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Center circle */}
+            <circle cx="12" cy="12" r="3"/>
+            {/* Downward chevron */}
+            <path d="M6 15l6 5 6-5" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        );
+
+      // ============================================
+      // AXIOMATICS - Hexagon with stacked cube inside
+      // ============================================
+      case 'AXIOMATICS':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill="none" stroke={strokeColor} strokeWidth="1.5">
+            {/* Outer hexagon */}
+            <path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z" strokeLinejoin="round"/>
+            {/* Isometric cube layers inside */}
+            <path d="M12 8l4 2v3l-4 2-4-2v-3l4-2z" fill={fillColor} stroke="none"/>
+            <path d="M8 10l4 2 4-2M12 12v3" stroke="white" strokeWidth="1"/>
+          </svg>
+        );
+
+      // ============================================
+      // ASERTO - Circle with A-shaped negative space
+      // ============================================
+      case 'ASERTO':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass}>
+            {/* Outer circle */}
+            <circle cx="12" cy="12" r="10" fill={fillColor}/>
+            {/* A-shaped cutout (arrow pointing up, no crossbar) */}
+            <path d="M12 5l5 12h-3l-2-5-2 5H7l5-12z" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // AMIDA - Stylized A with parallel stripes + dot
+      // ============================================
+      case 'AMIDA':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Left side - three parallel diagonal stripes */}
+            <path d="M5 20l4-16h1.5l-4 16H5z"/>
+            <path d="M7.5 20l4-16H13l-4 16H7.5z"/>
+            <path d="M10 20l4-16h1.5l-4 16H10z"/>
+            {/* Right side - single solid diagonal */}
+            <path d="M14 20l4-16h2l-4 16h-2z"/>
+            {/* Dot in upper right */}
+            <circle cx="20" cy="6" r="2"/>
+          </svg>
+        );
+
+      // ============================================
+      // NEXTLABS - X with softened terminals + orbital arcs
+      // ============================================
+      case 'NEXTLABS':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round">
+            {/* Central X */}
+            <path d="M6 6l12 12M18 6L6 18"/>
+            {/* Inner circle */}
+            <circle cx="12" cy="12" r="3" strokeWidth="1.5"/>
+            {/* Orbital arc segments on right */}
+            <path d="M18 8a7 7 0 0 1 0 8" strokeWidth="1.5"/>
+            <path d="M20 6a10 10 0 0 1 0 12" strokeWidth="1.5"/>
+          </svg>
+        );
+
+      // ============================================
+      // PERMIT_IO - Shiba Inu dog head silhouette
+      // ============================================
+      case 'PERMIT_IO':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Dog head silhouette with pointed ears */}
+            <path d="
+              M12 3
+              L8 2 L6 7
+              L3 9 L4 12
+              L3 15 L6 17
+              L8 21 L16 21
+              L18 17 L21 15
+              L20 12 L21 9
+              L18 7 L16 2
+              L12 3
+              Z
+            "/>
+            {/* Eyes */}
+            <circle cx="9" cy="11" r="1.5" fill="white"/>
+            <circle cx="15" cy="11" r="1.5" fill="white"/>
+            {/* Nose */}
+            <ellipse cx="12" cy="15" rx="2" ry="1.5" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // SAVIYNT - Bold S with chevron notch in lower curve
+      // ============================================
+      case 'SAVIYNT':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Bold S shape */}
+            <path d="
+              M17 6.5
+              C17 4 14.5 2 11.5 2
+              C8.5 2 6 4 6 6.5
+              C6 9 8 10 11 11
+              C14 12 17 13 17 16
+              C17 19 14.5 21 11.5 21
+              C8.5 21 6 19 6 16.5
+              L9 16.5
+              C9 17.5 10 19 11.5 19
+              C13 19 14 17.5 14 16.5
+              C14 15 12.5 14 10 13
+              C7.5 12 6 10.5 6 7.5
+              C6 4.5 8.5 2 11.5 2
+            "/>
+            {/* Chevron notch cutout in lower left of S */}
+            <path d="M6 18l3-2-3-2v4z" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // CERBOS - Monster/creature silhouette with ears and teeth
+      // ============================================
+      case 'CERBOS':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Monster head silhouette */}
+            <path d="
+              M4 8 L4 4 L7 8
+              L7 6 C7 3, 17 3, 17 6
+              L17 8 L20 4 L20 8
+              L20 14 C20 18, 16 21, 12 21
+              C8 21, 4 18, 4 14
+              L4 8 Z
+            "/>
+            {/* Eyes */}
+            <circle cx="9" cy="11" r="2" fill="white"/>
+            <circle cx="15" cy="11" r="2" fill="white"/>
+            {/* Pupils */}
+            <circle cx="9" cy="11" r="1" fill={fillColor}/>
+            <circle cx="15" cy="11" r="1" fill={fillColor}/>
+            {/* Jagged teeth */}
+            <path d="M8 17l1-2 1 2 1-2 1 2 1-2 1 2 1-2 1 2" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // ONE_IDENTITY - Circle ring with orbital/swirl arcs
+      // ============================================
+      case 'ONE_IDENTITY':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round">
+            {/* Central ring */}
+            <circle cx="12" cy="12" r="4"/>
+            {/* Orbital arc segments at increasing radii, staggered */}
+            <path d="M12 2a10 10 0 0 1 8.5 4.5" strokeWidth="2"/>
+            <path d="M21 10a10 10 0 0 1-2 8" strokeWidth="2"/>
+            <path d="M16 20.5a10 10 0 0 1-9 0" strokeWidth="2"/>
+            <path d="M3 14a10 10 0 0 1 1-8" strokeWidth="2"/>
+          </svg>
+        );
+
+      // ============================================
+      // STYRA - Filled circle with Viking helmet negative space
+      // ============================================
+      case 'STYRA':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass}>
+            {/* Outer filled circle */}
+            <circle cx="12" cy="12" r="11" fill={fillColor}/>
+            {/* Viking helmet as negative space (white) */}
+            {/* Helmet body */}
+            <path d="M6 14 C6 10, 8 7, 12 7 C16 7, 18 10, 18 14 L18 16 L6 16 Z" fill="white"/>
+            {/* Left horn curving outward */}
+            <path d="M7 11 C4 8, 3 5, 5 4 C6 5, 6 8, 8 10" fill="white"/>
+            {/* Right horn curving outward */}
+            <path d="M17 11 C20 8, 21 5, 19 4 C18 5, 18 8, 16 10" fill="white"/>
+            {/* Bottom notch */}
+            <rect x="10" y="16" width="4" height="2" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // OPA - Viking helmet as positive shape (distinguishes from Styra)
+      // ============================================
+      case 'OPA':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Left horn */}
+            <path d="M3 3 C5 5, 5 9, 7 12 L9 10 C7 7, 6 4, 5 2 Z"/>
+            {/* Right horn */}
+            <path d="M21 3 C19 5, 19 9, 17 12 L15 10 C17 7, 18 4, 19 2 Z"/>
+            {/* Helmet body */}
+            <path d="M5 11 C5 7, 8 5, 12 5 C16 5, 19 7, 19 11 L19 18 C19 19, 18 20, 17 20 L7 20 C6 20, 5 19, 5 18 Z"/>
+            {/* Center dot/rivet */}
+            <circle cx="12" cy="12" r="2" fill="white"/>
+            {/* Slight shading split - left side darker effect via opacity */}
+            <path d="M5 11 C5 7, 8 5, 12 5 L12 20 L7 20 C6 20, 5 19, 5 18 Z" opacity="0.8"/>
+          </svg>
+        );
+
+      // ============================================
+      // ZANZIBAR - Google "G" logo shape
+      // ============================================
+      case 'ZANZIBAR':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Google G shape - simplified */}
+            <path d="
+              M12 2
+              C6.48 2 2 6.48 2 12
+              C2 17.52 6.48 22 12 22
+              C17.52 22 22 17.52 22 12
+              L22 11
+              L12 11
+              L12 14
+              L18.5 14
+              C17.93 17.45 15.24 19 12 19
+              C8.13 19 5 15.87 5 12
+              C5 8.13 8.13 5 12 5
+              C13.93 5 15.68 5.79 16.95 7.05
+              L19.07 4.93
+              C17.22 3.13 14.73 2 12 2
+              Z
+            "/>
+          </svg>
+        );
+
+      // ============================================
+      // OTHER - Question mark icon
+      // ============================================
+      case 'OTHER':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Circle background */}
+            <circle cx="12" cy="12" r="10" fill={fillColor}/>
+            {/* Question mark */}
+            <path 
+              d="M9 9c0-2 1.5-3 3-3s3 1 3 3c0 1.5-1 2-2 2.5-.5.25-1 .75-1 1.5" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="2" 
+              strokeLinecap="round"
+            />
+            {/* Dot */}
+            <circle cx="12" cy="17" r="1.5" fill="white"/>
           </svg>
         );
 
@@ -97,30 +411,29 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
     }
   };
 
-  // Initials fallback
-  const renderInitials = () => {
+  const logo = renderLogo();
+
+  // If we have a logo, wrap it in a container
+  if (logo) {
     return (
       <div 
-        className={`${sizeClass} ${className} rounded bg-gray-200 text-gray-600 flex items-center justify-center font-medium`}
+        className={`flex items-center justify-center ${className}`} 
         title={config.label}
       >
-        {config.initials}
-      </div>
-    );
-  };
-
-  // Check if we have an SVG logo
-  const hasSvg = ['OKTA', 'MICROSOFT_ENTRA', 'AWS_VERIFIED_PERMISSIONS', 'PING_IDENTITY', 'KEYCLOAK', 'STYRA_OPA', 'FORGEROCK', 'SAILPOINT', 'CYBERARK', 'ORY'].includes(competitor);
-
-  if (hasSvg) {
-    return (
-      <div className={`flex items-center justify-center ${className}`} title={config.label}>
-        {renderSvgLogo()}
+        {logo}
       </div>
     );
   }
 
-  return renderInitials();
+  // Fallback to initials (should not happen with full implementation)
+  return (
+    <div 
+      className={`${sizeClass} ${className} rounded bg-gray-200 text-gray-600 flex items-center justify-center font-medium text-xs`}
+      title={config.label}
+    >
+      {config.initials}
+    </div>
+  );
 });
 
 CompetitorLogo.displayName = 'CompetitorLogo';
