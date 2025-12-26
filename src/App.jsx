@@ -39,6 +39,7 @@ function PresalesTracker() {
   const [filterOwner, setFilterOwner] = useState('mine');
   const [filterStale, setFilterStale] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showEverything, setShowEverything] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
@@ -103,6 +104,7 @@ function PresalesTracker() {
     staleCount,
     totalInViewMode,
     inProgressInViewMode,
+    totalEverythingCount,
     getCascadeInfo,
     handleCreateEngagement,
     handleToggleArchive,
@@ -125,6 +127,7 @@ function PresalesTracker() {
       filterOwner,
       filterStale,
       showArchived,
+      showEverything,
       searchQuery
     }
   });
@@ -154,6 +157,7 @@ function PresalesTracker() {
     setFilterStale(false);
     setSearchQuery('');
     setFilterOwner('mine');
+    setShowEverything(false);
   };
 
   // ============================================
@@ -264,12 +268,14 @@ function PresalesTracker() {
             staleCount={staleCount}
             totalInViewMode={totalInViewMode}
             inProgressInViewMode={inProgressInViewMode}
+            totalEverythingCount={totalEverythingCount}
             getOwnerInfo={getOwnerInfo}
             filters={{
               filterPhase,
               filterOwner,
               filterStale,
               showArchived,
+              showEverything,
               searchQuery
             }}
             filterActions={{
@@ -277,6 +283,7 @@ function PresalesTracker() {
               setFilterOwner,
               setFilterStale,
               setShowArchived,
+              setShowEverything,
               setSearchQuery,
               clearAllFilters
             }}
