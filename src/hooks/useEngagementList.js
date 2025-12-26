@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { phaseConfig, phaseLabels } from '../constants';
+import { computePipelineTotal, formatPipelineTotal } from '../utils';
 
 var useEngagementList = function(params) {
   var engagements = params.engagements;
@@ -28,6 +29,19 @@ var useEngagementList = function(params) {
   var totalEverythingCount = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
     return engagements.length;
+  }, [engagements]);
+
+  // Compute pipeline total for all non-archived engagements (ignores filters)
+  var pipelineStats = useMemo(function() {
+    if (!engagements || !Array.isArray(engagements)) {
+      return { total: 0, count: 0, formatted: '$0' };
+    }
+    var stats = computePipelineTotal(engagements, true); // activeOnly = true
+    return {
+      total: stats.total,
+      count: stats.count,
+      formatted: formatPipelineTotal(stats.total)
+    };
   }, [engagements]);
 
   // Compute filtered engagements for list view
@@ -477,6 +491,10 @@ var useEngagementList = function(params) {
     totalInViewMode: totalInViewMode,
     inProgressInViewMode: inProgressInViewMode,
     totalEverythingCount: totalEverythingCount,
+    // Pipeline total stats
+    pipelineTotal: pipelineStats.total,
+    pipelineTotalFormatted: pipelineStats.formatted,
+    pipelineDealsCount: pipelineStats.count,
     getCascadeInfo: getCascadeInfo,
     handleCreateEngagement: handleCreateEngagement,
     handleToggleArchive: handleToggleArchive,
