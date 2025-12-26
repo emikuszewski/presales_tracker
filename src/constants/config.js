@@ -38,3 +38,34 @@ export const detailTabs = [
   { id: 'history', label: 'History', icon: 'clock' },
   { id: 'notes', label: 'Notes', icon: 'document' }
 ];
+
+// Competitor configuration (alphabetical order)
+// logoType: 'svg' = real logo, 'simplified' = simplified svg, 'initials' = text fallback
+export const competitorConfig = [
+  { id: 'AMIDA', label: 'Amida', logoType: 'initials', initials: 'Am' },
+  { id: 'ASERTO', label: 'Aserto', logoType: 'initials', initials: 'As' },
+  { id: 'AWS_VERIFIED_PERMISSIONS', label: 'AWS Verified Permissions', logoType: 'svg' },
+  { id: 'AXIOMATICS', label: 'Axiomatics', logoType: 'initials', initials: 'Ax' },
+  { id: 'CERBOS', label: 'Cerbos', logoType: 'initials', initials: 'Cb' },
+  { id: 'CYBERARK', label: 'CyberArk', logoType: 'simplified' },
+  { id: 'FORGEROCK', label: 'ForgeRock', logoType: 'simplified' },
+  { id: 'KEYCLOAK', label: 'Keycloak', logoType: 'svg' },
+  { id: 'MICROSOFT_ENTRA', label: 'Microsoft Entra', logoType: 'svg' },
+  { id: 'NEXTLABS', label: 'NextLabs', logoType: 'initials', initials: 'NL' },
+  { id: 'OKTA', label: 'Okta', logoType: 'svg' },
+  { id: 'ONE_IDENTITY', label: 'One Identity', logoType: 'initials', initials: '1I' },
+  { id: 'ORY', label: 'Ory', logoType: 'simplified' },
+  { id: 'PERMIT_IO', label: 'Permit.io', logoType: 'initials', initials: 'Pe' },
+  { id: 'PING_IDENTITY', label: 'Ping Identity', logoType: 'svg' },
+  { id: 'SAILPOINT', label: 'SailPoint', logoType: 'simplified' },
+  { id: 'SAVIYNT', label: 'Saviynt', logoType: 'initials', initials: 'Sv' },
+  { id: 'STYRA_OPA', label: 'Styra/OPA', logoType: 'svg' },
+  { id: 'ZANZIBAR', label: 'Zanzibar', logoType: 'initials', initials: 'Za' },
+  { id: 'OTHER', label: 'Other', logoType: 'initials', initials: '?' }
+];
+
+// Quick lookup map for competitor config
+export const competitorConfigMap = competitorConfig.reduce((acc, comp) => {
+  acc[comp.id] = comp;
+  return acc;
+}, {});
