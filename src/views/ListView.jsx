@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator, CompetitorChips } from '../components';
 import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
 import { 
   getEngagementStatusBorderClasses, 
@@ -341,6 +341,7 @@ const ListView = ({
           const statusIcon = engagementStatusIcons[engagementStatus];
           const statusLabel = engagementStatusLabels[engagementStatus];
           const isArchivedInEverything = showEverything && engagement.isArchived === true;
+          const hasCompetitors = engagement.competitors && engagement.competitors.length > 0;
           
           return (
             <div
@@ -380,7 +381,7 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Links Indicator */}
+              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Competitors + Links Indicator */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {/* Compact Phase Dots */}
@@ -452,8 +453,21 @@ const ListView = ({
                   )}
                 </div>
 
-                {/* Integration Links Indicator */}
-                <IntegrationLinksIndicator engagement={engagement} />
+                {/* Right side: Competitor Chips + Integration Links */}
+                <div className="flex items-center gap-2">
+                  {/* Competitor Chips - show max 3 + overflow */}
+                  {hasCompetitors && (
+                    <CompetitorChips 
+                      competitors={engagement.competitors}
+                      otherCompetitorName={engagement.otherCompetitorName}
+                      maxDisplay={3}
+                      size="xs"
+                    />
+                  )}
+                  
+                  {/* Integration Links Indicator */}
+                  <IntegrationLinksIndicator engagement={engagement} />
+                </div>
               </div>
             </div>
           );
