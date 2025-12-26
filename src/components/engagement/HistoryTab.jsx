@@ -18,7 +18,9 @@ const getChangeIcon = (changeType) => {
     RESTORED: '📤',
     NOTE_ADDED: '📝',
     NOTE_EDITED: '✏️',
-    NOTE_DELETED: '🗑️'
+    NOTE_DELETED: '🗑️',
+    STATUS_CHANGED: '🔄',
+    COMPETITORS_UPDATED: '⚔️'
   };
   return icons[changeType] || '📌';
 };
