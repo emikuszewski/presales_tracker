@@ -94,11 +94,11 @@ var useEngagementList = function(params) {
       });
     }
 
-    // Sort by last activity (newest first)
+    // Sort alphabetically by company name (A-Z, case-insensitive)
     result.sort(function(a, b) {
-      var dateA = a.lastActivity || a.startDate || '';
-      var dateB = b.lastActivity || b.startDate || '';
-      return dateB.localeCompare(dateA);
+      var companyA = (a.company || '').toLowerCase();
+      var companyB = (b.company || '').toLowerCase();
+      return companyA.localeCompare(companyB);
     });
 
     return result;
