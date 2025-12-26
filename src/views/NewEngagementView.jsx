@@ -164,18 +164,13 @@ const NewEngagementView = ({
 
     if (!canSubmit) return;
 
-    // Format deal size from parts before submitting
+    // Format deal size from parts and pass directly to onSubmit
     const formattedDealSize = dealSizeAmount && dealSizeUnit 
       ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
       : '';
 
-    // Update deal size in state then submit
-    setNewEngagement(prev => ({ ...prev, dealSize: formattedDealSize }));
-    
-    // Small delay to ensure state is updated
-    setTimeout(() => {
-      onSubmit();
-    }, 0);
+    // Pass overrides directly to avoid state synchronization issues
+    onSubmit({ dealSize: formattedDealSize });
   };
 
   return (
