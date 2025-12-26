@@ -27,6 +27,14 @@ export const activityTypeLabels = {
   CALL: 'Call'
 };
 
+export const phaseStatusLabels = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In Progress',
+  COMPLETE: 'Complete',
+  BLOCKED: 'Blocked',
+  SKIPPED: 'Skipped'
+};
+
 export const changeTypeLabels = {
   CREATED: 'Created engagement',
   PHASE_UPDATE: 'Updated phase',
