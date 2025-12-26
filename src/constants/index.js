@@ -6,7 +6,8 @@ export {
   changeTypeLabels,
   phaseStatusLabels,
   engagementStatusLabels,
-  engagementStatusIcons
+  engagementStatusIcons,
+  competitorLabels
 } from './labels';
 
 export {
@@ -17,5 +18,7 @@ export {
   phaseConfig,
   activityTypes,
   industries,
-  detailTabs
+  detailTabs,
+  competitorConfig,
+  competitorConfigMap
 } from './config';
