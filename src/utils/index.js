@@ -326,7 +326,9 @@ export const getStatusClasses = (status) => {
   const statusStyles = {
     PENDING: 'bg-gray-100 text-gray-600',
     IN_PROGRESS: 'bg-blue-100 text-blue-700',
-    COMPLETE: 'bg-green-100 text-green-700'
+    COMPLETE: 'bg-green-100 text-green-700',
+    BLOCKED: 'bg-amber-100 text-amber-700',
+    SKIPPED: 'bg-gray-100 text-gray-400'
   };
   return statusStyles[status] || 'bg-gray-100 text-gray-600';
 };
