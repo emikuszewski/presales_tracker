@@ -14,7 +14,8 @@ export {
   LinkifyText,
   IntegrationLinksIndicator,
   CompetitorLogo,
-  CompetitorChips
+  CompetitorChips,
+  EngagementStatusIcon
 } from './ui';
 
 // Modal components
