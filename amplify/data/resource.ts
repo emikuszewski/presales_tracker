@@ -84,6 +84,19 @@ const schema = a.schema({
     // Archive support
     isArchived: a.boolean().default(false),
     
+    // Engagement status - tracks deal health (separate from phase progress)
+    engagementStatus: a.enum([
+      'ACTIVE',
+      'ON_HOLD',
+      'UNRESPONSIVE',
+      'WON',
+      'LOST',
+      'DISQUALIFIED',
+      'NO_DECISION'
+    ]),
+    // Optional notes when engagement is closed
+    closedReason: a.string(),
+    
     // Relationships
     phases: a.hasMany('Phase', 'engagementId'),
     activities: a.hasMany('Activity', 'engagementId'),
@@ -184,7 +197,8 @@ const schema = a.schema({
       'RESTORED',
       'NOTE_ADDED',
       'NOTE_EDITED',
-      'NOTE_DELETED'
+      'NOTE_DELETED',
+      'STATUS_CHANGED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
