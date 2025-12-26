@@ -196,7 +196,11 @@ const usePresalesData = (selectedEngagementId) => {
 
         var totalNotesCount = phaseNotes.length;
 
-        return Object.assign({}, eng, {
+        // Default engagementStatus to 'ACTIVE' if not set (backwards compatibility)
+        var engagementStatus = eng.engagementStatus || 'ACTIVE';
+
+        // Build enriched engagement with new status fields
+        var enrichedEng = Object.assign({}, eng, {
           phases: phasesObj,
           activities: activitiesWithComments,
           ownerIds: ownerIds,
@@ -206,10 +210,16 @@ const usePresalesData = (selectedEngagementId) => {
           notesByPhase: notesByPhase,
           totalNotesCount: totalNotesCount,
           unreadChanges: unreadChanges,
-          isStale: isEngagementStale(eng),
           daysSinceActivity: getDaysSinceActivity(eng),
-          hasSystemOwner: hasSystemOwner
+          hasSystemOwner: hasSystemOwner,
+          engagementStatus: engagementStatus,
+          closedReason: eng.closedReason || null
         });
+
+        // Calculate isStale using the enriched engagement (which includes engagementStatus)
+        enrichedEng.isStale = isEngagementStale(enrichedEng);
+
+        return enrichedEng;
       });
 
       setEngagements(enrichedEngagements);
