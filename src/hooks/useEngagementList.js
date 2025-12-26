@@ -21,7 +21,14 @@ var useEngagementList = function(params) {
   var filterOwner = filters.filterOwner;
   var filterStale = filters.filterStale;
   var showArchived = filters.showArchived;
+  var showEverything = filters.showEverything;
   var searchQuery = filters.searchQuery;
+
+  // Total count of all engagements (for Everything button)
+  var totalEverythingCount = useMemo(function() {
+    if (!engagements || !Array.isArray(engagements)) return 0;
+    return engagements.length;
+  }, [engagements]);
 
   // Compute filtered engagements for list view
   var filteredEngagements = useMemo(function() {
@@ -29,37 +36,41 @@ var useEngagementList = function(params) {
     
     var result = engagements.slice();
 
-    // Filter by archived status
-    result = result.filter(function(e) {
-      return showArchived ? e.isArchived === true : e.isArchived !== true;
-    });
+    // When showEverything is active, bypass owner and archived filters
+    if (!showEverything) {
+      // Filter by archived status
+      result = result.filter(function(e) {
+        return showArchived ? e.isArchived === true : e.isArchived !== true;
+      });
 
-    // Filter by owner
-    if (filterOwner === 'mine' && currentUser) {
-      result = result.filter(function(e) {
-        return e.ownerIds && e.ownerIds.indexOf(currentUser.id) !== -1;
-      });
-    } else if (filterOwner && filterOwner !== 'all' && filterOwner !== 'mine') {
-      result = result.filter(function(e) {
-        return e.ownerIds && e.ownerIds.indexOf(filterOwner) !== -1;
-      });
+      // Filter by owner
+      if (filterOwner === 'mine' && currentUser) {
+        result = result.filter(function(e) {
+          return e.ownerIds && e.ownerIds.indexOf(currentUser.id) !== -1;
+        });
+      } else if (filterOwner && filterOwner !== 'all' && filterOwner !== 'mine') {
+        result = result.filter(function(e) {
+          return e.ownerIds && e.ownerIds.indexOf(filterOwner) !== -1;
+        });
+      }
     }
+    // When showEverything is true, we show all regardless of owner/archived
 
-    // Filter by phase
+    // Filter by phase (always applies, even in Everything mode)
     if (filterPhase && filterPhase !== 'all') {
       result = result.filter(function(e) {
         return e.currentPhase === filterPhase;
       });
     }
 
-    // Filter by stale
+    // Filter by stale (always applies, even in Everything mode)
     if (filterStale) {
       result = result.filter(function(e) {
         return e.isStale === true;
       });
     }
 
-    // Filter by search query
+    // Filter by search query (always applies, even in Everything mode)
     if (searchQuery && searchQuery.trim()) {
       var query = searchQuery.toLowerCase().trim();
       result = result.filter(function(e) {
@@ -77,11 +88,16 @@ var useEngagementList = function(params) {
     });
 
     return result;
-  }, [engagements, showArchived, filterOwner, filterPhase, filterStale, searchQuery, currentUser]);
+  }, [engagements, showArchived, showEverything, filterOwner, filterPhase, filterStale, searchQuery, currentUser]);
 
   // Compute stale count (in current view mode)
   var staleCount = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
+    
+    // When Everything is active, count stale across ALL engagements
+    if (showEverything) {
+      return engagements.filter(function(e) { return e.isStale === true; }).length;
+    }
     
     var relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
@@ -99,11 +115,16 @@ var useEngagementList = function(params) {
     }
 
     return relevantEngagements.filter(function(e) { return e.isStale === true; }).length;
-  }, [engagements, showArchived, filterOwner, currentUser]);
+  }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // Total in view mode (before phase/stale/search filters)
   var totalInViewMode = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
+    
+    // When Everything is active, total is all engagements
+    if (showEverything) {
+      return engagements.length;
+    }
     
     var relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
@@ -121,11 +142,19 @@ var useEngagementList = function(params) {
     }
 
     return relevantEngagements.length;
-  }, [engagements, showArchived, filterOwner, currentUser]);
+  }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // In progress count in view mode
   var inProgressInViewMode = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
+    
+    // When Everything is active, count in-progress across ALL engagements
+    if (showEverything) {
+      return engagements.filter(function(e) {
+        var currentPhaseData = e.phases && e.phases[e.currentPhase];
+        return currentPhaseData && currentPhaseData.status === 'IN_PROGRESS';
+      }).length;
+    }
     
     var relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
@@ -146,7 +175,7 @@ var useEngagementList = function(params) {
       var currentPhaseData = e.phases && e.phases[e.currentPhase];
       return currentPhaseData && currentPhaseData.status === 'IN_PROGRESS';
     }).length;
-  }, [engagements, showArchived, filterOwner, currentUser]);
+  }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // Get cascade info for delete modal
   var getCascadeInfo = useCallback(function(engagement) {
@@ -447,6 +476,7 @@ var useEngagementList = function(params) {
     staleCount: staleCount,
     totalInViewMode: totalInViewMode,
     inProgressInViewMode: inProgressInViewMode,
+    totalEverythingCount: totalEverythingCount,
     getCascadeInfo: getCascadeInfo,
     handleCreateEngagement: handleCreateEngagement,
     handleToggleArchive: handleToggleArchive,
