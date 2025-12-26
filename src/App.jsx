@@ -105,6 +105,10 @@ function PresalesTracker() {
     totalInViewMode,
     inProgressInViewMode,
     totalEverythingCount,
+    // Pipeline stats
+    pipelineTotal,
+    pipelineTotalFormatted,
+    pipelineDealsCount,
     getCascadeInfo,
     handleCreateEngagement,
     handleToggleArchive,
@@ -269,6 +273,8 @@ function PresalesTracker() {
             totalInViewMode={totalInViewMode}
             inProgressInViewMode={inProgressInViewMode}
             totalEverythingCount={totalEverythingCount}
+            pipelineTotalFormatted={pipelineTotalFormatted}
+            pipelineDealsCount={pipelineDealsCount}
             getOwnerInfo={getOwnerInfo}
             filters={{
               filterPhase,
