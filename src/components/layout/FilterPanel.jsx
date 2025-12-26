@@ -3,8 +3,17 @@ import { phaseConfig } from '../../constants';
 import { getAvatarColorClasses } from '../../utils';
 
 /**
+ * Globe icon for Everything filter
+ */
+const GlobeIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+/**
  * Collapsible filter panel component
- * Contains: Status, View, Phase, Quick Filters (Needs Attention)
+ * Contains: Status, View, Phase, Quick Filters (Needs Attention, Everything)
  */
 const FilterPanel = ({
   isOpen,
@@ -14,15 +23,18 @@ const FilterPanel = ({
   filterOwner,
   filterStale,
   showArchived,
+  showEverything,
   // Filter actions
   setFilterPhase,
   setFilterOwner,
   setFilterStale,
   setShowArchived,
+  setShowEverything,
   // Data
   teamMembers,
   currentUser,
-  staleCount
+  staleCount,
+  totalEverythingCount
 }) => {
   const panelRef = useRef(null);
 
@@ -52,6 +64,23 @@ const FilterPanel = ({
     };
   }, [isOpen, onClose]);
 
+  // Handler for Status buttons - auto-exits Everything mode
+  const handleStatusClick = (isArchived) => {
+    setShowArchived(isArchived);
+    setShowEverything(false); // Auto-exit Everything mode
+  };
+
+  // Handler for View buttons - auto-exits Everything mode
+  const handleViewClick = (owner) => {
+    setFilterOwner(owner);
+    setShowEverything(false); // Auto-exit Everything mode
+  };
+
+  // Handler for Everything toggle
+  const handleEverythingClick = () => {
+    setShowEverything(!showEverything);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -69,9 +98,9 @@ const FilterPanel = ({
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Status</p>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowArchived(false)}
+              onClick={() => handleStatusClick(false)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                !showArchived 
+                !showArchived && !showEverything
                   ? 'bg-gray-900 text-white' 
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -79,9 +108,9 @@ const FilterPanel = ({
               Active
             </button>
             <button
-              onClick={() => setShowArchived(true)}
+              onClick={() => handleStatusClick(true)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                showArchived 
+                showArchived && !showEverything
                   ? 'bg-gray-900 text-white' 
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -96,9 +125,9 @@ const FilterPanel = ({
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">View</p>
           <div className="flex gap-2 items-center">
             <button
-              onClick={() => setFilterOwner('mine')}
+              onClick={() => handleViewClick('mine')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                filterOwner === 'mine' 
+                filterOwner === 'mine' && !showEverything
                   ? 'bg-gray-900 text-white' 
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -106,9 +135,9 @@ const FilterPanel = ({
               Mine
             </button>
             <button
-              onClick={() => setFilterOwner('all')}
+              onClick={() => handleViewClick('all')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                filterOwner === 'all' 
+                filterOwner === 'all' && !showEverything
                   ? 'bg-gray-900 text-white' 
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -118,13 +147,13 @@ const FilterPanel = ({
             <div className="w-px h-6 bg-gray-200 mx-1"></div>
             {/* Team member avatars */}
             {teamMembers.map(member => {
-              const isSelected = filterOwner === member.id;
+              const isSelected = filterOwner === member.id && !showEverything;
               const isSystemUser = member.isSystemUser === true;
               
               return (
                 <button
                   key={member.id}
-                  onClick={() => setFilterOwner(member.id)}
+                  onClick={() => handleViewClick(member.id)}
                   className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
                     isSelected
                       ? isSystemUser
@@ -178,6 +207,7 @@ const FilterPanel = ({
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Filters</p>
         <div className="flex gap-2">
+          {/* Needs Attention */}
           <button
             onClick={() => setFilterStale(!filterStale)}
             className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-2 ${
@@ -191,6 +221,20 @@ const FilterPanel = ({
             </svg>
             Needs Attention
             <span className={filterStale ? 'text-amber-100' : 'text-amber-600 font-semibold'}>{staleCount}</span>
+          </button>
+
+          {/* Everything */}
+          <button
+            onClick={handleEverythingClick}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-2 ${
+              showEverything 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <GlobeIcon className={`w-4 h-4 ${showEverything ? 'text-white' : 'text-blue-500'}`} />
+            Everything
+            <span className={showEverything ? 'text-blue-100' : 'text-blue-600 font-semibold'}>{totalEverythingCount}</span>
           </button>
         </div>
       </div>
