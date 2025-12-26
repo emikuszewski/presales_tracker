@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator } from '../components';
-import { industryLabels, phaseConfig, phaseLabels } from '../constants';
+import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
+import { 
+  getEngagementStatusBorderClasses, 
+  getEngagementStatusBadgeClasses,
+  shouldShowStale 
+} from '../utils';
 
 /**
  * List view showing all engagements with minimal filter UI
@@ -248,14 +253,17 @@ const ListView = ({
       <div className="space-y-3">
         {engagements.map(engagement => {
           const hasActivities = engagement.activities?.length > 0;
+          const engagementStatus = engagement.engagementStatus || 'ACTIVE';
+          const statusBorderClasses = getEngagementStatusBorderClasses(engagementStatus);
+          const showStale = shouldShowStale(engagement);
+          const statusIcon = engagementStatusIcons[engagementStatus];
+          const statusLabel = engagementStatusLabels[engagementStatus];
           
           return (
             <div
               key={engagement.id}
               onClick={() => onSelectEngagement(engagement.id)}
-              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${
-                engagement.isStale ? 'border-amber-200' : 'border-gray-200 hover:border-gray-300'
-              }`}
+              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${statusBorderClasses}`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-3">
@@ -289,7 +297,7 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Stale Badge + Links Indicator */}
+              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Stale Badge + Links Indicator */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {/* Compact Phase Dots */}
@@ -339,8 +347,16 @@ const ListView = ({
                     );
                   })()}
 
-                  {/* Stale Badge (after phase badge) */}
-                  {engagement.isStale && (
+                  {/* Engagement Status Badge - hidden for ACTIVE (default state) */}
+                  {engagementStatus !== 'ACTIVE' && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getEngagementStatusBadgeClasses(engagementStatus)}`}>
+                      {statusIcon && <span>{statusIcon}</span>}
+                      {statusLabel}
+                    </span>
+                  )}
+
+                  {/* Stale Badge - only for ACTIVE status engagements */}
+                  {showStale && (
                     <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
                   )}
                 </div>
