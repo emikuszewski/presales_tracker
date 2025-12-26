@@ -54,12 +54,13 @@ export const competitorConfig = [
   { id: 'NEXTLABS', label: 'NextLabs', logoType: 'initials', initials: 'NL' },
   { id: 'OKTA', label: 'Okta', logoType: 'svg' },
   { id: 'ONE_IDENTITY', label: 'One Identity', logoType: 'initials', initials: '1I' },
+  { id: 'OPA', label: 'OPA', logoType: 'initials', initials: 'OP' },
   { id: 'ORY', label: 'Ory', logoType: 'simplified' },
   { id: 'PERMIT_IO', label: 'Permit.io', logoType: 'initials', initials: 'Pe' },
   { id: 'PING_IDENTITY', label: 'Ping Identity', logoType: 'svg' },
   { id: 'SAILPOINT', label: 'SailPoint', logoType: 'simplified' },
   { id: 'SAVIYNT', label: 'Saviynt', logoType: 'initials', initials: 'Sv' },
-  { id: 'STYRA_OPA', label: 'Styra/OPA', logoType: 'svg' },
+  { id: 'STYRA', label: 'Styra', logoType: 'initials', initials: 'St' },
   { id: 'ZANZIBAR', label: 'Zanzibar', logoType: 'initials', initials: 'Za' },
   { id: 'OTHER', label: 'Other', logoType: 'initials', initials: '?' }
 ];
