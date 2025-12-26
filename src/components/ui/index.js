@@ -10,3 +10,5 @@ export { default as SlidesIcon } from './SlidesIcon';
 export { default as SheetsIcon } from './SheetsIcon';
 export { default as LinkifyText } from './LinkifyText';
 export { default as IntegrationLinksIndicator } from './IntegrationLinksIndicator';
+export { default as CompetitorLogo } from './CompetitorLogo';
+export { default as CompetitorChips } from './CompetitorChips';
