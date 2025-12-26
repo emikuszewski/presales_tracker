@@ -107,7 +107,9 @@ const schema = a.schema({
     status: a.enum([
       'PENDING',
       'IN_PROGRESS',
-      'COMPLETE'
+      'COMPLETE',
+      'BLOCKED',
+      'SKIPPED'
     ]),
     completedDate: a.date(),
     // Legacy notes field - kept for backwards compatibility, migrated to PhaseNote
