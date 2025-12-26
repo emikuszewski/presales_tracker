@@ -259,42 +259,48 @@ var useEngagementList = function(params) {
     return names.join(', ');
   }, []);
 
-  // Create new engagement
-  var handleCreateEngagement = useCallback(async function() {
+  /**
+   * Create new engagement
+   * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
+   */
+  var handleCreateEngagement = useCallback(async function(overrides) {
     if (!currentUser || !newEngagement.company || !newEngagement.contactName) {
       return;
     }
+
+    // Merge overrides with newEngagement
+    var engagementData = Object.assign({}, newEngagement, overrides || {});
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
       var today = new Date().toISOString().split('T')[0];
 
       var result = await dataClient.models.Engagement.create({
-        company: newEngagement.company,
-        contactName: newEngagement.contactName,
-        contactEmail: newEngagement.contactEmail || null,
-        contactPhone: newEngagement.contactPhone || null,
-        industry: newEngagement.industry || 'TECHNOLOGY',
-        dealSize: newEngagement.dealSize || null,
+        company: engagementData.company,
+        contactName: engagementData.contactName,
+        contactEmail: engagementData.contactEmail || null,
+        contactPhone: engagementData.contactPhone || null,
+        industry: engagementData.industry || 'TECHNOLOGY',
+        dealSize: engagementData.dealSize || null,
         currentPhase: 'DISCOVER',
         startDate: today,
         lastActivity: today,
         ownerId: currentUser.id,
         isArchived: false,
-        salesforceId: newEngagement.salesforceId || null,
-        salesforceUrl: newEngagement.salesforceUrl || null,
-        jiraTicket: newEngagement.jiraTicket || null,
-        jiraUrl: newEngagement.jiraUrl || null,
-        slackChannel: newEngagement.slackChannel || null,
-        slackUrl: newEngagement.slackUrl || null,
-        driveFolderName: newEngagement.driveFolderName || null,
-        driveFolderUrl: newEngagement.driveFolderUrl || null,
-        docsName: newEngagement.docsName || null,
-        docsUrl: newEngagement.docsUrl || null,
-        slidesName: newEngagement.slidesName || null,
-        slidesUrl: newEngagement.slidesUrl || null,
-        sheetsName: newEngagement.sheetsName || null,
-        sheetsUrl: newEngagement.sheetsUrl || null
+        salesforceId: engagementData.salesforceId || null,
+        salesforceUrl: engagementData.salesforceUrl || null,
+        jiraTicket: engagementData.jiraTicket || null,
+        jiraUrl: engagementData.jiraUrl || null,
+        slackChannel: engagementData.slackChannel || null,
+        slackUrl: engagementData.slackUrl || null,
+        driveFolderName: engagementData.driveFolderName || null,
+        driveFolderUrl: engagementData.driveFolderUrl || null,
+        docsName: engagementData.docsName || null,
+        docsUrl: engagementData.docsUrl || null,
+        slidesName: engagementData.slidesName || null,
+        slidesUrl: engagementData.slidesUrl || null,
+        sheetsName: engagementData.sheetsName || null,
+        sheetsUrl: engagementData.sheetsUrl || null
       });
 
       var createdEngagement = result.data;
@@ -315,8 +321,8 @@ var useEngagementList = function(params) {
       }
 
       // Create ownership records for selected owners
-      var ownerIds = newEngagement.ownerIds && newEngagement.ownerIds.length > 0 
-        ? newEngagement.ownerIds 
+      var ownerIds = engagementData.ownerIds && engagementData.ownerIds.length > 0 
+        ? engagementData.ownerIds 
         : [currentUser.id];
 
       for (var j = 0; j < ownerIds.length; j++) {
@@ -347,7 +353,7 @@ var useEngagementList = function(params) {
       setEngagements(function(prev) { return [enrichedEngagement].concat(prev); });
 
       if (logChangeAsync) {
-        logChangeAsync(createdEngagement.id, 'CREATED', 'Created engagement for ' + newEngagement.company);
+        logChangeAsync(createdEngagement.id, 'CREATED', 'Created engagement for ' + engagementData.company);
       }
 
       // Reset form and navigate
