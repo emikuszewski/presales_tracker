@@ -10,7 +10,12 @@ import {
   OwnersModal,
   IntegrationsModal
 } from '../components';
-import { phaseLabels } from '../constants';
+import { phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
+import { 
+  isClosedStatus, 
+  getEngagementStatusBadgeClasses, 
+  getClosedBannerClasses 
+} from '../utils';
 
 // Import tab components
 import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab } from '../components/engagement';
@@ -44,7 +49,144 @@ const RestoreIcon = ({ className = "w-5 h-5" }) => (
 );
 
 /**
- * Detail header component - compact header with back, owners, company, phase
+ * All engagement status options
+ */
+const ALL_STATUSES = ['ACTIVE', 'ON_HOLD', 'UNRESPONSIVE', 'WON', 'LOST', 'DISQUALIFIED', 'NO_DECISION'];
+
+/**
+ * Engagement Status Dropdown component
+ * Click to change status, similar to phase status dropdown
+ */
+const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const statusIcon = engagementStatusIcons[currentStatus];
+  const statusLabel = engagementStatusLabels[currentStatus];
+
+  const handleSelect = (newStatus) => {
+    if (newStatus !== currentStatus) {
+      onStatusChange(newStatus);
+    }
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full transition-colors hover:opacity-80 ${getEngagementStatusBadgeClasses(currentStatus)}`}
+      >
+        {statusIcon && <span>{statusIcon}</span>}
+        {statusLabel}
+        <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+            {ALL_STATUSES.map(status => {
+              const icon = engagementStatusIcons[status];
+              const label = engagementStatusLabels[status];
+              const isSelected = status === currentStatus;
+              
+              return (
+                <button
+                  key={status}
+                  onClick={() => handleSelect(status)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${isSelected ? 'bg-gray-50 font-medium' : ''}`}
+                >
+                  {icon && <span>{icon}</span>}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Closed Engagement Banner
+ * Shown above tabs for WON/LOST/DISQUALIFIED/NO_DECISION statuses
+ */
+const ClosedBanner = ({ status, closedReason, onEditReason }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(closedReason || '');
+  const bannerClasses = getClosedBannerClasses(status);
+
+  const handleSave = () => {
+    onEditReason(editText.trim());
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditText(closedReason || '');
+    setIsEditing(false);
+  };
+
+  return (
+    <div className={`${bannerClasses.bg} border ${bannerClasses.border} rounded-lg p-4 mx-4 mt-4`}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{bannerClasses.icon}</span>
+          <span className={`font-medium ${bannerClasses.text}`}>
+            {engagementStatusLabels[status]}
+          </span>
+        </div>
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className={`text-sm ${bannerClasses.text} hover:underline`}
+          >
+            {closedReason ? 'Edit' : 'Add notes'}
+          </button>
+        )}
+      </div>
+
+      {isEditing ? (
+        <div className="mt-3">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            placeholder="Add notes about why this engagement closed..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+            rows={3}
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ) : closedReason ? (
+        <p className={`mt-2 text-sm ${bannerClasses.text}`}>
+          {closedReason}
+        </p>
+      ) : (
+        <p className={`mt-2 text-sm ${bannerClasses.text} opacity-60`}>
+          No notes added
+        </p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Detail header component - compact header with back, owners, company, phase, status dropdown
+ * Deal size removed from header (per spec)
  */
 const DetailHeader = ({ 
   engagement, 
@@ -54,11 +196,13 @@ const DetailHeader = ({
   onArchive, 
   onManageOwners,
   onEditIntegrations,
+  onStatusChange,
   isStale, 
   daysSinceActivity 
 }) => {
   const currentPhase = engagement?.currentPhase || 'DISCOVER';
   const isArchived = engagement?.isArchived === true;
+  const engagementStatus = engagement?.engagementStatus || 'ACTIVE';
   
   // Get the phase data and status for styling
   const currentPhaseData = engagement?.phases?.[currentPhase];
@@ -139,22 +283,14 @@ const DetailHeader = ({
             {phaseLabel}
           </span>
 
-          {/* Archived badge - always visible (critical state info) */}
-          {isArchived && (
-            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 flex-shrink-0">
-              Archived
-            </span>
-          )}
+          {/* Engagement Status Dropdown */}
+          <EngagementStatusDropdown
+            currentStatus={engagementStatus}
+            onStatusChange={onStatusChange}
+          />
 
-          {/* Deal size */}
-          {engagement?.dealSize && (
-            <span className="text-sm text-gray-500 flex-shrink-0 hidden sm:inline">
-              {engagement.dealSize}
-            </span>
-          )}
-
-          {/* Stale indicator */}
-          {isStale && (
+          {/* Stale indicator - only for ACTIVE status */}
+          {isStale && engagementStatus === 'ACTIVE' && (
             <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline" title={`${daysSinceActivity} days since last activity`}>
               ⚠️ {daysSinceActivity}d stale
             </span>
@@ -259,6 +395,10 @@ const DetailView = ({
   const unreadCount = engagement?.unreadChanges || 0;
   const notesCount = engagement?.totalNotesCount || 0;
 
+  // Engagement status
+  const engagementStatus = engagement?.engagementStatus || 'ACTIVE';
+  const isClosed = isClosedStatus(engagementStatus);
+
   // Handle navigation options
   useEffect(() => {
     if (navigationOptions?.scrollToActivityId) {
@@ -280,6 +420,20 @@ const DetailView = ({
     setActiveTab('notes');
     setScrollToPhase(phaseType);
   }, []);
+
+  // Status change handler
+  const handleStatusChange = useCallback(async (newStatus) => {
+    if (detail?.status?.update) {
+      await detail.status.update(newStatus);
+    }
+  }, [detail]);
+
+  // Closed reason update handler
+  const handleClosedReasonUpdate = useCallback(async (reason) => {
+    if (detail?.status?.updateReason) {
+      await detail.status.updateReason(reason);
+    }
+  }, [detail]);
 
   // Activity handlers
   const handleAddActivity = useCallback(async (activityData) => {
@@ -473,9 +627,19 @@ const DetailView = ({
         onArchive={handleArchive}
         onManageOwners={() => setShowOwnersModal(true)}
         onEditIntegrations={() => setShowIntegrationsModal(true)}
+        onStatusChange={handleStatusChange}
         isStale={engagement.isStale}
         daysSinceActivity={engagement.daysSinceActivity}
       />
+
+      {/* Closed Engagement Banner - shown for WON/LOST/DISQUALIFIED/NO_DECISION */}
+      {isClosed && (
+        <ClosedBanner
+          status={engagementStatus}
+          closedReason={engagement.closedReason}
+          onEditReason={handleClosedReasonUpdate}
+        />
+      )}
 
       {/* Main content area with tabs */}
       <div className="flex flex-1 overflow-hidden">
