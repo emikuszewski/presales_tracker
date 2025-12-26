@@ -51,6 +51,15 @@ const RestoreIcon = ({ className = "w-5 h-5" }) => (
 );
 
 /**
+ * Competition/Swords icon for adding competitors
+ */
+const CompetitionIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+  </svg>
+);
+
+/**
  * All engagement status options
  */
 const ALL_STATUSES = ['ACTIVE', 'ON_HOLD', 'UNRESPONSIVE', 'WON', 'LOST', 'DISQUALIFIED', 'NO_DECISION'];
@@ -187,39 +196,8 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
 };
 
 /**
- * Competition button/chips for header
- * Shows chips when competitors exist, otherwise shows add button
- */
-const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => {
-  const hasCompetitors = competitors && competitors.length > 0;
-
-  if (hasCompetitors) {
-    return (
-      <CompetitorChips
-        competitors={competitors}
-        otherCompetitorName={otherCompetitorName}
-        maxDisplay={3}
-        size="sm"
-        onClick={onClick}
-      />
-    );
-  }
-
-  // Empty state - show muted add button
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-      title="Add competitors"
-    >
-      <span>⚔️</span>
-      <span>+</span>
-    </button>
-  );
-};
-
-/**
  * Detail header component - compact header with back, owners, company, phase, status dropdown, competitors
+ * Deal size removed from header (per spec)
  */
 const DetailHeader = ({ 
   engagement, 
@@ -237,6 +215,7 @@ const DetailHeader = ({
   const currentPhase = engagement?.currentPhase || 'DISCOVER';
   const isArchived = engagement?.isArchived === true;
   const engagementStatus = engagement?.engagementStatus || 'ACTIVE';
+  const hasCompetitors = engagement?.competitors && engagement.competitors.length > 0;
   
   // Get the phase data and status for styling
   const currentPhaseData = engagement?.phases?.[currentPhase];
@@ -323,12 +302,25 @@ const DetailHeader = ({
             onStatusChange={onStatusChange}
           />
 
-          {/* Competition Indicator - after status dropdown */}
-          <CompetitionIndicator
-            competitors={engagement?.competitors}
-            otherCompetitorName={engagement?.otherCompetitorName}
-            onClick={onEditCompetitors}
-          />
+          {/* Competitor Chips or Add Button */}
+          {hasCompetitors ? (
+            <CompetitorChips
+              competitors={engagement.competitors}
+              otherCompetitorName={engagement.otherCompetitorName}
+              maxDisplay={3}
+              size="sm"
+              onClick={onEditCompetitors}
+            />
+          ) : (
+            <button
+              onClick={onEditCompetitors}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+              title="Add competitors"
+            >
+              <CompetitionIcon className="w-3.5 h-3.5" />
+              <span className="text-lg leading-none">+</span>
+            </button>
+          )}
 
           {/* Stale indicator - only for ACTIVE status */}
           {isStale && engagementStatus === 'ACTIVE' && (
@@ -347,7 +339,7 @@ const DetailHeader = ({
               if (!integration.url) return null;
               const IconComp = integration.Icon;
               return (
-                
+                <a
                   key={idx}
                   href={integration.url}
                   target="_blank"
@@ -477,6 +469,14 @@ const DetailView = ({
     }
   }, [detail]);
 
+  // Competitors update handler
+  const handleCompetitorsUpdate = useCallback(async (data) => {
+    if (detail?.competitors?.update) {
+      await detail.competitors.update(data);
+    }
+    setShowCompetitionModal(false);
+  }, [detail]);
+
   // Activity handlers
   const handleAddActivity = useCallback(async (activityData) => {
     if (detail?.activity?.add) {
@@ -555,13 +555,6 @@ const DetailView = ({
       detail.integrations.update(updates);
     }
     setShowIntegrationsModal(false);
-  }, [detail]);
-
-  // Competitors save handler
-  const handleUpdateCompetitors = useCallback((competitorData) => {
-    if (detail?.competitors?.update) {
-      detail.competitors.update(competitorData);
-    }
   }, [detail]);
 
   // Note handlers - wired to detail.note.*
@@ -746,10 +739,10 @@ const DetailView = ({
       <CompetitionModal
         isOpen={showCompetitionModal}
         onClose={() => setShowCompetitionModal(false)}
-        initialCompetitors={engagement.competitors}
-        initialNotes={engagement.competitorNotes}
-        initialOtherName={engagement.otherCompetitorName}
-        onSave={handleUpdateCompetitors}
+        initialCompetitors={engagement.competitors || []}
+        initialCompetitorNotes={engagement.competitorNotes || ''}
+        initialOtherCompetitorName={engagement.otherCompetitorName || ''}
+        onSave={handleCompetitorsUpdate}
       />
 
       {/* Archive Confirmation Modal */}
