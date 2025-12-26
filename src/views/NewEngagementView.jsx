@@ -1,337 +1,487 @@
-import React from 'react';
-import { industries, industryLabels } from '../constants';
-import { formatDealSize, getAvatarColorClasses } from '../utils';
+import React, { useState } from 'react';
+import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator } from '../components';
+import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
+import { 
+  getEngagementStatusBorderClasses, 
+  getEngagementStatusBadgeClasses,
+  shouldShowStale 
+} from '../utils';
 
 /**
- * Form view for creating a new engagement
- * SE Team appears in owner picker with blue styling
+ * List view showing all engagements with minimal filter UI
+ * - Single control row: Search + Filters button
+ * - Collapsible filter panel
+ * - Filter chips when non-default filters applied
+ * - Pipeline total in subtitle (for active non-archived engagements)
  */
-const NewEngagementView = ({
-  newEngagement,
-  setNewEngagement,
+const ListView = ({
+  // Data
+  engagements,
   teamMembers,
-  onSubmit,
-  onBack
+  currentUser,
+  staleCount,
+  totalInViewMode,
+  inProgressInViewMode,
+  totalEverythingCount,
+  // Pipeline stats
+  pipelineTotalFormatted,
+  pipelineDealsCount,
+  getOwnerInfo,
+  // Filter state
+  filters,
+  filterActions,
+  // Navigation
+  onSelectEngagement,
+  onNavigateToActivity,
+  onNewEngagement
 }) => {
-  const updateField = (field, value) => {
-    setNewEngagement(prev => ({ ...prev, [field]: value }));
-  };
+  const { 
+    filterPhase, 
+    filterOwner, 
+    filterStale, 
+    showArchived, 
+    showEverything,
+    searchQuery 
+  } = filters;
+  
+  const {
+    setFilterPhase,
+    setFilterOwner,
+    setFilterStale,
+    setShowArchived,
+    setShowEverything,
+    setSearchQuery,
+    clearAllFilters
+  } = filterActions;
 
-  const handleDealSizeBlur = () => {
-    const formatted = formatDealSize(newEngagement.dealSize);
-    if (formatted !== newEngagement.dealSize) {
-      updateField('dealSize', formatted);
+  // Local state for filter panel visibility
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
+  // Calculate which filters are non-default (for badge count and chips)
+  const nonDefaultFilters = [];
+  
+  // Everything filter takes precedence over Status/View for display
+  if (showEverything) {
+    nonDefaultFilters.push({ 
+      key: 'everything', 
+      label: 'Everything', 
+      isBlue: true, 
+      onRemove: () => setShowEverything(false) 
+    });
+  } else {
+    if (showArchived) nonDefaultFilters.push({ key: 'status', label: 'Archived', onRemove: () => setShowArchived(false) });
+    if (filterOwner !== 'mine') {
+      const ownerLabel = filterOwner === 'all' ? 'All Team' : getOwnerInfo(filterOwner).name;
+      nonDefaultFilters.push({ key: 'owner', label: `View: ${ownerLabel}`, onRemove: () => setFilterOwner('mine') });
+    }
+  }
+  
+  if (filterPhase !== 'all') {
+    nonDefaultFilters.push({ key: 'phase', label: `Phase: ${phaseLabels[filterPhase]}`, onRemove: () => setFilterPhase('all') });
+  }
+  if (filterStale) nonDefaultFilters.push({ key: 'stale', label: 'Needs Attention', isAmber: true, onRemove: () => setFilterStale(false) });
+
+  const hasActiveFilters = nonDefaultFilters.length > 0;
+
+  /**
+   * Get color for phase status dot
+   * @param {string} status - Phase status
+   * @returns {string} Tailwind CSS class for background color
+   */
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'COMPLETE': return 'bg-emerald-500';
+      case 'IN_PROGRESS': return 'bg-blue-500';
+      case 'BLOCKED': return 'bg-amber-500';
+      case 'SKIPPED': return 'bg-gray-300';
+      default: return 'bg-gray-200';
     }
   };
 
-  const toggleOwner = (memberId, isSelected) => {
-    if (isSelected) {
-      // Adding owner
-      setNewEngagement(prev => ({ ...prev, ownerIds: [...prev.ownerIds, memberId] }));
-    } else {
-      // Removing owner - only if more than one
-      if (newEngagement.ownerIds.length > 1) {
-        setNewEngagement(prev => ({ ...prev, ownerIds: prev.ownerIds.filter(id => id !== memberId) }));
-      }
+  /**
+   * Handle click on "Last activity" link
+   * Navigates to detail view and scrolls to the most recent activity
+   */
+  const handleLastActivityClick = (e, engagement) => {
+    e.stopPropagation();
+    const lastActivityId = engagement.activities?.[0]?.id;
+    if (lastActivityId) {
+      onNavigateToActivity(engagement.id, lastActivityId);
     }
   };
 
-  const canSubmit = newEngagement.company && newEngagement.contactName && newEngagement.ownerIds.length > 0;
+  /**
+   * Render the subtitle based on filter state
+   * Format: "12 engagements · $2.4M (8 deals) · 5 in progress"
+   * Pipeline portion only shown for active (non-archived) view when deals exist
+   */
+  const renderSubtitle = () => {
+    const currentCount = engagements.length;
+
+    // Everything mode
+    if (showEverything) {
+      return (
+        <p className="text-gray-500 text-sm">
+          Showing {currentCount} of {totalEverythingCount} total engagements
+        </p>
+      );
+    }
+
+    const modeLabel = showArchived ? 'archived' : 'active';
+
+    if (hasActiveFilters) {
+      return (
+        <p className="text-gray-500 text-sm">
+          Showing {currentCount} of {totalInViewMode} {modeLabel}
+        </p>
+      );
+    }
+
+    // Unfiltered state
+    if (showArchived) {
+      return (
+        <p className="text-gray-500 text-sm">
+          {currentCount} engagement{currentCount !== 1 ? 's' : ''}
+        </p>
+      );
+    }
+
+    // Active unfiltered: show rich stats including pipeline total
+    // Format: "12 engagements · $2.4M (8 deals) · 5 in progress"
+    const parts = [];
+    
+    // Engagement count
+    parts.push(`${currentCount} engagement${currentCount !== 1 ? 's' : ''}`);
+    
+    // Pipeline total - only if there are deals with sizes
+    if (pipelineDealsCount > 0) {
+      parts.push(
+        <span key="pipeline" className="text-gray-700 font-medium">
+          {pipelineTotalFormatted}
+        </span>
+      );
+      parts.push(`(${pipelineDealsCount} deal${pipelineDealsCount !== 1 ? 's' : ''})`);
+    }
+    
+    // In progress count
+    parts.push(`${inProgressInViewMode} in progress`);
+    
+    // Stale count if any
+    if (staleCount > 0) {
+      parts.push(
+        <span key="stale" className="text-amber-600">
+          {staleCount} need attention
+        </span>
+      );
+    }
+
+    return (
+      <p className="text-gray-500 text-sm">
+        {parts.map((part, idx) => (
+          <React.Fragment key={idx}>
+            {idx > 0 && ' · '}
+            {part}
+          </React.Fragment>
+        ))}
+      </p>
+    );
+  };
+
+  /**
+   * Render header title based on filter state
+   */
+  const renderTitle = () => {
+    if (showEverything) {
+      return 'All Engagements';
+    }
+    return showArchived ? 'Archived Engagements' : 'Engagements';
+  };
 
   return (
     <div>
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Cancel
-      </button>
-
-      <h2 className="text-2xl font-medium text-gray-900 mb-8">New Engagement</h2>
-
-      <div className="max-w-xl space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Company & Contact</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-              <input 
-                type="text" 
-                value={newEngagement.company}
-                onChange={e => updateField('company', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="Acme Corporation" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name *</label>
-              <input 
-                type="text" 
-                value={newEngagement.contactName}
-                onChange={e => updateField('contactName', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="John Smith" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
-              <input 
-                type="email" 
-                value={newEngagement.contactEmail}
-                onChange={e => updateField('contactEmail', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="john@acme.com" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
-              <input 
-                type="tel" 
-                value={newEngagement.contactPhone}
-                onChange={e => updateField('contactPhone', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="+1 (555) 123-4567" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-              <select 
-                value={newEngagement.industry}
-                onChange={e => updateField('industry', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              >
-                {industries.map(ind => (
-                  <option key={ind} value={ind}>{industryLabels[ind]}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Deal Size</label>
-              <input 
-                type="text" 
-                value={newEngagement.dealSize}
-                onChange={e => updateField('dealSize', e.target.value)}
-                onBlur={handleDealSizeBlur}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="$100K" 
-              />
-            </div>
-          </div>
+          <h2 className="text-2xl font-medium text-gray-900">
+            {renderTitle()}
+          </h2>
+          {renderSubtitle()}
         </div>
+        {!showArchived && !showEverything && (
+          <button 
+            onClick={onNewEngagement}
+            className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            + New Engagement
+          </button>
+        )}
+      </div>
 
-        <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Owners</h3>
-          <div className="space-y-2">
-            {teamMembers.map(member => {
-              const isSelected = newEngagement.ownerIds.includes(member.id);
-              const isSystemUser = member.isSystemUser === true;
-              
-              // Determine avatar classes based on selection and system user status
-              let avatarClasses;
-              let labelClasses;
-              let checkboxBorderClasses;
-              
-              if (isSelected) {
-                if (isSystemUser) {
-                  avatarClasses = 'bg-white text-blue-600';
-                  labelClasses = 'bg-blue-500 text-white';
-                  checkboxBorderClasses = 'border-white bg-white';
-                } else {
-                  avatarClasses = 'bg-white text-gray-900';
-                  labelClasses = 'bg-gray-900 text-white';
-                  checkboxBorderClasses = 'border-white bg-white';
-                }
-              } else {
-                if (isSystemUser) {
-                  avatarClasses = 'bg-blue-100 text-blue-700';
-                  labelClasses = 'bg-gray-50 hover:bg-blue-50';
-                  checkboxBorderClasses = 'border-blue-300';
-                } else {
-                  avatarClasses = 'bg-gray-200 text-gray-600';
-                  labelClasses = 'bg-gray-50 hover:bg-gray-100';
-                  checkboxBorderClasses = 'border-gray-300';
-                }
-              }
-              
-              return (
-                <label 
-                  key={member.id}
-                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${labelClasses}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${avatarClasses}`}>
-                      {member.initials}
-                    </div>
-                    <div>
-                      <span className="font-medium">{member.name}</span>
-                      {isSystemUser && (
-                        <span className={`ml-2 text-xs ${isSelected ? 'text-blue-200' : 'text-blue-600'}`}>(Shared Pool)</span>
+      {/* Minimal Control Row: Search + Filters Button */}
+      <div className="flex items-center gap-3 mb-3">
+        {/* Search */}
+        <div className="flex-1 relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search engagements..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+        </div>
+        
+        {/* Filters Button */}
+        <button
+          id="filter-panel-toggle"
+          onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+          className={`px-4 py-2.5 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
+            isFilterPanelOpen
+              ? 'border-gray-900 bg-gray-50 text-gray-900'
+              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Filters
+          {hasActiveFilters && (
+            <span className="w-5 h-5 bg-gray-900 text-white text-xs font-bold rounded-full flex items-center justify-center">
+              {nonDefaultFilters.length}
+            </span>
+          )}
+          {isFilterPanelOpen && (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Filter Panel (collapsible) */}
+      <FilterPanel
+        isOpen={isFilterPanelOpen}
+        onClose={() => setIsFilterPanelOpen(false)}
+        filterPhase={filterPhase}
+        filterOwner={filterOwner}
+        filterStale={filterStale}
+        showArchived={showArchived}
+        showEverything={showEverything}
+        setFilterPhase={setFilterPhase}
+        setFilterOwner={setFilterOwner}
+        setFilterStale={setFilterStale}
+        setShowArchived={setShowArchived}
+        setShowEverything={setShowEverything}
+        teamMembers={teamMembers}
+        currentUser={currentUser}
+        staleCount={staleCount}
+        totalEverythingCount={totalEverythingCount}
+      />
+
+      {/* Filter Chips (only when non-default filters active) */}
+      {hasActiveFilters && !isFilterPanelOpen && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-gray-400">Filtered by:</span>
+          
+          {nonDefaultFilters.map((filter) => (
+            <span
+              key={filter.key}
+              className={`inline-flex items-center gap-1 pl-3 pr-1 py-1 text-sm rounded-full ${
+                filter.isAmber
+                  ? 'bg-amber-100 text-amber-700'
+                  : filter.isBlue
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              {filter.isAmber && (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {filter.isBlue && (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              {filter.label}
+              <button
+                onClick={filter.onRemove}
+                className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                  filter.isAmber
+                    ? 'hover:bg-amber-200 text-amber-500 hover:text-amber-700'
+                    : filter.isBlue
+                    ? 'hover:bg-blue-200 text-blue-500 hover:text-blue-700'
+                    : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+
+          <button
+            onClick={clearAllFilters}
+            className="text-xs text-blue-600 hover:text-blue-800 ml-2"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
+      {/* Engagement Cards */}
+      <div className="space-y-3">
+        {engagements.map(engagement => {
+          const hasActivities = engagement.activities?.length > 0;
+          const engagementStatus = engagement.engagementStatus || 'ACTIVE';
+          const statusBorderClasses = getEngagementStatusBorderClasses(engagementStatus);
+          const showStale = shouldShowStale(engagement);
+          const statusIcon = engagementStatusIcons[engagementStatus];
+          const statusLabel = engagementStatusLabels[engagementStatus];
+          const isArchivedInEverything = showEverything && engagement.isArchived === true;
+          
+          return (
+            <div
+              key={engagement.id}
+              onClick={() => onSelectEngagement(engagement.id)}
+              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${statusBorderClasses}`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-3">
+                  <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
+                      {engagement.unreadChanges > 0 && (
+                        <NotificationBadge count={engagement.unreadChanges} />
                       )}
                     </div>
+                    <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    checked={isSelected}
-                    onChange={(e) => toggleOwner(member.id, e.target.checked)}
-                    className="sr-only" 
-                  />
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${checkboxBorderClasses}`}>
-                    {isSelected && (
-                      <svg className={`w-3 h-3 ${isSystemUser ? 'text-blue-600' : 'text-gray-900'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
+                  <div className="flex items-center justify-end gap-2 mt-1">
+                    {hasActivities ? (
+                      <button
+                        onClick={(e) => handleLastActivityClick(e, engagement)}
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        Last activity: {engagement.lastActivity || engagement.startDate}
+                      </button>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        Last activity: {engagement.lastActivity || engagement.startDate}
+                      </p>
                     )}
                   </div>
-                </label>
-              );
-            })}
+                </div>
+              </div>
+              
+              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Links Indicator */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Compact Phase Dots */}
+                  <div className="flex items-center gap-1">
+                    {phaseConfig.map((phase) => {
+                      const phaseData = engagement.phases[phase.id];
+                      const status = phaseData?.status || 'PENDING';
+                      return (
+                        <div
+                          key={phase.id}
+                          className={`w-2.5 h-2.5 rounded-full ${getStatusColor(status)}`}
+                          title={`${phase.label}: ${status.toLowerCase().replace('_', ' ')}`}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Current Phase Badge */}
+                  {(() => {
+                    const currentPhaseData = engagement.phases[engagement.currentPhase];
+                    const currentStatus = currentPhaseData?.status || 'PENDING';
+                    const phaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
+                    
+                    let badgeClasses, dotClasses;
+                    if (currentStatus === 'COMPLETE') {
+                      badgeClasses = 'bg-emerald-50 text-emerald-700';
+                      dotClasses = 'bg-emerald-500';
+                    } else if (currentStatus === 'IN_PROGRESS') {
+                      badgeClasses = 'bg-blue-50 text-blue-700';
+                      dotClasses = 'bg-blue-500';
+                    } else if (currentStatus === 'BLOCKED') {
+                      badgeClasses = 'bg-amber-50 text-amber-700';
+                      dotClasses = 'bg-amber-500';
+                    } else if (currentStatus === 'SKIPPED') {
+                      badgeClasses = 'bg-gray-50 text-gray-400';
+                      dotClasses = 'bg-gray-300';
+                    } else {
+                      badgeClasses = 'bg-gray-100 text-gray-600';
+                      dotClasses = 'bg-gray-400';
+                    }
+
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+                        {phaseLabel}
+                      </span>
+                    );
+                  })()}
+
+                  {/* Engagement Status Badge - hidden for ACTIVE (default state) */}
+                  {engagementStatus !== 'ACTIVE' && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getEngagementStatusBadgeClasses(engagementStatus)}`}>
+                      {statusIcon && <span>{statusIcon}</span>}
+                      {statusLabel}
+                    </span>
+                  )}
+
+                  {/* Archived Badge - only shown in Everything mode for archived items */}
+                  {isArchivedInEverything && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                      <span>📦</span>
+                      Archived
+                    </span>
+                  )}
+
+                  {/* Stale Badge - only for ACTIVE status engagements */}
+                  {showStale && (
+                    <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
+                  )}
+                </div>
+
+                {/* Integration Links Indicator */}
+                <IntegrationLinksIndicator engagement={engagement} />
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Empty State */}
+        {engagements.length === 0 && (
+          <div className="text-center py-12">
+            {hasActiveFilters ? (
+              <div>
+                <p className="text-gray-400 mb-3">No engagements match your filters</p>
+                <button
+                  onClick={clearAllFilters}
+                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+              <p className="text-gray-400">
+                {showArchived ? 'No archived engagements' : showEverything ? 'No engagements yet' : 'No engagements yet'}
+              </p>
+            )}
           </div>
-          {newEngagement.ownerIds.length === 0 && (
-            <p className="text-sm text-red-500 mt-2">At least one owner is required</p>
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Integrations (Optional)</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Documents: Google Drive */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Drive Folder Name</label>
-              <input 
-                type="text" 
-                value={newEngagement.driveFolderName}
-                onChange={e => updateField('driveFolderName', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="Acme Corp POC Docs" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Drive Folder URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.driveFolderUrl}
-                onChange={e => updateField('driveFolderUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://drive.google.com/drive/folders/..." 
-              />
-            </div>
-
-            {/* Documents: Google Docs */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Google Doc Name</label>
-              <input 
-                type="text" 
-                value={newEngagement.docsName}
-                onChange={e => updateField('docsName', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="Running Notes" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Google Doc URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.docsUrl}
-                onChange={e => updateField('docsUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://docs.google.com/document/d/..." 
-              />
-            </div>
-
-            {/* Documents: Google Slides */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slides Deck Name</label>
-              <input 
-                type="text" 
-                value={newEngagement.slidesName}
-                onChange={e => updateField('slidesName', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="Customer Demo Deck" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slides Deck URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.slidesUrl}
-                onChange={e => updateField('slidesUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://docs.google.com/presentation/d/..." 
-              />
-            </div>
-
-            {/* Documents: Google Sheets */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Google Sheet Name</label>
-              <input 
-                type="text" 
-                value={newEngagement.sheetsName}
-                onChange={e => updateField('sheetsName', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="POC Tracker" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Google Sheet URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.sheetsUrl}
-                onChange={e => updateField('sheetsUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://docs.google.com/spreadsheets/d/..." 
-              />
-            </div>
-
-            {/* Visual spacing row */}
-            <div className="col-span-2 pt-2"></div>
-            
-            {/* Communication: Slack */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel</label>
-              <input 
-                type="text" 
-                value={newEngagement.slackChannel}
-                onChange={e => updateField('slackChannel', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="#customer-poc" 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slack Channel URL</label>
-              <input 
-                type="url" 
-                value={newEngagement.slackUrl}
-                onChange={e => updateField('slackUrl', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="https://plainid.slack.com/archives/..." 
-              />
-            </div>
-          </div>
-        </div>
-
-        <button 
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="w-full px-4 py-3 bg-gray-900 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Create Engagement
-        </button>
+        )}
       </div>
     </div>
   );
 };
 
-export default NewEngagementView;
+export default ListView;
