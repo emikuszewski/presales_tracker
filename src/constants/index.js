@@ -3,7 +3,10 @@ export {
   industryLabels,
   phaseLabels,
   activityTypeLabels,
-  changeTypeLabels
+  changeTypeLabels,
+  phaseStatusLabels,
+  engagementStatusLabels,
+  engagementStatusIcons
 } from './labels';
 
 export {
