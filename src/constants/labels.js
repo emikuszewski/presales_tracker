@@ -71,12 +71,13 @@ export const competitorLabels = {
   NEXTLABS: 'NextLabs',
   OKTA: 'Okta',
   ONE_IDENTITY: 'One Identity',
+  OPA: 'OPA',
   ORY: 'Ory',
   PERMIT_IO: 'Permit.io',
   PING_IDENTITY: 'Ping Identity',
   SAILPOINT: 'SailPoint',
   SAVIYNT: 'Saviynt',
-  STYRA_OPA: 'Styra/OPA',
+  STYRA: 'Styra',
   ZANZIBAR: 'Zanzibar',
   OTHER: 'Other'
 };
