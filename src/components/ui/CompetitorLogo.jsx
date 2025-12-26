@@ -48,19 +48,43 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
         );
 
       // ============================================
-      // AWS VERIFIED PERMISSIONS - Smile/arrow swoosh
+      // AWS VERIFIED PERMISSIONS - Amazon "a" + smile arrow
+      // Vertically stacked and centered
       // ============================================
       case 'AWS_VERIFIED_PERMISSIONS':
         return (
           <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
-            {/* AWS arrow/smile swoosh */}
-            <path d="M2 15.5c0 0 4-2 10-2s10 2 10 2" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round"/>
-            {/* Arrow head */}
-            <path d="M18 12l4 3.5-4 3.5" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            {/* Upper cloud/service indicator */}
-            <circle cx="12" cy="8" r="3" fill={fillColor}/>
-            <circle cx="7" cy="9" r="2" fill={fillColor}/>
-            <circle cx="17" cy="9" r="2" fill={fillColor}/>
+            {/* Amazon lowercase "a" - double-story style */}
+            {/* Outer bowl shape */}
+            <path d="
+              M11 3
+              C7.5 3 5 5.5 5 8.5
+              C5 11.5 7.5 14 11 14
+              C12.2 14 13.3 13.6 14 13
+              L14 14
+              L17 14
+              L17 8.5
+              C17 5 14.5 3 11 3
+              Z
+              M11 6
+              C13 6 14 7 14 8.5
+              L14 10.5
+              C13.3 11.4 12.2 12 11 12
+              C9 12 7.5 10.5 7.5 8.5
+              C7.5 6.5 9 6 11 6
+              Z
+            "/>
+            {/* Amazon smile arrow - curved swoosh with arrow tip */}
+            <path d="
+              M3 18.5
+              Q12 22.5 19.5 18
+              L18.5 19.5
+              L21 20
+              L20 17
+              L18.5 18
+              Q12 21 4.5 18
+              Z
+            "/>
           </svg>
         );
 
