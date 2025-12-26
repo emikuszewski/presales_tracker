@@ -54,35 +54,34 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
       case 'AWS_VERIFIED_PERMISSIONS':
         return (
           <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
-            {/* Amazon lowercase "a" - double-story style */}
-            {/* Outer bowl shape */}
+            {/* Amazon lowercase "a" - bowl + stem with counter cutout */}
+            {/* Outer shape: circular bowl on left, vertical stem on right */}
             <path d="
-              M11 3
-              C7.5 3 5 5.5 5 8.5
-              C5 11.5 7.5 14 11 14
-              C12.2 14 13.3 13.6 14 13
-              L14 14
-              L17 14
-              L17 8.5
-              C17 5 14.5 3 11 3
-              Z
-              M11 6
-              C13 6 14 7 14 8.5
-              L14 10.5
-              C13.3 11.4 12.2 12 11 12
-              C9 12 7.5 10.5 7.5 8.5
-              C7.5 6.5 9 6 11 6
+              M10 2
+              C6 2 3 5 3 9
+              C3 13 6 16 10 16
+              C11.5 16 12.8 15.5 14 14.7
+              L14 16
+              L18 16
+              L18 2
+              L14 2
+              L14 3.3
+              C12.8 2.5 11.5 2 10 2
               Z
             "/>
-            {/* Amazon smile arrow - curved swoosh with arrow tip */}
+            {/* Inner counter - circular cutout in the bowl */}
+            <circle cx="10" cy="9" r="3.5" fill="white"/>
+            
+            {/* Amazon smile arrow - tapered curve with arrow tip */}
+            {/* Thin on left, thick on right, pointing up-right */}
             <path d="
-              M3 18.5
-              Q12 22.5 19.5 18
-              L18.5 19.5
-              L21 20
+              M2 20
+              Q12 23 18 19.5
+              L16.5 19
               L20 17
-              L18.5 18
-              Q12 21 4.5 18
+              L19.5 21
+              L18 19.5
+              Q12 22 3 20.5
               Z
             "/>
           </svg>
