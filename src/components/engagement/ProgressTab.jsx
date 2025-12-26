@@ -6,13 +6,17 @@ const StatusBadge = ({ status }) => {
   const styles = {
     PENDING: 'bg-gray-100 text-gray-600',
     IN_PROGRESS: 'bg-blue-100 text-blue-700',
-    COMPLETE: 'bg-green-100 text-green-700'
+    COMPLETE: 'bg-green-100 text-green-700',
+    BLOCKED: 'bg-amber-100 text-amber-700',
+    SKIPPED: 'bg-gray-100 text-gray-400 italic'
   };
   
   const labels = {
     PENDING: 'Pending',
     IN_PROGRESS: 'In Progress',
-    COMPLETE: 'Complete'
+    COMPLETE: 'Complete',
+    BLOCKED: 'Blocked',
+    SKIPPED: 'Skipped'
   };
 
   return (
@@ -45,12 +49,17 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
   };
 
   const isPending = phase.status === 'PENDING';
+  const isSkipped = phase.status === 'SKIPPED';
+  const isBlocked = phase.status === 'BLOCKED';
+
+  // All available statuses for the dropdown
+  const allStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETE', 'BLOCKED', 'SKIPPED'];
 
   return (
-    <div className={`bg-white rounded-lg border ${isPending ? 'border-gray-200 opacity-75' : 'border-gray-200'} p-4`}>
+    <div className={`bg-white rounded-lg border ${isBlocked ? 'border-amber-300' : isSkipped ? 'border-gray-200 opacity-60' : isPending ? 'border-gray-200 opacity-75' : 'border-gray-200'} p-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-gray-900">{phaseInfo.label}</h3>
+          <h3 className={`font-medium ${isSkipped ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{phaseInfo.label}</h3>
           <div className="relative">
             <button onClick={() => setShowStatusDropdown(!showStatusDropdown)} className="hover:opacity-80 transition-opacity">
               <StatusBadge status={phase.status} />
@@ -60,7 +69,7 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)} />
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
-                  {['PENDING', 'IN_PROGRESS', 'COMPLETE'].map(status => (
+                  {allStatuses.map(status => (
                     <button
                       key={status}
                       onClick={() => handleStatusSelect(status)}
@@ -73,6 +82,15 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
               </>
             )}
           </div>
+          
+          {/* Blocked indicator icon */}
+          {isBlocked && (
+            <span className="text-amber-500" title="This phase is blocked">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </span>
+          )}
         </div>
         
         {phase.completedDate && (
@@ -80,7 +98,7 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
         )}
       </div>
 
-      <p className="text-sm text-gray-500 mb-3">{phaseInfo.description}</p>
+      <p className={`text-sm mb-3 ${isSkipped ? 'text-gray-400' : 'text-gray-500'}`}>{phaseInfo.description}</p>
 
       {phase.links && phase.links.length > 0 && (
         <div className="mb-3">
@@ -107,7 +125,7 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {!showAddLink && (
+          {!showAddLink && !isSkipped && (
             <button onClick={() => setShowAddLink(true)} className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
