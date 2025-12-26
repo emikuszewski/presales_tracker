@@ -12,6 +12,7 @@ import {
  * - Single control row: Search + Filters button
  * - Collapsible filter panel
  * - Filter chips when non-default filters applied
+ * - Pipeline total in subtitle (for active non-archived engagements)
  */
 const ListView = ({
   // Data
@@ -22,6 +23,9 @@ const ListView = ({
   totalInViewMode,
   inProgressInViewMode,
   totalEverythingCount,
+  // Pipeline stats
+  pipelineTotalFormatted,
+  pipelineDealsCount,
   getOwnerInfo,
   // Filter state
   filters,
@@ -108,6 +112,8 @@ const ListView = ({
 
   /**
    * Render the subtitle based on filter state
+   * Format: "12 engagements · $2.4M (8 deals) · 5 in progress"
+   * Pipeline portion only shown for active (non-archived) view when deals exist
    */
   const renderSubtitle = () => {
     const currentCount = engagements.length;
@@ -140,14 +146,43 @@ const ListView = ({
       );
     }
 
-    // Active unfiltered: show rich stats
+    // Active unfiltered: show rich stats including pipeline total
+    // Format: "12 engagements · $2.4M (8 deals) · 5 in progress"
+    const parts = [];
+    
+    // Engagement count
+    parts.push(`${currentCount} engagement${currentCount !== 1 ? 's' : ''}`);
+    
+    // Pipeline total - only if there are deals with sizes
+    if (pipelineDealsCount > 0) {
+      parts.push(
+        <span key="pipeline" className="text-gray-700 font-medium">
+          {pipelineTotalFormatted}
+        </span>
+      );
+      parts.push(`(${pipelineDealsCount} deal${pipelineDealsCount !== 1 ? 's' : ''})`);
+    }
+    
+    // In progress count
+    parts.push(`${inProgressInViewMode} in progress`);
+    
+    // Stale count if any
+    if (staleCount > 0) {
+      parts.push(
+        <span key="stale" className="text-amber-600">
+          {staleCount} need attention
+        </span>
+      );
+    }
+
     return (
       <p className="text-gray-500 text-sm">
-        {currentCount} engagement{currentCount !== 1 ? 's' : ''}
-        {` · ${inProgressInViewMode} in progress`}
-        {staleCount > 0 && (
-          <span className="text-amber-600"> · {staleCount} need attention</span>
-        )}
+        {parts.map((part, idx) => (
+          <React.Fragment key={idx}>
+            {idx > 0 && ' · '}
+            {part}
+          </React.Fragment>
+        ))}
       </p>
     );
   };
