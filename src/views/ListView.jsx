@@ -21,6 +21,7 @@ const ListView = ({
   staleCount,
   totalInViewMode,
   inProgressInViewMode,
+  totalEverythingCount,
   getOwnerInfo,
   // Filter state
   filters,
@@ -35,6 +36,7 @@ const ListView = ({
     filterOwner, 
     filterStale, 
     showArchived, 
+    showEverything,
     searchQuery 
   } = filters;
   
@@ -43,6 +45,7 @@ const ListView = ({
     setFilterOwner,
     setFilterStale,
     setShowArchived,
+    setShowEverything,
     setSearchQuery,
     clearAllFilters
   } = filterActions;
@@ -52,11 +55,23 @@ const ListView = ({
 
   // Calculate which filters are non-default (for badge count and chips)
   const nonDefaultFilters = [];
-  if (showArchived) nonDefaultFilters.push({ key: 'status', label: 'Archived', onRemove: () => setShowArchived(false) });
-  if (filterOwner !== 'mine') {
-    const ownerLabel = filterOwner === 'all' ? 'All Team' : getOwnerInfo(filterOwner).name;
-    nonDefaultFilters.push({ key: 'owner', label: `View: ${ownerLabel}`, onRemove: () => setFilterOwner('mine') });
+  
+  // Everything filter takes precedence over Status/View for display
+  if (showEverything) {
+    nonDefaultFilters.push({ 
+      key: 'everything', 
+      label: 'Everything', 
+      isBlue: true, 
+      onRemove: () => setShowEverything(false) 
+    });
+  } else {
+    if (showArchived) nonDefaultFilters.push({ key: 'status', label: 'Archived', onRemove: () => setShowArchived(false) });
+    if (filterOwner !== 'mine') {
+      const ownerLabel = filterOwner === 'all' ? 'All Team' : getOwnerInfo(filterOwner).name;
+      nonDefaultFilters.push({ key: 'owner', label: `View: ${ownerLabel}`, onRemove: () => setFilterOwner('mine') });
+    }
   }
+  
   if (filterPhase !== 'all') {
     nonDefaultFilters.push({ key: 'phase', label: `Phase: ${phaseLabels[filterPhase]}`, onRemove: () => setFilterPhase('all') });
   }
@@ -96,6 +111,16 @@ const ListView = ({
    */
   const renderSubtitle = () => {
     const currentCount = engagements.length;
+
+    // Everything mode
+    if (showEverything) {
+      return (
+        <p className="text-gray-500 text-sm">
+          Showing {currentCount} of {totalEverythingCount} total engagements
+        </p>
+      );
+    }
+
     const modeLabel = showArchived ? 'archived' : 'active';
 
     if (hasActiveFilters) {
@@ -127,17 +152,27 @@ const ListView = ({
     );
   };
 
+  /**
+   * Render header title based on filter state
+   */
+  const renderTitle = () => {
+    if (showEverything) {
+      return 'All Engagements';
+    }
+    return showArchived ? 'Archived Engagements' : 'Engagements';
+  };
+
   return (
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-medium text-gray-900">
-            {showArchived ? 'Archived Engagements' : 'Engagements'}
+            {renderTitle()}
           </h2>
           {renderSubtitle()}
         </div>
-        {!showArchived && (
+        {!showArchived && !showEverything && (
           <button 
             onClick={onNewEngagement}
             className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
@@ -198,13 +233,16 @@ const ListView = ({
         filterOwner={filterOwner}
         filterStale={filterStale}
         showArchived={showArchived}
+        showEverything={showEverything}
         setFilterPhase={setFilterPhase}
         setFilterOwner={setFilterOwner}
         setFilterStale={setFilterStale}
         setShowArchived={setShowArchived}
+        setShowEverything={setShowEverything}
         teamMembers={teamMembers}
         currentUser={currentUser}
         staleCount={staleCount}
+        totalEverythingCount={totalEverythingCount}
       />
 
       {/* Filter Chips (only when non-default filters active) */}
@@ -218,6 +256,8 @@ const ListView = ({
               className={`inline-flex items-center gap-1 pl-3 pr-1 py-1 text-sm rounded-full ${
                 filter.isAmber
                   ? 'bg-amber-100 text-amber-700'
+                  : filter.isBlue
+                  ? 'bg-blue-100 text-blue-700'
                   : 'bg-gray-100 text-gray-700'
               }`}
             >
@@ -226,12 +266,19 @@ const ListView = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
+              {filter.isBlue && (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
               {filter.label}
               <button
                 onClick={filter.onRemove}
                 className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                   filter.isAmber
                     ? 'hover:bg-amber-200 text-amber-500 hover:text-amber-700'
+                    : filter.isBlue
+                    ? 'hover:bg-blue-200 text-blue-500 hover:text-blue-700'
                     : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -258,6 +305,7 @@ const ListView = ({
           const showStale = shouldShowStale(engagement);
           const statusIcon = engagementStatusIcons[engagementStatus];
           const statusLabel = engagementStatusLabels[engagementStatus];
+          const isArchivedInEverything = showEverything && engagement.isArchived === true;
           
           return (
             <div
@@ -297,7 +345,7 @@ const ListView = ({
                 </div>
               </div>
               
-              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Stale Badge + Links Indicator */}
+              {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Links Indicator */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {/* Compact Phase Dots */}
@@ -355,6 +403,14 @@ const ListView = ({
                     </span>
                   )}
 
+                  {/* Archived Badge - only shown in Everything mode for archived items */}
+                  {isArchivedInEverything && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+                      <span>📦</span>
+                      Archived
+                    </span>
+                  )}
+
                   {/* Stale Badge - only for ACTIVE status engagements */}
                   {showStale && (
                     <StaleBadge daysSinceActivity={engagement.daysSinceActivity} />
@@ -383,7 +439,7 @@ const ListView = ({
               </div>
             ) : (
               <p className="text-gray-400">
-                {showArchived ? 'No archived engagements' : 'No engagements yet'}
+                {showArchived ? 'No archived engagements' : showEverything ? 'No engagements yet' : 'No engagements yet'}
               </p>
             )}
           </div>
