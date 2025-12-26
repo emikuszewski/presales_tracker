@@ -12,7 +12,9 @@ export {
   SlidesIcon,
   SheetsIcon,
   LinkifyText,
-  IntegrationLinksIndicator
+  IntegrationLinksIndicator,
+  CompetitorLogo,
+  CompetitorChips
 } from './ui';
 
 // Modal components
@@ -20,7 +22,8 @@ export {
   DeleteEngagementModal, 
   IntegrationsModal, 
   EditDetailsModal, 
-  OwnersModal 
+  OwnersModal,
+  CompetitionModal
 } from './modals';
 
 // Layout components
