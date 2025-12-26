@@ -35,6 +35,28 @@ export const phaseStatusLabels = {
   SKIPPED: 'Skipped'
 };
 
+// Engagement-level deal health status labels
+export const engagementStatusLabels = {
+  ACTIVE: 'Active',
+  ON_HOLD: 'On Hold',
+  UNRESPONSIVE: 'Unresponsive',
+  WON: 'Won',
+  LOST: 'Lost',
+  DISQUALIFIED: 'Disqualified',
+  NO_DECISION: 'No Decision'
+};
+
+// Engagement status icons for display
+export const engagementStatusIcons = {
+  ACTIVE: null,        // No icon for active (default state)
+  ON_HOLD: '⏸️',
+  UNRESPONSIVE: '⚠️',
+  WON: '🎉',
+  LOST: '❌',
+  DISQUALIFIED: '🚫',
+  NO_DECISION: '➖'
+};
+
 export const changeTypeLabels = {
   CREATED: 'Created engagement',
   PHASE_UPDATE: 'Updated phase',
@@ -51,5 +73,6 @@ export const changeTypeLabels = {
   RESTORED: 'Restored',
   NOTE_ADDED: 'Added note',
   NOTE_EDITED: 'Edited note',
-  NOTE_DELETED: 'Deleted note'
+  NOTE_DELETED: 'Deleted note',
+  STATUS_CHANGED: 'Changed status'
 };
