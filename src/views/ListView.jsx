@@ -59,10 +59,17 @@ const ListView = ({
 
   const hasActiveFilters = nonDefaultFilters.length > 0;
 
+  /**
+   * Get color for phase status dot
+   * @param {string} status - Phase status
+   * @returns {string} Tailwind CSS class for background color
+   */
   const getStatusColor = (status) => {
     switch(status) {
       case 'COMPLETE': return 'bg-emerald-500';
       case 'IN_PROGRESS': return 'bg-blue-500';
+      case 'BLOCKED': return 'bg-amber-500';
+      case 'SKIPPED': return 'bg-gray-300';
       default: return 'bg-gray-200';
     }
   };
@@ -313,6 +320,12 @@ const ListView = ({
                     } else if (currentStatus === 'IN_PROGRESS') {
                       badgeClasses = 'bg-blue-50 text-blue-700';
                       dotClasses = 'bg-blue-500';
+                    } else if (currentStatus === 'BLOCKED') {
+                      badgeClasses = 'bg-amber-50 text-amber-700';
+                      dotClasses = 'bg-amber-500';
+                    } else if (currentStatus === 'SKIPPED') {
+                      badgeClasses = 'bg-gray-50 text-gray-400';
+                      dotClasses = 'bg-gray-300';
                     } else {
                       badgeClasses = 'bg-gray-100 text-gray-600';
                       dotClasses = 'bg-gray-400';
