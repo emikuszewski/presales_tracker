@@ -12,3 +12,4 @@ export { default as LinkifyText } from './LinkifyText';
 export { default as IntegrationLinksIndicator } from './IntegrationLinksIndicator';
 export { default as CompetitorLogo } from './CompetitorLogo';
 export { default as CompetitorChips } from './CompetitorChips';
+export { default as EngagementStatusIcon } from './EngagementStatusIcon';
