@@ -8,7 +8,9 @@ import {
   SheetsIcon,
   EditDetailsModal,
   OwnersModal,
-  IntegrationsModal
+  IntegrationsModal,
+  CompetitionModal,
+  CompetitorChips
 } from '../components';
 import { phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
 import { 
@@ -185,8 +187,39 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
 };
 
 /**
- * Detail header component - compact header with back, owners, company, phase, status dropdown
- * Deal size removed from header (per spec)
+ * Competition button/chips for header
+ * Shows chips when competitors exist, otherwise shows add button
+ */
+const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => {
+  const hasCompetitors = competitors && competitors.length > 0;
+
+  if (hasCompetitors) {
+    return (
+      <CompetitorChips
+        competitors={competitors}
+        otherCompetitorName={otherCompetitorName}
+        maxDisplay={3}
+        size="sm"
+        onClick={onClick}
+      />
+    );
+  }
+
+  // Empty state - show muted add button
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+      title="Add competitors"
+    >
+      <span>⚔️</span>
+      <span>+</span>
+    </button>
+  );
+};
+
+/**
+ * Detail header component - compact header with back, owners, company, phase, status dropdown, competitors
  */
 const DetailHeader = ({ 
   engagement, 
@@ -196,6 +229,7 @@ const DetailHeader = ({
   onArchive, 
   onManageOwners,
   onEditIntegrations,
+  onEditCompetitors,
   onStatusChange,
   isStale, 
   daysSinceActivity 
@@ -289,6 +323,13 @@ const DetailHeader = ({
             onStatusChange={onStatusChange}
           />
 
+          {/* Competition Indicator - after status dropdown */}
+          <CompetitionIndicator
+            competitors={engagement?.competitors}
+            otherCompetitorName={engagement?.otherCompetitorName}
+            onClick={onEditCompetitors}
+          />
+
           {/* Stale indicator - only for ACTIVE status */}
           {isStale && engagementStatus === 'ACTIVE' && (
             <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline" title={`${daysSinceActivity} days since last activity`}>
@@ -306,7 +347,7 @@ const DetailHeader = ({
               if (!integration.url) return null;
               const IconComp = integration.Icon;
               return (
-                <a
+                
                   key={idx}
                   href={integration.url}
                   target="_blank"
@@ -382,6 +423,7 @@ const DetailView = ({
   const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
   const [showOwnersModal, setShowOwnersModal] = useState(false);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Get owners with full info
@@ -515,6 +557,13 @@ const DetailView = ({
     setShowIntegrationsModal(false);
   }, [detail]);
 
+  // Competitors save handler
+  const handleUpdateCompetitors = useCallback((competitorData) => {
+    if (detail?.competitors?.update) {
+      detail.competitors.update(competitorData);
+    }
+  }, [detail]);
+
   // Note handlers - wired to detail.note.*
   const handleAddNote = useCallback(async (phaseType, text) => {
     if (detail?.note?.add) {
@@ -627,6 +676,7 @@ const DetailView = ({
         onArchive={handleArchive}
         onManageOwners={() => setShowOwnersModal(true)}
         onEditIntegrations={() => setShowIntegrationsModal(true)}
+        onEditCompetitors={() => setShowCompetitionModal(true)}
         onStatusChange={handleStatusChange}
         isStale={engagement.isStale}
         daysSinceActivity={engagement.daysSinceActivity}
@@ -691,6 +741,15 @@ const DetailView = ({
         onClose={() => setShowIntegrationsModal(false)}
         initialData={engagement}
         onSave={handleUpdateIntegrations}
+      />
+
+      <CompetitionModal
+        isOpen={showCompetitionModal}
+        onClose={() => setShowCompetitionModal(false)}
+        initialCompetitors={engagement.competitors}
+        initialNotes={engagement.competitorNotes}
+        initialOtherName={engagement.otherCompetitorName}
+        onSave={handleUpdateCompetitors}
       />
 
       {/* Archive Confirmation Modal */}
