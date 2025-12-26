@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { isClosedStatus } from '../utils';
-import { engagementStatusLabels } from '../constants';
+import { engagementStatusLabels, competitorLabels } from '../constants';
 
 var useEngagementDetail = function(params) {
   var selectedEngagement = params.selectedEngagement;
@@ -132,6 +132,81 @@ var useEngagementDetail = function(params) {
       return false;
     }
   }, [selectedEngagement, updateEngagementInState, client]);
+
+  // Competitors update operation
+  var competitorsUpdate = useCallback(async function(competitorData) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      
+      var oldCompetitors = selectedEngagement.competitors || [];
+      var newCompetitors = competitorData.competitors || [];
+      
+      // Store competitors as JSON string in DB
+      var competitorsJson = newCompetitors.length > 0 ? JSON.stringify(newCompetitors) : null;
+
+      await dataClient.models.Engagement.update({
+        id: selectedEngagement.id,
+        competitors: competitorsJson,
+        competitorNotes: competitorData.competitorNotes || null,
+        otherCompetitorName: competitorData.otherCompetitorName || null
+      });
+
+      // Update local state
+      updateEngagementInState(selectedEngagement.id, {
+        competitors: newCompetitors,
+        competitorNotes: competitorData.competitorNotes || null,
+        otherCompetitorName: competitorData.otherCompetitorName || null
+      });
+
+      // Build change log description
+      if (logChangeAsync) {
+        var addedCompetitors = newCompetitors.filter(function(c) { return oldCompetitors.indexOf(c) === -1; });
+        var removedCompetitors = oldCompetitors.filter(function(c) { return newCompetitors.indexOf(c) === -1; });
+        
+        var descParts = [];
+        
+        if (addedCompetitors.length > 0) {
+          var addedLabels = addedCompetitors.map(function(c) {
+            if (c === 'OTHER' && competitorData.otherCompetitorName) {
+              return 'Other (' + competitorData.otherCompetitorName + ')';
+            }
+            return competitorLabels[c] || c;
+          });
+          descParts.push('Added ' + addedLabels.join(', '));
+        }
+        
+        if (removedCompetitors.length > 0) {
+          var removedLabels = removedCompetitors.map(function(c) {
+            return competitorLabels[c] || c;
+          });
+          descParts.push('Removed ' + removedLabels.join(', '));
+        }
+        
+        // Check if notes changed
+        var oldNotes = selectedEngagement.competitorNotes || '';
+        var newNotes = competitorData.competitorNotes || '';
+        if (oldNotes !== newNotes) {
+          if (descParts.length > 0) {
+            descParts.push('updated notes');
+          } else {
+            descParts.push('Updated competition notes');
+          }
+        }
+        
+        if (descParts.length > 0) {
+          var description = descParts.join('; ');
+          logChangeAsync(selectedEngagement.id, 'COMPETITORS_UPDATED', description);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating competitors:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
   // Phase operations
   var phaseSave = useCallback(async function(phaseType, phaseData) {
@@ -754,6 +829,9 @@ var useEngagementDetail = function(params) {
     owner: {
       add: ownerAdd,
       remove: ownerRemove
+    },
+    competitors: {
+      update: competitorsUpdate
     }
   };
 };
