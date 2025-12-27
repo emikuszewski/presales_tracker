@@ -172,7 +172,7 @@ function PresalesTracker() {
    * Centralized navigation to prevent bugs from forgetting to clear selection
    * @param {string} targetView - The view to navigate to
    * @param {string|null} engagementId - Optional engagement ID
-   * @param {Object|null} options - Optional navigation options (e.g., { scrollToActivityId: '123' })
+   * @param {Object|null} options - Optional navigation options (e.g., { scrollToActivity: '123' })
    */
   const navigateTo = (targetView, engagementId = null, options = null) => {
     setView(targetView);
@@ -294,7 +294,7 @@ function PresalesTracker() {
               clearAllFilters
             }}
             onSelectEngagement={(id) => navigateTo('detail', id)}
-            onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivityId: activityId })}
+            onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivity: activityId })}
             onNewEngagement={() => navigateTo('new')}
           />
         )}
