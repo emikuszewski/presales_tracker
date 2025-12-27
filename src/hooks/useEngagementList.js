@@ -264,16 +264,42 @@ var useEngagementList = function(params) {
    * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
    */
   var handleCreateEngagement = useCallback(async function(overrides) {
+    // DEBUG: Log inputs
+    console.log('=== DEBUG: handleCreateEngagement called ===');
+    console.log('currentUser:', currentUser);
+    console.log('newEngagement:', newEngagement);
+    console.log('overrides:', overrides);
+
     if (!currentUser || !newEngagement.company || !newEngagement.contactName) {
+      console.log('DEBUG: Early return - missing required fields');
+      console.log('  currentUser:', !!currentUser);
+      console.log('  company:', newEngagement.company);
+      console.log('  contactName:', newEngagement.contactName);
       return;
     }
 
     // Merge overrides with newEngagement
     var engagementData = Object.assign({}, newEngagement, overrides || {});
+    console.log('DEBUG: Merged engagementData:', engagementData);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
       var today = new Date().toISOString().split('T')[0];
+
+      console.log('DEBUG: About to call Engagement.create with:', {
+        company: engagementData.company,
+        contactName: engagementData.contactName,
+        contactEmail: engagementData.contactEmail || null,
+        contactPhone: engagementData.contactPhone || null,
+        industry: engagementData.industry || 'TECHNOLOGY',
+        dealSize: engagementData.dealSize || null,
+        currentPhase: 'DISCOVER',
+        startDate: today,
+        lastActivity: today,
+        ownerId: currentUser.id,
+        isArchived: false,
+        salesRepId: engagementData.salesRepId || null
+      });
 
       var result = await dataClient.models.Engagement.create({
         company: engagementData.company,
@@ -304,7 +330,19 @@ var useEngagementList = function(params) {
         sheetsUrl: engagementData.sheetsUrl || null
       });
 
+      // DEBUG: Log the result
+      console.log('DEBUG: Engagement.create result:', result);
+      console.log('DEBUG: result.data:', result.data);
+      console.log('DEBUG: result.errors:', result.errors);
+
       var createdEngagement = result.data;
+
+      // DEBUG: Check if create failed
+      if (!createdEngagement) {
+        console.error('DEBUG: Engagement.create returned null data!');
+        console.error('DEBUG: Full result object:', JSON.stringify(result, null, 2));
+        return;
+      }
 
       // Create phases
       var phases = {};
