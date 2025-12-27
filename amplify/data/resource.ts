@@ -22,6 +22,16 @@ const schema = a.schema({
     phaseNotes: a.hasMany('PhaseNote', 'authorId'),
   }).authorization(allow => [allow.authenticated()]),
 
+  // Sales Rep / Account Executive model
+  SalesRep: a.model({
+    name: a.string().required(),
+    email: a.email(),
+    initials: a.string().required(),
+    isActive: a.boolean().default(true),
+    // Relationship to engagements
+    engagements: a.hasMany('Engagement', 'salesRepId'),
+  }).authorization(allow => [allow.authenticated()]),
+
   // Phase 2: Junction table for many-to-many engagement ownership
   EngagementOwner: a.model({
     engagementId: a.id().required(),
@@ -90,6 +100,10 @@ const schema = a.schema({
     
     // Phase 2: Co-ownership relationship
     owners: a.hasMany('EngagementOwner', 'engagementId'),
+    
+    // Sales Rep / Account Executive relationship
+    salesRepId: a.id(),
+    salesRep: a.belongsTo('SalesRep', 'salesRepId'),
     
     // Integration fields
     salesforceId: a.string(),
@@ -230,7 +244,8 @@ const schema = a.schema({
       'NOTE_EDITED',
       'NOTE_DELETED',
       'STATUS_CHANGED',
-      'COMPETITORS_UPDATED'
+      'COMPETITORS_UPDATED',
+      'SALES_REP_CHANGED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
