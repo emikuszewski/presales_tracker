@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../ui/Modal';
 import CompetitorLogo from '../ui/CompetitorLogo';
 import { competitorConfig } from '../../constants';
@@ -21,6 +21,9 @@ const CompetitionModal = ({
   const [otherCompetitorName, setOtherCompetitorName] = useState('');
   const [showOtherError, setShowOtherError] = useState(false);
 
+  // Ref for OTHER input to scroll into view
+  const otherInputRef = useRef(null);
+
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -36,6 +39,16 @@ const CompetitionModal = ({
   
   // Validation: OTHER selected but no name provided
   const otherValidationError = hasOther && !otherCompetitorName.trim();
+
+  // Auto-scroll to OTHER input when it becomes visible
+  useEffect(() => {
+    if (hasOther && otherInputRef.current) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        otherInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  }, [hasOther]);
 
   // Toggle competitor selection
   const toggleCompetitor = (competitorId) => {
@@ -125,7 +138,7 @@ const CompetitionModal = ({
                   
                   {/* Inline text input for OTHER */}
                   {isOther && isSelected && (
-                    <div className="ml-9 mt-2 mb-2">
+                    <div ref={otherInputRef} className="ml-9 mt-2 mb-2">
                       <input
                         type="text"
                         value={otherCompetitorName}
