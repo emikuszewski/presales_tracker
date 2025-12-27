@@ -1,9 +1,50 @@
 import React from 'react';
 
 /**
+ * Default maximum display length for URLs before truncation
+ */
+const DEFAULT_MAX_URL_LENGTH = 50;
+
+/**
+ * Formats a URL for display:
+ * - Strips protocol (https://, http://)
+ * - Middle truncates if longer than maxLength
+ * 
+ * @param {string} url - Full URL
+ * @param {number} maxLength - Maximum display length
+ * @returns {string} Formatted display URL
+ */
+const formatUrlForDisplay = (url, maxLength = DEFAULT_MAX_URL_LENGTH) => {
+  // Strip protocol for cleaner display
+  let displayUrl = url.replace(/^https?:\/\//, '');
+  
+  // If short enough, return as-is
+  if (displayUrl.length <= maxLength) {
+    return displayUrl;
+  }
+  
+  // Middle truncation
+  // Show beginning and end with ellipsis in middle
+  const ellipsis = '...';
+  const availableLength = maxLength - ellipsis.length;
+  const frontLength = Math.ceil(availableLength / 2);
+  const backLength = Math.floor(availableLength / 2);
+  
+  const front = displayUrl.slice(0, frontLength);
+  const back = displayUrl.slice(-backLength);
+  
+  return `${front}${ellipsis}${back}`;
+};
+
+/**
  * Parses text and converts URLs to clickable links
  * Matches https://, http://, and www. URLs
  * Handles trailing punctuation and parentheses gracefully
+ * 
+ * Features:
+ * - Strips protocol from display (https://, http://)
+ * - Middle truncates long URLs (~50 chars)
+ * - Full URL available via hover tooltip and right-click copy
  */
 const LinkifyText = React.memo(({ text, className = '' }) => {
   if (!text || typeof text !== 'string') {
@@ -62,11 +103,15 @@ const LinkifyText = React.memo(({ text, className = '' }) => {
 
     // Ensure the URL has a protocol for the href
     const href = url.startsWith('www.') ? `https://${url}` : url;
+    
+    // Format URL for display (stripped protocol, middle truncated)
+    const displayUrl = formatUrlForDisplay(url);
 
     parts.push({
       type: 'link',
-      content: url,
+      content: displayUrl,
       href: href,
+      fullUrl: url, // Keep full URL for tooltip
       key: `link-${matchIndex}`
     });
 
@@ -102,6 +147,7 @@ const LinkifyText = React.memo(({ text, className = '' }) => {
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline"
+            title={part.fullUrl}
             onClick={(e) => e.stopPropagation()}
           >
             {part.content}
