@@ -384,6 +384,7 @@ const OverflowMenu = ({
 const DetailView = ({
   engagement,
   teamMembers,
+  salesReps = [],
   currentUser,
   getOwnerInfo,
   detail,
@@ -508,11 +509,21 @@ const DetailView = ({
   // ============================================
 
   const handleUpdateDetails = useCallback((updatedData) => {
+    // Check if sales rep changed
+    const oldSalesRepId = engagement?.salesRepId;
+    const newSalesRepId = updatedData.salesRepId;
+    
+    if (oldSalesRepId !== newSalesRepId && detail?.salesRep?.update) {
+      detail.salesRep.update(newSalesRepId, updatedData.salesRepName);
+    }
+    
+    // Update other details (excluding salesRep fields)
     if (detail?.details?.update) {
-      detail.details.update(updatedData);
+      const { salesRepId, salesRepName, ...otherData } = updatedData;
+      detail.details.update(otherData);
     }
     setShowEditDetailsModal(false);
-  }, [detail]);
+  }, [detail, engagement]);
 
   const handleUpdateIntegrations = useCallback((updatedData) => {
     if (detail?.integrations?.update) {
@@ -621,6 +632,16 @@ const DetailView = ({
               otherCompetitorName={engagement.otherCompetitorName}
               onClick={() => setShowCompetitionModal(true)}
             />
+
+            {/* Sales Rep badge - only shown if assigned */}
+            {engagement.salesRepName && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                {engagement.salesRepName}
+              </span>
+            )}
           </div>
 
           {/* Right: Integration links + Three-dot menu */}
@@ -785,6 +806,7 @@ const DetailView = ({
         onClose={() => setShowEditDetailsModal(false)}
         initialData={engagement}
         onSave={handleUpdateDetails}
+        salesReps={salesReps}
       />
 
       <OwnersModal
