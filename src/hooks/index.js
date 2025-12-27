@@ -5,3 +5,4 @@ export { default as useAuth } from './useAuth';
 export { default as useTeamOperations } from './useTeamOperations';
 export { default as useEngagementList } from './useEngagementList';
 export { default as useVisibilityRefresh } from './useVisibilityRefresh';
+export { default as useSalesRepsOperations } from './useSalesRepsOperations';
