@@ -1,99 +1,189 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import { OwnersDisplay, DeleteEngagementModal } from '../components';
-import { phaseLabels } from '../constants';
-import { formatDate } from '../utils';
+import React, { useState } from 'react';
+import { industries, industryLabels } from '../constants';
 
 /**
- * Admin view for engagement management
- * Allows admins to view all engagements, delete them, and see deletion audit log
+ * Format deal size from amount and unit parts
  */
-const EngagementsAdminView = ({
-  engagements,
-  currentUser,
-  getOwnerInfo,
-  getCascadeInfo,
-  onDeleteEngagement,
-  onBack
+const formatDealSizeFromParts = (amount, unit) => {
+  if (!amount || !unit) return '';
+  const numericAmount = parseFloat(amount);
+  if (isNaN(numericAmount)) return '';
+  return `$${numericAmount}${unit}`;
+};
+
+/**
+ * Helper component for owner selection
+ * Displays team members as toggleable buttons with avatars
+ */
+const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Owners *
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {teamMembers.map(member => {
+          const isSelected = selectedOwnerIds.includes(member.id);
+          const isSystemUser = member.id === 'SYSTEM';
+          const colorClasses = member.colorClass || 'bg-gray-200 text-gray-600';
+          
+          return (
+            <button
+              key={member.id}
+              type="button"
+              onClick={() => onToggle(member.id)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
+                isSelected 
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                isSelected 
+                  ? 'bg-white text-gray-900' 
+                  : colorClasses
+              }`}>
+                {member.initials}
+              </div>
+              <span className="text-sm">{member.name}</span>
+              {isSystemUser && <span className="text-xs opacity-60">(Shared)</span>}
+            </button>
+          );
+        })}
+      </div>
+      {selectedOwnerIds.length === 0 && (
+        <p className="text-sm text-red-600 mt-1">At least one owner is required</p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Deal size input component with amount and unit selector
+ */
+const DealSizeInput = ({ 
+  amount, 
+  unit, 
+  onAmountChange, 
+  onUnitChange, 
+  hasError,
+  attemptedSubmit 
 }) => {
-  // Local filter state
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  
-  // Modal state - owned by this view
-  const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Deletion log state
-  const [deletionLogs, setDeletionLogs] = useState([]);
-  const [loadingDeletionLogs, setLoadingDeletionLogs] = useState(false);
-
-  /**
-   * Fetch deletion logs from the database
-   * Filters out expired records (belt and suspenders with DynamoDB TTL)
-   */
-  const fetchDeletionLogs = useCallback(async () => {
-    setLoadingDeletionLogs(true);
-    try {
-      const client = generateClient();
-      const result = await client.models.DeletionLog.list();
-      
-      // Filter out expired records (in case TTL hasn't cleaned them up yet)
-      const now = Math.floor(Date.now() / 1000);
-      const validLogs = (result.data || []).filter(log => {
-        // Keep if no expiresAt or if expiresAt is in the future
-        return !log.expiresAt || log.expiresAt > now;
-      });
-      
-      // Sort by createdAt (most recent first)
-      validLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setDeletionLogs(validLogs);
-    } catch (error) {
-      console.error('Error fetching deletion logs:', error);
-      setDeletionLogs([]);
-    } finally {
-      setLoadingDeletionLogs(false);
-    }
-  }, []);
-
-  // Fetch deletion logs when switching to 'deleted' tab
-  useEffect(() => {
-    if (filter === 'deleted') {
-      fetchDeletionLogs();
-    }
-  }, [filter, fetchDeletionLogs]);
-
-  // Filter engagements (only for non-deleted tabs)
-  const filteredEngagements = engagements
-    .filter(e => {
-      if (filter === 'active' && e.isArchived) return false;
-      if (filter === 'archived' && !e.isArchived) return false;
-      
-      if (search) {
-        const query = search.toLowerCase();
-        const matchesCompany = e.company.toLowerCase().includes(query);
-        const matchesContact = e.contactName.toLowerCase().includes(query);
-        if (!matchesCompany && !matchesContact) return false;
-      }
-      
-      return true;
-    })
-    .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
-
-  const handleConfirmDelete = async () => {
-    await onDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfo);
-    // Refresh deletion logs if we're on the deleted tab
-    if (filter === 'deleted') {
-      fetchDeletionLogs();
-    }
-  };
-
-  // Count for deletion log badge
-  const deletionLogCount = deletionLogs.length;
+  const units = [
+    { value: '', label: 'Select...' },
+    { value: 'K', label: 'K (thousands)' },
+    { value: 'M', label: 'M (millions)' }
+  ];
 
   return (
     <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Deal Size (ARR)
+      </label>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <input
+            type="number"
+            value={amount}
+            onChange={e => onAmountChange(e.target.value)}
+            placeholder="e.g., 150"
+            className={`w-full pl-7 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+              hasError && attemptedSubmit ? 'border-red-300' : 'border-gray-300'
+            }`}
+          />
+        </div>
+        <select
+          value={unit}
+          onChange={e => onUnitChange(e.target.value)}
+          className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+            hasError && attemptedSubmit ? 'border-red-300' : 'border-gray-300'
+          }`}
+        >
+          {units.map(u => (
+            <option key={u.value} value={u.value}>{u.label}</option>
+          ))}
+        </select>
+      </div>
+      {hasError && attemptedSubmit && (
+        <p className="text-sm text-red-600 mt-1">Please select a unit (K or M)</p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * New Engagement View - Form for creating a new engagement
+ */
+const NewEngagementView = ({
+  newEngagement,
+  setNewEngagement,
+  teamMembers,
+  salesReps = [],
+  onSubmit,
+  onBack
+}) => {
+  // Local state for deal size parts
+  const [dealSizeAmount, setDealSizeAmount] = useState('');
+  const [dealSizeUnit, setDealSizeUnit] = useState('');
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Update a single field
+  const updateField = (field, value) => {
+    setNewEngagement(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Toggle owner selection
+  const handleToggleOwner = (memberId) => {
+    setNewEngagement(prev => {
+      const currentOwners = prev.ownerIds || [];
+      if (currentOwners.includes(memberId)) {
+        // Remove owner (but don't allow empty)
+        if (currentOwners.length > 1) {
+          return { ...prev, ownerIds: currentOwners.filter(id => id !== memberId) };
+        }
+        return prev; // Don't remove last owner
+      } else {
+        // Add owner
+        return { ...prev, ownerIds: [...currentOwners, memberId] };
+      }
+    });
+  };
+
+  // Validation
+  const hasDealSizeValidationError = dealSizeAmount && !dealSizeUnit;
+  const canSubmit = 
+    newEngagement.company?.trim() && 
+    newEngagement.contactName?.trim() && 
+    newEngagement.ownerIds?.length > 0 &&
+    !hasDealSizeValidationError;
+
+  // Handle form submit
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setAttemptedSubmit(true);
+
+    if (!canSubmit) return;
+
+    // Format deal size from parts
+    const formattedDealSize = dealSizeAmount && dealSizeUnit 
+      ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
+      : '';
+
+    // Get selected sales rep name for denormalized field
+    const selectedRep = salesReps.find(r => r.id === newEngagement.salesRepId);
+
+    // Pass overrides directly to avoid state synchronization issues
+    onSubmit({ 
+      dealSize: formattedDealSize,
+      salesRepId: newEngagement.salesRepId || null,
+      salesRepName: selectedRep ? selectedRep.name : null
+    });
+  };
+
+  return (
+    <div>
+      {/* Back button */}
       <button 
         onClick={onBack}
         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
@@ -104,238 +194,207 @@ const EngagementsAdminView = ({
         Back to Engagements
       </button>
 
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-2xl font-medium text-gray-900">Engagement Management</h2>
-          <p className="text-gray-500 mt-1">
-            {engagements.filter(e => !e.isArchived).length} active · {engagements.filter(e => e.isArchived).length} archived · {engagements.length} total
-          </p>
-        </div>
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-medium text-gray-900">New Engagement</h2>
+        <p className="text-gray-500 mt-1">Create a new presales engagement to track</p>
       </div>
 
-      {/* Search bar - hidden when on Deleted tab */}
-      {filter !== 'deleted' && (
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search by company or contact..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-          />
-        </div>
-      )}
-
-      {/* Tab buttons */}
-      <div className="mb-6">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            All ({engagements.length})
-          </button>
-          <button
-            onClick={() => setFilter('active')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              filter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Active ({engagements.filter(e => !e.isArchived).length})
-          </button>
-          <button
-            onClick={() => setFilter('archived')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              filter === 'archived' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Archived ({engagements.filter(e => e.isArchived).length})
-          </button>
-          <button
-            onClick={() => setFilter('deleted')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-              filter === 'deleted' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Deleted
-            {deletionLogCount > 0 && (
-              <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                filter === 'deleted' ? 'bg-white text-gray-900' : 'bg-gray-300 text-gray-700'
-              }`}>
-                {deletionLogCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Content based on selected tab */}
-      {filter === 'deleted' ? (
-        // Deletion Log View
-        <div>
-          {loadingDeletionLogs ? (
-            <div className="text-center py-12">
-              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading deletion history...</p>
-            </div>
-          ) : deletionLogs.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-4xl mb-3">🗑️</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No deletion history</h3>
-              <p className="text-gray-500">No engagements have been deleted in the past year.</p>
-            </div>
-          ) : (
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Deleted By</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Removed Data</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {deletionLogs.map(log => (
-                    <tr key={log.id} className="bg-gray-50/50 text-gray-600">
-                      <td className="px-4 py-4">
-                        <div>
-                          <p className="font-medium text-gray-700">{log.companyName}</p>
-                          {log.currentPhase && (
-                            <p className="text-xs text-gray-400 mt-0.5">Was in: {log.currentPhase}</p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-gray-600">{log.contactName}</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-gray-600">{log.deletedByName}</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-gray-500 text-sm">{formatDate(log.createdAt)}</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-gray-500 text-sm">{log.cascadeSummary || 'No related data'}</p>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Info box for deletion log */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-xl">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">About Deletion History</h4>
-            <ul className="text-sm text-gray-500 space-y-1">
-              <li>• This log shows engagements deleted in the past 365 days.</li>
-              <li>• Deleted data cannot be restored - this is for audit purposes only.</li>
-              <li>• Records are automatically removed after one year.</li>
-            </ul>
-          </div>
-        </div>
-      ) : (
-        // Regular Engagement Table View
-        <>
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredEngagements.map(engagement => (
-                  <tr key={engagement.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{engagement.company}</p>
-                        <p className="text-sm text-gray-500">{engagement.contactName}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <OwnersDisplay 
-                        ownerIds={engagement.ownerIds} 
-                        size="sm" 
-                        getOwnerInfo={getOwnerInfo} 
-                        currentUserId={currentUser?.id} 
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700">
-                        {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-gray-500">{engagement.startDate}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      {engagement.isArchived ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
-                          Archived
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <button
-                        onClick={() => setDeleteModalEngagement(engagement)}
-                        className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="max-w-2xl">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+          
+          {/* Basic Information */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              Basic Information
+            </h3>
             
-            {filteredEngagements.length === 0 && (
-              <div className="text-center py-12 text-gray-400">
-                No engagements found
+            <div className="space-y-4">
+              {/* Company */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.company || ''}
+                  onChange={e => updateField('company', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+                    attemptedSubmit && !newEngagement.company?.trim() ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  placeholder="e.g., Acme Corporation"
+                />
+                {attemptedSubmit && !newEngagement.company?.trim() && (
+                  <p className="text-sm text-red-600 mt-1">Company name is required</p>
+                )}
               </div>
-            )}
+
+              {/* Contact Name & Email */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newEngagement.contactName || ''}
+                    onChange={e => updateField('contactName', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+                      attemptedSubmit && !newEngagement.contactName?.trim() ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="e.g., John Smith"
+                  />
+                  {attemptedSubmit && !newEngagement.contactName?.trim() && (
+                    <p className="text-sm text-red-600 mt-1">Contact name is required</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newEngagement.contactEmail || ''}
+                    onChange={e => updateField('contactEmail', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    placeholder="e.g., john@acme.com"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Phone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  value={newEngagement.contactPhone || ''}
+                  onChange={e => updateField('contactPhone', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="e.g., (555) 123-4567"
+                />
+              </div>
+
+              {/* Industry */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Industry
+                </label>
+                <select 
+                  value={newEngagement.industry || 'TECHNOLOGY'}
+                  onChange={e => updateField('industry', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                >
+                  {industries.map(ind => (
+                    <option key={ind} value={ind}>{industryLabels[ind]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sales Rep Dropdown */}
+              {salesReps.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sales Rep
+                  </label>
+                  <select 
+                    value={newEngagement.salesRepId || ''}
+                    onChange={e => updateField('salesRepId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  >
+                    <option value="">Select a sales rep...</option>
+                    {salesReps.map(rep => (
+                      <option key={rep.id} value={rep.id}>{rep.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Deal Size */}
+              <DealSizeInput
+                amount={dealSizeAmount}
+                unit={dealSizeUnit}
+                onAmountChange={setDealSizeAmount}
+                onUnitChange={setDealSizeUnit}
+                hasError={hasDealSizeValidationError}
+                attemptedSubmit={attemptedSubmit}
+              />
+            </div>
           </div>
 
-          <div className="mt-8 p-4 bg-red-50 rounded-xl">
-            <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
-            <ul className="text-sm text-red-700 space-y-1">
-              <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
-              <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
-              <li>• Consider archiving engagements instead if you may need the data later.</li>
-              <li>• Deletions are logged for audit purposes and visible in the "Deleted" tab.</li>
-            </ul>
+          {/* Owners */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              Assignment
+            </h3>
+            <OwnerToggleGroup
+              teamMembers={teamMembers}
+              selectedOwnerIds={newEngagement.ownerIds || []}
+              onToggle={handleToggleOwner}
+            />
           </div>
-        </>
-      )}
 
-      {/* Delete Modal - owned by this view */}
-      <DeleteEngagementModal
-        isOpen={deleteModalEngagement !== null}
-        engagement={deleteModalEngagement}
-        cascadeInfo={getCascadeInfo(deleteModalEngagement)}
-        onClose={() => setDeleteModalEngagement(null)}
-        onConfirm={handleConfirmDelete}
-        isDeleting={isDeleting}
-      />
+          {/* Integrations */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              Integrations (Optional)
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Salesforce Opportunity ID
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.salesforceId || ''}
+                  onChange={e => updateField('salesforceId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="006Dn000004XXXX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slack Channel Link
+                </label>
+                <input
+                  type="url"
+                  value={newEngagement.slackChannelUrl || ''}
+                  onChange={e => updateField('slackChannelUrl', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="https://slack.com/app_redirect?channel=C..."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
+              canSubmit
+                ? 'bg-gray-900 text-white hover:bg-gray-800'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            Create Engagement
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
 
-export default EngagementsAdminView;
+export default NewEngagementView;
