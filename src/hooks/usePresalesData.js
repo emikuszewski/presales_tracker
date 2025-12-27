@@ -14,6 +14,7 @@ const usePresalesData = (selectedEngagementId) => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [allTeamMembers, setAllTeamMembers] = useState([]);
   const [engagements, setEngagements] = useState([]);
+  const [salesReps, setSalesReps] = useState([]);
   const [engagementViews, setEngagementViews] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +102,8 @@ const usePresalesData = (selectedEngagementId) => {
         userId 
           ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } }).catch(function() { return { data: [] }; })
           : Promise.resolve({ data: [] }),
-        client.models.PhaseNote.list().catch(function() { return { data: [] }; })
+        client.models.PhaseNote.list().catch(function() { return { data: [] }; }),
+        client.models.SalesRep.list().catch(function() { return { data: [] }; })
       ]);
 
       var allMembersData = results[0].data;
@@ -113,6 +115,19 @@ const usePresalesData = (selectedEngagementId) => {
       var allChangeLogs = results[6].data;
       var allViews = results[7].data;
       var allPhaseNotes = results[8].data;
+      var allSalesReps = results[9].data;
+
+      // Sort and store sales reps
+      var sortedSalesReps = allSalesReps.sort(function(a, b) {
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      });
+      setSalesReps(sortedSalesReps);
+
+      // Create salesReps lookup map
+      var salesRepsMap = {};
+      allSalesReps.forEach(function(rep) {
+        salesRepsMap[rep.id] = rep;
+      });
 
       allMembersData = await ensureSystemUser(allMembersData);
 
@@ -203,6 +218,12 @@ const usePresalesData = (selectedEngagementId) => {
         // Parse competitors from JSON string
         var competitors = safeJsonParse(eng.competitors, []);
 
+        // Get sales rep name if assigned
+        var salesRepName = null;
+        if (eng.salesRepId && salesRepsMap[eng.salesRepId]) {
+          salesRepName = salesRepsMap[eng.salesRepId].name;
+        }
+
         // Build enriched engagement with new status and competitor fields
         var enrichedEng = Object.assign({}, eng, {
           phases: phasesObj,
@@ -221,7 +242,9 @@ const usePresalesData = (selectedEngagementId) => {
           // Competitor fields
           competitors: competitors,
           competitorNotes: eng.competitorNotes || null,
-          otherCompetitorName: eng.otherCompetitorName || null
+          otherCompetitorName: eng.otherCompetitorName || null,
+          // Sales rep field
+          salesRepName: salesRepName
         });
 
         // Calculate isStale using the enriched engagement (which includes engagementStatus)
@@ -251,6 +274,8 @@ const usePresalesData = (selectedEngagementId) => {
     setAllTeamMembers: setAllTeamMembers,
     engagements: engagements,
     setEngagements: setEngagements,
+    salesReps: salesReps,
+    setSalesReps: setSalesReps,
     engagementViews: engagementViews,
     setEngagementViews: setEngagementViews,
     loading: loading,
