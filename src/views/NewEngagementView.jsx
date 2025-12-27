@@ -170,15 +170,8 @@ const NewEngagementView = ({
       ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
       : '';
 
-    // Get selected sales rep name for denormalized field
-    const selectedRep = salesReps.find(r => r.id === newEngagement.salesRepId);
-
-    // Pass overrides directly to avoid state synchronization issues
-    onSubmit({ 
-      dealSize: formattedDealSize,
-      salesRepId: newEngagement.salesRepId || null,
-      salesRepName: selectedRep ? selectedRep.name : null
-    });
+    // Pass deal size as override (salesRepId comes from newEngagement state directly)
+    onSubmit({ dealSize: formattedDealSize });
   };
 
   return (
@@ -204,7 +197,9 @@ const NewEngagementView = ({
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
           
-          {/* Basic Information */}
+          {/* ============================================
+              BASIC INFORMATION
+              ============================================ */}
           <div>
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
               Basic Information
@@ -293,7 +288,7 @@ const NewEngagementView = ({
                 </select>
               </div>
 
-              {/* Sales Rep Dropdown */}
+              {/* Sales Rep Dropdown - only shown if sales reps exist */}
               {salesReps.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -324,7 +319,9 @@ const NewEngagementView = ({
             </div>
           </div>
 
-          {/* Owners */}
+          {/* ============================================
+              ASSIGNMENT
+              ============================================ */}
           <div>
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
               Assignment
@@ -336,36 +333,146 @@ const NewEngagementView = ({
             />
           </div>
 
-          {/* Integrations */}
+          {/* ============================================
+              INTEGRATIONS (OPTIONAL)
+              ============================================ */}
           <div>
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
               Integrations (Optional)
             </h3>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {/* Google Drive Folder */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Salesforce Opportunity ID
+                  Drive Folder Name
                 </label>
                 <input
                   type="text"
-                  value={newEngagement.salesforceId || ''}
-                  onChange={e => updateField('salesforceId', e.target.value)}
+                  value={newEngagement.driveFolderName || ''}
+                  onChange={e => updateField('driveFolderName', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="006Dn000004XXXX"
+                  placeholder="Acme Corp POC Docs"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Slack Channel Link
+                  Drive Folder URL
                 </label>
                 <input
                   type="url"
-                  value={newEngagement.slackChannelUrl || ''}
-                  onChange={e => updateField('slackChannelUrl', e.target.value)}
+                  value={newEngagement.driveFolderUrl || ''}
+                  onChange={e => updateField('driveFolderUrl', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="https://slack.com/app_redirect?channel=C..."
+                  placeholder="https://drive.google.com/drive/folders/..."
                 />
+              </div>
+
+              {/* Google Docs */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Google Doc Name
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.docsName || ''}
+                  onChange={e => updateField('docsName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="Running Notes"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Google Doc URL
+                </label>
+                <input
+                  type="url"
+                  value={newEngagement.docsUrl || ''}
+                  onChange={e => updateField('docsUrl', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="https://docs.google.com/document/d/..."
+                />
+              </div>
+
+              {/* Google Slides */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slides Deck Name
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.slidesName || ''}
+                  onChange={e => updateField('slidesName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="Customer Demo Deck"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slides Deck URL
+                </label>
+                <input
+                  type="url"
+                  value={newEngagement.slidesUrl || ''}
+                  onChange={e => updateField('slidesUrl', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="https://docs.google.com/presentation/d/..."
+                />
+              </div>
+
+              {/* Google Sheets */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Google Sheet Name
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.sheetsName || ''}
+                  onChange={e => updateField('sheetsName', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="POC Tracker"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Google Sheet URL
+                </label>
+                <input
+                  type="url"
+                  value={newEngagement.sheetsUrl || ''}
+                  onChange={e => updateField('sheetsUrl', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                />
+              </div>
+
+              {/* Slack */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slack Channel
+                </label>
+                <input
+                  type="text"
+                  value={newEngagement.slackChannel || ''}
+                  onChange={e => updateField('slackChannel', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="#customer-poc"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Slack Channel URL
+                </label>
+                <input
+                  type="url"
+                  value={newEngagement.slackUrl || ''}
+                  onChange={e => updateField('slackUrl', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  placeholder="https://plainid.slack.com/archives/C0123456789"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Right-click the channel in Slack → Copy link
+                </p>
               </div>
             </div>
           </div>
