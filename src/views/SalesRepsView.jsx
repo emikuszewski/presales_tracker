@@ -19,10 +19,18 @@ const SalesRepsView = ({
   // Handle adding a new sales rep
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!newRepName.trim() || isAdding) return;
+    console.log('[SalesRepsView] handleAdd called, newRepName:', newRepName);
+    console.log('[SalesRepsView] onCreateSalesRep function:', typeof onCreateSalesRep);
+    
+    if (!newRepName.trim() || isAdding) {
+      console.log('[SalesRepsView] Blocked: empty name or already adding');
+      return;
+    }
 
     setIsAdding(true);
+    console.log('[SalesRepsView] Calling onCreateSalesRep...');
     const result = await onCreateSalesRep(newRepName.trim());
+    console.log('[SalesRepsView] Result:', result);
     if (result) {
       setNewRepName('');
     }
@@ -64,15 +72,25 @@ const SalesRepsView = ({
         <div className="flex gap-3">
           <input
             type="text"
+            id="new-sales-rep-name"
+            name="salesRepName"
             value={newRepName}
-            onChange={(e) => setNewRepName(e.target.value)}
+            onChange={(e) => {
+              console.log('[SalesRepsView] Input changed:', e.target.value);
+              setNewRepName(e.target.value);
+            }}
             placeholder="Enter sales rep name..."
             className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             disabled={isAdding}
+            autoComplete="off"
           />
           <button
             type="submit"
             disabled={!newRepName.trim() || isAdding}
+            onClick={(e) => {
+              console.log('[SalesRepsView] Button clicked, newRepName:', newRepName, 'isAdding:', isAdding);
+              // Form submit will handle it, but log for debugging
+            }}
             className="px-5 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isAdding ? (
