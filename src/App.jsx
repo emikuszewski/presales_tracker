@@ -118,7 +118,7 @@ function PresalesTracker() {
   });
 
   // Sales reps operations
-  const { createSalesRep, deleteSalesRep, getEngagementCount } = useSalesRepsOperations({
+  const { createSalesRep, updateSalesRep, deleteSalesRep, getEngagementCount } = useSalesRepsOperations({
     salesReps,
     setSalesReps,
     engagements,
@@ -359,6 +359,7 @@ function PresalesTracker() {
           <SalesRepsView
             salesReps={salesReps}
             onCreateSalesRep={createSalesRep}
+            onUpdateSalesRep={updateSalesRep}
             onDeleteSalesRep={deleteSalesRep}
             getEngagementCount={getEngagementCount}
             onBack={() => navigateTo('list')}
