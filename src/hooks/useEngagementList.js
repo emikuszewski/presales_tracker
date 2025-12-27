@@ -287,6 +287,7 @@ var useEngagementList = function(params) {
         lastActivity: today,
         ownerId: currentUser.id,
         isArchived: false,
+        salesRepId: engagementData.salesRepId || null,
         salesforceId: engagementData.salesforceId || null,
         salesforceUrl: engagementData.salesforceUrl || null,
         jiraTicket: engagementData.jiraTicket || null,
@@ -347,7 +348,8 @@ var useEngagementList = function(params) {
         unreadChanges: 0,
         isStale: false,
         daysSinceActivity: 0,
-        hasSystemOwner: false
+        hasSystemOwner: false,
+        salesRepName: engagementData.salesRepName || null
       });
 
       setEngagements(function(prev) { return [enrichedEngagement].concat(prev); });
@@ -360,6 +362,7 @@ var useEngagementList = function(params) {
       setNewEngagement({
         company: '', contactName: '', contactEmail: '', contactPhone: '', 
         industry: 'TECHNOLOGY', dealSize: '', ownerIds: currentUser ? [currentUser.id] : [],
+        salesRepId: '',
         salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
         driveFolderName: '', driveFolderUrl: '',
         docsName: '', docsUrl: '',
