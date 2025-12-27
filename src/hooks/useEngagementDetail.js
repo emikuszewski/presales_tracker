@@ -3,6 +3,7 @@ import { isClosedStatus } from '../utils';
 import { engagementStatusLabels, competitorLabels } from '../constants';
 
 var useEngagementDetail = function(params) {
+  console.log('[HOOK_RENDER] useEngagementDetail rendering - if you see this, code is loaded');
   var selectedEngagement = params.selectedEngagement;
   var updateEngagementInState = params.updateEngagementInState;
   var currentUser = params.currentUser;
@@ -481,6 +482,7 @@ var useEngagementDetail = function(params) {
 
   // activityEdit - WITH OPTIMISTIC LOCKING
   var activityEdit = useCallback(async function(activityId, updates) {
+    alert('ACTIVITY EDIT CALLED - activityId: ' + activityId);
     console.log('[Layer2] activityEdit called:', { activityId, hasEngagement: !!selectedEngagement });
     if (!selectedEngagement) return false;
 
