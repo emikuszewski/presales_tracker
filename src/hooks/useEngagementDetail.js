@@ -481,6 +481,7 @@ var useEngagementDetail = function(params) {
 
   // activityEdit - WITH OPTIMISTIC LOCKING
   var activityEdit = useCallback(async function(activityId, updates) {
+    console.log('[Layer2] activityEdit called:', { activityId, hasEngagement: !!selectedEngagement });
     if (!selectedEngagement) return false;
 
     try {
@@ -488,6 +489,7 @@ var useEngagementDetail = function(params) {
 
       // Find the activity to get its updatedAt
       var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
+      console.log('[Layer2] Found activity:', { found: !!activity, updatedAt: activity?.updatedAt });
       if (!activity) return false;
 
       // Check for conflicts before updating
