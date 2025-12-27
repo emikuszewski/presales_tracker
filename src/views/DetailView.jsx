@@ -17,7 +17,9 @@ import { phaseLabels, engagementStatusLabels } from '../constants';
 import { 
   isClosedStatus, 
   getEngagementStatusBadgeClasses, 
-  getClosedBannerClasses 
+  getClosedBannerClasses,
+  getDerivedCurrentPhase,
+  getPhaseBadgeClasses
 } from '../utils';
 
 // Import tab components
@@ -381,7 +383,13 @@ const DetailView = ({
 
   const engagementStatus = engagement.engagementStatus || 'ACTIVE';
   const isClosed = isClosedStatus(engagementStatus);
-  const currentPhaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
+  
+  // Derive the current phase from actual phase data (fixes stale currentPhase bug)
+  const derivedCurrentPhase = getDerivedCurrentPhase(engagement.phases);
+  const derivedPhaseData = engagement.phases[derivedCurrentPhase];
+  const derivedPhaseStatus = derivedPhaseData?.status || 'PENDING';
+  const derivedPhaseLabel = phaseLabels[derivedCurrentPhase] || derivedCurrentPhase;
+  const { badgeClasses, dotClasses } = getPhaseBadgeClasses(derivedPhaseStatus);
 
   // Check for integration links
   const hasSlack = engagement.slackUrl;
@@ -412,9 +420,10 @@ const DetailView = ({
               <p className="text-sm text-gray-500">{engagement.contactName}</p>
             </div>
 
-            {/* Phase badge */}
-            <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-              {currentPhaseLabel}
+            {/* Phase badge - now uses derived phase with dynamic styling */}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${badgeClasses}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+              {derivedPhaseLabel}
             </span>
 
             {/* Status dropdown */}
@@ -437,7 +446,7 @@ const DetailView = ({
             {hasAnyIntegration && (
               <div className="flex items-center gap-1 mr-2">
                 {hasSlack && (
-                  <a
+                  
                     href={engagement.slackUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -448,7 +457,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDrive && (
-                  <a
+                  
                     href={engagement.driveFolderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -459,7 +468,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDocs && (
-                  <a
+                  
                     href={engagement.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -470,7 +479,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSlides && (
-                  <a
+                  
                     href={engagement.slidesUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -481,7 +490,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSheets && (
-                  <a
+                  
                     href={engagement.sheetsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
