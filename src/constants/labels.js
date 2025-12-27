@@ -66,6 +66,7 @@ export const competitorLabels = {
   CERBOS: 'Cerbos',
   CYBERARK: 'CyberArk',
   FORGEROCK: 'ForgeRock',
+  IMMUTA: 'Immuta',
   KEYCLOAK: 'Keycloak',
   MICROSOFT_ENTRA: 'Microsoft Entra',
   NEXTLABS: 'NextLabs',
