@@ -58,6 +58,7 @@ function PresalesTracker() {
   // ============================================
   const [conflictInfo, setConflictInfo] = useState(null);
   const [conflictResetCounter, setConflictResetCounter] = useState(0);
+  const [detailActiveTab, setDetailActiveTab] = useState('progress'); // Lifted from DetailView for conflict refresh persistence
   
   // ============================================
   // MODAL STATE TRACKING (for Layer 1)
@@ -249,6 +250,11 @@ function PresalesTracker() {
     setSelectedEngagementId(engagementId);
     setNavigationOptions(options);
     
+    // Reset tab to progress when navigating to a different engagement
+    if (targetView === 'detail' && engagementId !== selectedEngagementId) {
+      setDetailActiveTab('progress');
+    }
+    
     // Track view when navigating to detail
     if (targetView === 'detail' && engagementId) {
       detail.view.update(engagementId);
@@ -382,6 +388,8 @@ function PresalesTracker() {
             onToggleArchive={handleToggleArchive}
             onBack={() => navigateTo('list')}
             onModalStateChange={setHasOpenModal}
+            activeTab={detailActiveTab}
+            onTabChange={setDetailActiveTab}
           />
         )}
 
