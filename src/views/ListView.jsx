@@ -367,7 +367,12 @@ const ListView = ({
                         <NotificationBadge count={engagement.unreadChanges} />
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}</p>
+                    <p className="text-sm text-gray-500">
+                      {engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}
+                      {engagement.salesRepName && (
+                        <span className="text-purple-600"> · {engagement.salesRepName}</span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
