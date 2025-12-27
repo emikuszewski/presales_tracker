@@ -101,5 +101,6 @@ export const changeTypeLabels = {
   NOTE_EDITED: 'Edited note',
   NOTE_DELETED: 'Deleted note',
   STATUS_CHANGED: 'Changed status',
-  COMPETITORS_UPDATED: 'Updated competitors'
+  COMPETITORS_UPDATED: 'Updated competitors',
+  SALES_REP_CHANGED: 'Changed sales rep'
 };
