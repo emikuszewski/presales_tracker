@@ -2,6 +2,23 @@ import { useCallback } from 'react';
 import { isClosedStatus } from '../utils';
 import { engagementStatusLabels, competitorLabels } from '../constants';
 
+/**
+ * Helper to check if an error is a conditional check failure
+ * These occur when another user modified the record since we last fetched it
+ */
+var isConditionalCheckFailed = function(error) {
+  if (!error) return false;
+  var message = error.message || '';
+  var name = error.name || '';
+  // Check for various Amplify/DynamoDB conditional check failure patterns
+  return (
+    message.indexOf('ConditionalCheckFailed') !== -1 ||
+    message.indexOf('conditional request failed') !== -1 ||
+    message.indexOf('The conditional request failed') !== -1 ||
+    name === 'ConditionalCheckFailedException'
+  );
+};
+
 var useEngagementDetail = function(params) {
   var selectedEngagement = params.selectedEngagement;
   var updateEngagementInState = params.updateEngagementInState;
@@ -11,6 +28,24 @@ var useEngagementDetail = function(params) {
   var logChangeAsync = params.logChangeAsync;
   var getOwnerInfo = params.getOwnerInfo;
   var client = params.client;
+  var onConflict = params.onConflict; // NEW: callback for conflict handling
+
+  /**
+   * Helper to handle conflict errors
+   * @param {Error} error - The caught error
+   * @param {string} recordType - Type of record (e.g., "engagement", "activity")
+   * @returns {boolean} - True if it was a conflict error (handled), false otherwise
+   */
+  var handleConflictError = useCallback(function(error, recordType) {
+    if (isConditionalCheckFailed(error)) {
+      console.warn('[OptimisticLock] Conflict detected for ' + recordType);
+      if (onConflict) {
+        onConflict({ recordType: recordType });
+      }
+      return true;
+    }
+    return false;
+  }, [onConflict]);
 
   // View operations
   var viewUpdate = useCallback(async function(engagementId) {
@@ -50,7 +85,7 @@ var useEngagementDetail = function(params) {
     }
   }, [currentUser, engagementViews, setEngagementViews, updateEngagementInState, client]);
 
-  // Engagement status operations
+  // Engagement status operations - WITH OPTIMISTIC LOCKING
   var statusUpdate = useCallback(async function(newStatus, closedReason) {
     if (!selectedEngagement) return false;
 
@@ -74,7 +109,12 @@ var useEngagementDetail = function(params) {
         updateData.closedReason = closedReason || null;
       }
 
-      await dataClient.models.Engagement.update(updateData);
+      // OPTIMISTIC LOCKING: Add condition based on updatedAt
+      await dataClient.models.Engagement.update(updateData, {
+        condition: {
+          updatedAt: { eq: selectedEngagement.updatedAt }
+        }
+      });
 
       // Update local state
       var stateUpdate = {
@@ -105,12 +145,15 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'engagement')) {
+        return false;
+      }
       console.error('Error updating status:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
-  // Update closed reason only (for editing the reason after status is set)
+  // Update closed reason only - WITH OPTIMISTIC LOCKING
   var closedReasonUpdate = useCallback(async function(closedReason) {
     if (!selectedEngagement) return false;
 
@@ -120,6 +163,10 @@ var useEngagementDetail = function(params) {
       await dataClient.models.Engagement.update({
         id: selectedEngagement.id,
         closedReason: closedReason || null
+      }, {
+        condition: {
+          updatedAt: { eq: selectedEngagement.updatedAt }
+        }
       });
 
       updateEngagementInState(selectedEngagement.id, {
@@ -128,12 +175,15 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'engagement')) {
+        return false;
+      }
       console.error('Error updating closed reason:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, client]);
+  }, [selectedEngagement, updateEngagementInState, client, handleConflictError]);
 
-  // Competitors update operation
+  // Competitors update operation - WITH OPTIMISTIC LOCKING
   var competitorsUpdate = useCallback(async function(competitorData) {
     if (!selectedEngagement) return false;
 
@@ -151,6 +201,10 @@ var useEngagementDetail = function(params) {
         competitors: competitorsJson,
         competitorNotes: competitorData.competitorNotes || null,
         otherCompetitorName: competitorData.otherCompetitorName || null
+      }, {
+        condition: {
+          updatedAt: { eq: selectedEngagement.updatedAt }
+        }
       });
 
       // Update local state
@@ -203,12 +257,15 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'engagement')) {
+        return false;
+      }
       console.error('Error updating competitors:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
-  // Phase operations
+  // Phase operations - WITH OPTIMISTIC LOCKING
   var phaseSave = useCallback(async function(phaseType, phaseData) {
     if (!selectedEngagement) return;
 
@@ -237,6 +294,10 @@ var useEngagementDetail = function(params) {
         status: updateData.status,
         notes: updateData.notes,
         completedDate: updateData.completedDate
+      }, {
+        condition: {
+          updatedAt: { eq: phaseRecord.updatedAt }
+        }
       });
 
       // Update currentPhase on the engagement when a phase is set to IN_PROGRESS
@@ -264,9 +325,12 @@ var useEngagementDetail = function(params) {
         logChangeAsync(selectedEngagement.id, 'PHASE_UPDATE', 'Updated ' + phaseType + ' phase to ' + phaseData.status);
       }
     } catch (error) {
+      if (handleConflictError(error, 'phase')) {
+        return;
+      }
       console.error('Error saving phase:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
   var phaseAddLink = useCallback(async function(phaseType, linkData) {
     if (!selectedEngagement) return;
@@ -286,6 +350,10 @@ var useEngagementDetail = function(params) {
       await dataClient.models.Phase.update({
         id: phaseRecord.id,
         links: JSON.stringify(updatedLinks)
+      }, {
+        condition: {
+          updatedAt: { eq: phaseRecord.updatedAt }
+        }
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
@@ -298,9 +366,12 @@ var useEngagementDetail = function(params) {
         logChangeAsync(selectedEngagement.id, 'LINK_ADDED', 'Added link "' + linkData.title + '" to ' + phaseType);
       }
     } catch (error) {
+      if (handleConflictError(error, 'phase')) {
+        return;
+      }
       console.error('Error adding link:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
   var phaseRemoveLink = useCallback(async function(phaseType, linkIndex) {
     if (!selectedEngagement) return;
@@ -317,6 +388,10 @@ var useEngagementDetail = function(params) {
       await dataClient.models.Phase.update({
         id: phaseRecord.id,
         links: JSON.stringify(updatedLinks)
+      }, {
+        condition: {
+          updatedAt: { eq: phaseRecord.updatedAt }
+        }
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
@@ -325,11 +400,14 @@ var useEngagementDetail = function(params) {
         return Object.assign({}, eng, { phases: newPhases });
       });
     } catch (error) {
+      if (handleConflictError(error, 'phase')) {
+        return;
+      }
       console.error('Error removing link:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, client]);
+  }, [selectedEngagement, updateEngagementInState, client, handleConflictError]);
 
-  // Activity operations
+  // Activity operations - activityAdd does NOT need locking (it's a create)
   var activityAdd = useCallback(async function(activityData) {
     if (!selectedEngagement) return false;
 
@@ -371,18 +449,27 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
+  // activityEdit - WITH OPTIMISTIC LOCKING
   var activityEdit = useCallback(async function(activityId, updates) {
     if (!selectedEngagement) return false;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      // Update activity in DB
+      // Find the activity to get its updatedAt
+      var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
+      if (!activity) return false;
+
+      // Update activity in DB with optimistic lock
       await dataClient.models.Activity.update({
         id: activityId,
         type: updates.type,
         date: updates.date,
         description: updates.description
+      }, {
+        condition: {
+          updatedAt: { eq: activity.updatedAt }
+        }
       });
 
       // Check if we need to update engagement.lastActivity
@@ -434,18 +521,22 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'activity')) {
+        return false;
+      }
       console.error('Error editing activity:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
+  // activityDelete - WITH OPTIMISTIC LOCKING
   var activityDelete = useCallback(async function(activityId) {
     if (!selectedEngagement) return false;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      // Find the activity to get its info for logging
+      // Find the activity to get its info for logging and updatedAt
       var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
       if (!activity) return false;
 
@@ -455,8 +546,12 @@ var useEngagementDetail = function(params) {
         await dataClient.models.Comment.delete({ id: comments[i].id });
       }
 
-      // Delete the activity
-      await dataClient.models.Activity.delete({ id: activityId });
+      // Delete the activity with optimistic lock
+      await dataClient.models.Activity.delete({ id: activityId }, {
+        condition: {
+          updatedAt: { eq: activity.updatedAt }
+        }
+      });
 
       // Recalculate lastActivity from remaining activities
       var remainingActivities = selectedEngagement.activities.filter(function(a) { 
@@ -492,11 +587,15 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'activity')) {
+        return false;
+      }
       console.error('Error deleting activity:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
+  // activityAddComment - NO locking (it's a create)
   var activityAddComment = useCallback(async function(activityId, commentText) {
     if (!selectedEngagement || !currentUser || !commentText) return false;
 
@@ -533,13 +632,31 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
 
+  // activityDeleteComment - WITH OPTIMISTIC LOCKING
   var activityDeleteComment = useCallback(async function(commentId) {
     if (!selectedEngagement) return false;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      await dataClient.models.Comment.delete({ id: commentId });
+      // Find the comment to get its updatedAt
+      var comment = null;
+      for (var i = 0; i < selectedEngagement.activities.length; i++) {
+        var activity = selectedEngagement.activities[i];
+        var found = activity.comments.find(function(c) { return c.id === commentId; });
+        if (found) {
+          comment = found;
+          break;
+        }
+      }
+
+      if (!comment) return false;
+
+      await dataClient.models.Comment.delete({ id: commentId }, {
+        condition: {
+          updatedAt: { eq: comment.updatedAt }
+        }
+      });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         var newActivities = eng.activities.map(function(a) {
@@ -556,12 +673,15 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'comment')) {
+        return false;
+      }
       console.error('Error deleting comment:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
-  // Note operations
+  // noteAdd - NO locking (it's a create)
   var noteAdd = useCallback(async function(phaseType, text) {
     if (!selectedEngagement || !currentUser || !text) return false;
 
@@ -606,40 +726,49 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
 
+  // noteEdit - WITH OPTIMISTIC LOCKING
   var noteEdit = useCallback(async function(noteId, phaseType, text) {
     if (!selectedEngagement || !noteId || !text) return false;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
+      // Find the note to get its updatedAt
+      var note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
+      if (!note) return false;
+
       await dataClient.models.PhaseNote.update({
         id: noteId,
         text: text
+      }, {
+        condition: {
+          updatedAt: { eq: note.updatedAt }
+        }
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         // Update notesByPhase
         var newNotesByPhase = Object.assign({}, eng.notesByPhase);
         var phaseNotes = newNotesByPhase[phaseType] || [];
-        newNotesByPhase[phaseType] = phaseNotes.map(function(note) {
-          if (note.id === noteId) {
-            return Object.assign({}, note, { 
+        newNotesByPhase[phaseType] = phaseNotes.map(function(n) {
+          if (n.id === noteId) {
+            return Object.assign({}, n, { 
               text: text, 
               updatedAt: new Date().toISOString() 
             });
           }
-          return note;
+          return n;
         });
 
         // Update flat phaseNotes array
-        var newPhaseNotes = (eng.phaseNotes || []).map(function(note) {
-          if (note.id === noteId) {
-            return Object.assign({}, note, { 
+        var newPhaseNotes = (eng.phaseNotes || []).map(function(n) {
+          if (n.id === noteId) {
+            return Object.assign({}, n, { 
               text: text, 
               updatedAt: new Date().toISOString() 
             });
           }
-          return note;
+          return n;
         });
 
         return Object.assign({}, eng, {
@@ -655,30 +784,42 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'note')) {
+        return false;
+      }
       console.error('Error editing note:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
+  // noteDelete - WITH OPTIMISTIC LOCKING
   var noteDelete = useCallback(async function(noteId, phaseType) {
     if (!selectedEngagement || !noteId) return false;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      await dataClient.models.PhaseNote.delete({ id: noteId });
+      // Find the note to get its updatedAt
+      var note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
+      if (!note) return false;
+
+      await dataClient.models.PhaseNote.delete({ id: noteId }, {
+        condition: {
+          updatedAt: { eq: note.updatedAt }
+        }
+      });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         // Update notesByPhase
         var newNotesByPhase = Object.assign({}, eng.notesByPhase);
         var phaseNotes = newNotesByPhase[phaseType] || [];
-        newNotesByPhase[phaseType] = phaseNotes.filter(function(note) {
-          return note.id !== noteId;
+        newNotesByPhase[phaseType] = phaseNotes.filter(function(n) {
+          return n.id !== noteId;
         });
 
         // Update flat phaseNotes array
-        var newPhaseNotes = (eng.phaseNotes || []).filter(function(note) {
-          return note.id !== noteId;
+        var newPhaseNotes = (eng.phaseNotes || []).filter(function(n) {
+          return n.id !== noteId;
         });
 
         return Object.assign({}, eng, {
@@ -694,19 +835,26 @@ var useEngagementDetail = function(params) {
 
       return true;
     } catch (error) {
+      if (handleConflictError(error, 'note')) {
+        return false;
+      }
       console.error('Error deleting note:', error);
       return false;
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
-  // Integrations operations
+  // Integrations operations - WITH OPTIMISTIC LOCKING
   var integrationsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
+      await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates), {
+        condition: {
+          updatedAt: { eq: selectedEngagement.updatedAt }
+        }
+      });
 
       updateEngagementInState(selectedEngagement.id, updates);
 
@@ -714,26 +862,36 @@ var useEngagementDetail = function(params) {
         logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integrations');
       }
     } catch (error) {
+      if (handleConflictError(error, 'engagement')) {
+        return;
+      }
       console.error('Error updating integrations:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, handleConflictError]);
 
-  // Details operations
+  // Details operations - WITH OPTIMISTIC LOCKING
   var detailsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
 
-      await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
+      await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates), {
+        condition: {
+          updatedAt: { eq: selectedEngagement.updatedAt }
+        }
+      });
 
       updateEngagementInState(selectedEngagement.id, updates);
     } catch (error) {
+      if (handleConflictError(error, 'engagement')) {
+        return;
+      }
       console.error('Error updating details:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, client]);
+  }, [selectedEngagement, updateEngagementInState, client, handleConflictError]);
 
-  // Owner operations
+  // ownerAdd - NO locking (it's a create)
   var ownerAdd = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
@@ -763,6 +921,7 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, getOwnerInfo, client]);
 
+  // ownerRemove - WITH OPTIMISTIC LOCKING
   var ownerRemove = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
@@ -775,7 +934,11 @@ var useEngagementDetail = function(params) {
       });
 
       if (ownershipRecord) {
-        await dataClient.models.EngagementOwner.delete({ id: ownershipRecord.id });
+        await dataClient.models.EngagementOwner.delete({ id: ownershipRecord.id }, {
+          condition: {
+            updatedAt: { eq: ownershipRecord.updatedAt }
+          }
+        });
       }
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
@@ -790,9 +953,12 @@ var useEngagementDetail = function(params) {
         logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', 'Removed ' + member.name + ' as owner');
       }
     } catch (error) {
+      if (handleConflictError(error, 'owner')) {
+        return;
+      }
       console.error('Error removing owner:', error);
     }
-  }, [selectedEngagement, updateEngagementInState, logChangeAsync, getOwnerInfo, client]);
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, getOwnerInfo, client, handleConflictError]);
 
   // Return namespaced object matching what App.jsx and DetailView.jsx expect
   return {
