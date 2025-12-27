@@ -42,6 +42,7 @@ const schema = a.schema({
     'CERBOS',
     'CYBERARK',
     'FORGEROCK',
+    'IMMUTA',
     'KEYCLOAK',
     'MICROSOFT_ENTRA',
     'NEXTLABS',
