@@ -1,181 +1,99 @@
-import React, { useState } from 'react';
-import { industries, industryLabels } from '../constants';
-import { formatDealSizeFromParts } from '../utils';
-import { getAvatarColorClasses } from '../utils';
+import React, { useState, useEffect, useCallback } from 'react';
+import { generateClient } from 'aws-amplify/data';
+import { OwnersDisplay, DeleteEngagementModal } from '../components';
+import { phaseLabels } from '../constants';
+import { formatDate } from '../utils';
 
 /**
- * Deal Size Input Component
- * Two-field approach: number input + K/M unit dropdown
+ * Admin view for engagement management
+ * Allows admins to view all engagements, delete them, and see deletion audit log
  */
-const DealSizeInput = ({ 
-  dealSizeAmount, 
-  dealSizeUnit, 
-  onAmountChange, 
-  onUnitChange,
-  showValidationError 
-}) => {
-  const hasAmountNoUnit = dealSizeAmount && !dealSizeUnit;
-  const showError = showValidationError && hasAmountNoUnit;
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Deal Size
-      </label>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={dealSizeAmount}
-            onChange={(e) => onAmountChange(e.target.value)}
-            className={`w-full pl-7 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-              showError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-            }`}
-            placeholder="100"
-          />
-        </div>
-        <select
-          value={dealSizeUnit}
-          onChange={(e) => onUnitChange(e.target.value)}
-          className={`w-20 px-2 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-            showError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-          }`}
-        >
-          <option value="">Unit</option>
-          <option value="K">K</option>
-          <option value="M">M</option>
-        </select>
-      </div>
-      {showError && (
-        <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          Select a unit (K or M)
-        </p>
-      )}
-      {dealSizeAmount && dealSizeUnit && (
-        <p className="text-xs text-gray-500 mt-1">
-          Preview: {formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)}
-        </p>
-      )}
-    </div>
-  );
-};
-
-/**
- * Owner selector component for multi-select
- */
-const OwnerSelector = ({ selectedOwnerIds, teamMembers, onToggleOwner }) => {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Owners *
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {teamMembers.map(member => {
-          const isSelected = selectedOwnerIds.includes(member.id);
-          const isSystemUser = member.isSystemUser === true;
-          const colorClasses = getAvatarColorClasses(member);
-          
-          return (
-            <button
-              key={member.id}
-              type="button"
-              onClick={() => onToggleOwner(member.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                isSelected
-                  ? 'border-gray-900 bg-gray-900 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                isSelected 
-                  ? 'bg-white text-gray-900' 
-                  : colorClasses
-              }`}>
-                {member.initials}
-              </div>
-              <span className="text-sm">{member.name}</span>
-              {isSystemUser && <span className="text-xs opacity-60">(Shared)</span>}
-            </button>
-          );
-        })}
-      </div>
-      {selectedOwnerIds.length === 0 && (
-        <p className="text-sm text-red-600 mt-1">At least one owner is required</p>
-      )}
-    </div>
-  );
-};
-
-/**
- * New Engagement View - Form for creating a new engagement
- */
-const NewEngagementView = ({
-  newEngagement,
-  setNewEngagement,
-  teamMembers,
-  onSubmit,
+const EngagementsAdminView = ({
+  engagements,
+  currentUser,
+  getOwnerInfo,
+  getCascadeInfo,
+  onDeleteEngagement,
   onBack
 }) => {
-  // Local state for deal size parts
-  const [dealSizeAmount, setDealSizeAmount] = useState('');
-  const [dealSizeUnit, setDealSizeUnit] = useState('');
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  // Local filter state
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  
+  // Modal state - owned by this view
+  const [deleteModalEngagement, setDeleteModalEngagement] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Update a single field
-  const updateField = (field, value) => {
-    setNewEngagement(prev => ({ ...prev, [field]: value }));
-  };
+  // Deletion log state
+  const [deletionLogs, setDeletionLogs] = useState([]);
+  const [loadingDeletionLogs, setLoadingDeletionLogs] = useState(false);
 
-  // Toggle owner selection
-  const handleToggleOwner = (memberId) => {
-    setNewEngagement(prev => {
-      const currentOwners = prev.ownerIds || [];
-      if (currentOwners.includes(memberId)) {
-        // Remove owner (but don't allow empty)
-        if (currentOwners.length > 1) {
-          return { ...prev, ownerIds: currentOwners.filter(id => id !== memberId) };
-        }
-        return prev; // Don't remove last owner
-      } else {
-        // Add owner
-        return { ...prev, ownerIds: [...currentOwners, memberId] };
+  /**
+   * Fetch deletion logs from the database
+   * Filters out expired records (belt and suspenders with DynamoDB TTL)
+   */
+  const fetchDeletionLogs = useCallback(async () => {
+    setLoadingDeletionLogs(true);
+    try {
+      const client = generateClient();
+      const result = await client.models.DeletionLog.list();
+      
+      // Filter out expired records (in case TTL hasn't cleaned them up yet)
+      const now = Math.floor(Date.now() / 1000);
+      const validLogs = (result.data || []).filter(log => {
+        // Keep if no expiresAt or if expiresAt is in the future
+        return !log.expiresAt || log.expiresAt > now;
+      });
+      
+      // Sort by createdAt (most recent first)
+      validLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setDeletionLogs(validLogs);
+    } catch (error) {
+      console.error('Error fetching deletion logs:', error);
+      setDeletionLogs([]);
+    } finally {
+      setLoadingDeletionLogs(false);
+    }
+  }, []);
+
+  // Fetch deletion logs when switching to 'deleted' tab
+  useEffect(() => {
+    if (filter === 'deleted') {
+      fetchDeletionLogs();
+    }
+  }, [filter, fetchDeletionLogs]);
+
+  // Filter engagements (only for non-deleted tabs)
+  const filteredEngagements = engagements
+    .filter(e => {
+      if (filter === 'active' && e.isArchived) return false;
+      if (filter === 'archived' && !e.isArchived) return false;
+      
+      if (search) {
+        const query = search.toLowerCase();
+        const matchesCompany = e.company.toLowerCase().includes(query);
+        const matchesContact = e.contactName.toLowerCase().includes(query);
+        if (!matchesCompany && !matchesContact) return false;
       }
-    });
+      
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+  const handleConfirmDelete = async () => {
+    await onDeleteEngagement(deleteModalEngagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfo);
+    // Refresh deletion logs if we're on the deleted tab
+    if (filter === 'deleted') {
+      fetchDeletionLogs();
+    }
   };
 
-  // Validation
-  const hasDealSizeValidationError = dealSizeAmount && !dealSizeUnit;
-  const canSubmit = 
-    newEngagement.company?.trim() && 
-    newEngagement.contactName?.trim() && 
-    newEngagement.ownerIds?.length > 0 &&
-    !hasDealSizeValidationError;
-
-  // Handle form submit
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setAttemptedSubmit(true);
-
-    if (!canSubmit) return;
-
-    // Format deal size from parts and pass directly to onSubmit
-    const formattedDealSize = dealSizeAmount && dealSizeUnit 
-      ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
-      : '';
-
-    // Pass overrides directly to avoid state synchronization issues
-    onSubmit({ dealSize: formattedDealSize });
-  };
+  // Count for deletion log badge
+  const deletionLogCount = deletionLogs.length;
 
   return (
     <div>
-      {/* Back button */}
       <button 
         onClick={onBack}
         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
@@ -186,279 +104,238 @@ const NewEngagementView = ({
         Back to Engagements
       </button>
 
-      {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-medium text-gray-900">New Engagement</h2>
-        <p className="text-gray-500 mt-1">Create a new pre-sales engagement</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-2xl font-medium text-gray-900">Engagement Management</h2>
+          <p className="text-gray-500 mt-1">
+            {engagements.filter(e => !e.isArchived).length} active · {engagements.filter(e => e.isArchived).length} archived · {engagements.length} total
+          </p>
+        </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
-          {/* Basic Info Section */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Name *
-                </label>
-                <input 
-                  type="text" 
-                  value={newEngagement.company || ''}
-                  onChange={e => updateField('company', e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="Acme Corporation" 
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Name *
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.contactName || ''}
-                    onChange={e => updateField('contactName', e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="John Smith" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Email
-                  </label>
-                  <input 
-                    type="email" 
-                    value={newEngagement.contactEmail || ''}
-                    onChange={e => updateField('contactEmail', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="john@acme.com" 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Phone
-                  </label>
-                  <input 
-                    type="tel" 
-                    value={newEngagement.contactPhone || ''}
-                    onChange={e => updateField('contactPhone', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="+1 (555) 123-4567" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Industry
-                  </label>
-                  <select 
-                    value={newEngagement.industry || 'TECHNOLOGY'}
-                    onChange={e => updateField('industry', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  >
-                    {industries.map(ind => (
-                      <option key={ind} value={ind}>{industryLabels[ind]}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <DealSizeInput
-                dealSizeAmount={dealSizeAmount}
-                dealSizeUnit={dealSizeUnit}
-                onAmountChange={setDealSizeAmount}
-                onUnitChange={setDealSizeUnit}
-                showValidationError={attemptedSubmit}
-              />
-            </div>
-          </div>
-
-          {/* Owners Section */}
-          <div className="pt-4 border-t border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Ownership</h3>
-            <OwnerSelector
-              selectedOwnerIds={newEngagement.ownerIds || []}
-              teamMembers={teamMembers}
-              onToggleOwner={handleToggleOwner}
-            />
-          </div>
-
-          {/* Integrations Section (Collapsible) */}
-          <details className="pt-4 border-t border-gray-100">
-            <summary className="text-lg font-medium text-gray-900 cursor-pointer hover:text-gray-700">
-              Integrations (Optional)
-            </summary>
-            <div className="mt-4 space-y-4">
-              {/* Google Drive */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Drive Folder Name
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.driveFolderName || ''}
-                    onChange={e => updateField('driveFolderName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="Acme POC Docs" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Drive Folder URL
-                  </label>
-                  <input 
-                    type="url" 
-                    value={newEngagement.driveFolderUrl || ''}
-                    onChange={e => updateField('driveFolderUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="https://drive.google.com/..." 
-                  />
-                </div>
-              </div>
-
-              {/* Google Docs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Google Doc Name
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.docsName || ''}
-                    onChange={e => updateField('docsName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="Running Notes" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Google Doc URL
-                  </label>
-                  <input 
-                    type="url" 
-                    value={newEngagement.docsUrl || ''}
-                    onChange={e => updateField('docsUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="https://docs.google.com/..." 
-                  />
-                </div>
-              </div>
-
-              {/* Google Slides */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Slides Deck Name
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.slidesName || ''}
-                    onChange={e => updateField('slidesName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="Demo Deck" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Slides Deck URL
-                  </label>
-                  <input 
-                    type="url" 
-                    value={newEngagement.slidesUrl || ''}
-                    onChange={e => updateField('slidesUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="https://docs.google.com/presentation/..." 
-                  />
-                </div>
-              </div>
-
-              {/* Google Sheets */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Google Sheet Name
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.sheetsName || ''}
-                    onChange={e => updateField('sheetsName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="POC Tracker" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Google Sheet URL
-                  </label>
-                  <input 
-                    type="url" 
-                    value={newEngagement.sheetsUrl || ''}
-                    onChange={e => updateField('sheetsUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="https://docs.google.com/spreadsheets/..." 
-                  />
-                </div>
-              </div>
-
-              {/* Slack */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Slack Channel
-                  </label>
-                  <input 
-                    type="text" 
-                    value={newEngagement.slackChannel || ''}
-                    onChange={e => updateField('slackChannel', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="#acme-poc" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Slack Channel URL
-                  </label>
-                  <input 
-                    type="url" 
-                    value={newEngagement.slackUrl || ''}
-                    onChange={e => updateField('slackUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="https://slack.com/..." 
-                  />
-                </div>
-              </div>
-            </div>
-          </details>
+      {/* Search bar - hidden when on Deleted tab */}
+      {filter !== 'deleted' && (
+        <div className="mb-6">
+          <input
+            type="text"
+            placeholder="Search by company or contact..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
         </div>
+      )}
 
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3 mt-6">
-          <button 
-            type="button"
-            onClick={onBack}
-            className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+      {/* Tab buttons */}
+      <div className="mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
           >
-            Cancel
+            All ({engagements.length})
           </button>
-          <button 
-            type="submit"
-            disabled={!canSubmit}
-            className="px-6 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
           >
-            Create Engagement
+            Active ({engagements.filter(e => !e.isArchived).length})
+          </button>
+          <button
+            onClick={() => setFilter('archived')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              filter === 'archived' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Archived ({engagements.filter(e => e.isArchived).length})
+          </button>
+          <button
+            onClick={() => setFilter('deleted')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+              filter === 'deleted' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Deleted
+            {deletionLogCount > 0 && (
+              <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                filter === 'deleted' ? 'bg-white text-gray-900' : 'bg-gray-300 text-gray-700'
+              }`}>
+                {deletionLogCount}
+              </span>
+            )}
           </button>
         </div>
-      </form>
+      </div>
+
+      {/* Content based on selected tab */}
+      {filter === 'deleted' ? (
+        // Deletion Log View
+        <div>
+          {loadingDeletionLogs ? (
+            <div className="text-center py-12">
+              <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading deletion history...</p>
+            </div>
+          ) : deletionLogs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🗑️</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No deletion history</h3>
+              <p className="text-gray-500">No engagements have been deleted in the past year.</p>
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Deleted By</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Removed Data</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {deletionLogs.map(log => (
+                    <tr key={log.id} className="bg-gray-50/50 text-gray-600">
+                      <td className="px-4 py-4">
+                        <div>
+                          <p className="font-medium text-gray-700">{log.companyName}</p>
+                          {log.currentPhase && (
+                            <p className="text-xs text-gray-400 mt-0.5">Was in: {log.currentPhase}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-600">{log.contactName}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-600">{log.deletedByName}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-500 text-sm">{formatDate(log.createdAt)}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-gray-500 text-sm">{log.cascadeSummary || 'No related data'}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Info box for deletion log */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-xl">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">About Deletion History</h4>
+            <ul className="text-sm text-gray-500 space-y-1">
+              <li>• This log shows engagements deleted in the past 365 days.</li>
+              <li>• Deleted data cannot be restored - this is for audit purposes only.</li>
+              <li>• Records are automatically removed after one year.</li>
+            </ul>
+          </div>
+        </div>
+      ) : (
+        // Regular Engagement Table View
+        <>
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Owners</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phase</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Activities</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredEngagements.map(engagement => (
+                  <tr key={engagement.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{engagement.company}</p>
+                        <p className="text-sm text-gray-500">{engagement.contactName}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <OwnersDisplay 
+                        ownerIds={engagement.ownerIds} 
+                        size="sm" 
+                        getOwnerInfo={getOwnerInfo} 
+                        currentUserId={currentUser?.id} 
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-700">
+                        {phaseLabels[engagement.currentPhase] || engagement.currentPhase}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className="text-sm text-gray-700">{engagement.activities?.length || 0}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-500">{engagement.startDate}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      {engagement.isArchived ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                          Archived
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 rounded">
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        onClick={() => setDeleteModalEngagement(engagement)}
+                        className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            
+            {filteredEngagements.length === 0 && (
+              <div className="text-center py-12 text-gray-400">
+                No engagements found
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 p-4 bg-red-50 rounded-xl">
+            <h4 className="text-sm font-medium text-red-900 mb-2">About Engagement Deletion</h4>
+            <ul className="text-sm text-red-700 space-y-1">
+              <li>• <strong>Deletion is permanent</strong> and cannot be undone.</li>
+              <li>• All related data (phases, activities, comments, change logs) will be removed.</li>
+              <li>• Consider archiving engagements instead if you may need the data later.</li>
+              <li>• Deletions are logged for audit purposes and visible in the "Deleted" tab.</li>
+            </ul>
+          </div>
+        </>
+      )}
+
+      {/* Delete Modal - owned by this view */}
+      <DeleteEngagementModal
+        isOpen={deleteModalEngagement !== null}
+        engagement={deleteModalEngagement}
+        cascadeInfo={getCascadeInfo(deleteModalEngagement)}
+        onClose={() => setDeleteModalEngagement(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };
 
-export default NewEngagementView;
+export default EngagementsAdminView;
