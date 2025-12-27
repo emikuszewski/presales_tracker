@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
  * Avatar dropdown menu for user actions
  * Handles its own open/close state, click-outside, and ESC key
  */
-const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSignOut }) => {
+const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsClick, onSignOut }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -108,6 +108,25 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSignOut })
                 </button>
               </>
             )}
+
+            {/* Sales Reps - visible to everyone */}
+            <button
+              onClick={() => {
+                onSalesRepsClick();
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Sales Reps</p>
+                <p className="text-xs text-gray-500">Manage AE assignments</p>
+              </div>
+            </button>
 
             {/* Divider before Sign Out */}
             <div className="my-1 border-t border-gray-100" />
