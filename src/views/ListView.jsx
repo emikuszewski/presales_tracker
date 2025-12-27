@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator, CompetitorChips } from '../components';
-import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels, engagementStatusIcons } from '../constants';
+import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator, CompetitorChips, EngagementStatusIcon } from '../components';
+import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels } from '../constants';
 import { 
   getEngagementStatusBorderClasses, 
   getEngagementStatusBadgeClasses,
-  shouldShowStale,
-  getPhaseBadgeClasses
+  shouldShowStale 
 } from '../utils';
 
 /**
@@ -339,7 +338,6 @@ const ListView = ({
           const engagementStatus = engagement.engagementStatus || 'ACTIVE';
           const statusBorderClasses = getEngagementStatusBorderClasses(engagementStatus);
           const showStale = shouldShowStale(engagement);
-          const statusIcon = engagementStatusIcons[engagementStatus];
           const statusLabel = engagementStatusLabels[engagementStatus];
           const isArchivedInEverything = showEverything && engagement.isArchived === true;
           const hasCompetitors = engagement.competitors && engagement.competitors.length > 0;
@@ -400,12 +398,29 @@ const ListView = ({
                     })}
                   </div>
 
-                  {/* Current Phase Badge - using utility function */}
+                  {/* Current Phase Badge */}
                   {(() => {
                     const currentPhaseData = engagement.phases[engagement.currentPhase];
                     const currentStatus = currentPhaseData?.status || 'PENDING';
                     const phaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
-                    const { badgeClasses, dotClasses } = getPhaseBadgeClasses(currentStatus);
+                    
+                    let badgeClasses, dotClasses;
+                    if (currentStatus === 'COMPLETE') {
+                      badgeClasses = 'bg-emerald-50 text-emerald-700';
+                      dotClasses = 'bg-emerald-500';
+                    } else if (currentStatus === 'IN_PROGRESS') {
+                      badgeClasses = 'bg-blue-50 text-blue-700';
+                      dotClasses = 'bg-blue-500';
+                    } else if (currentStatus === 'BLOCKED') {
+                      badgeClasses = 'bg-amber-50 text-amber-700';
+                      dotClasses = 'bg-amber-500';
+                    } else if (currentStatus === 'SKIPPED') {
+                      badgeClasses = 'bg-gray-50 text-gray-400';
+                      dotClasses = 'bg-gray-300';
+                    } else {
+                      badgeClasses = 'bg-gray-100 text-gray-600';
+                      dotClasses = 'bg-gray-400';
+                    }
 
                     return (
                       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
@@ -418,7 +433,7 @@ const ListView = ({
                   {/* Engagement Status Badge - hidden for ACTIVE (default state) */}
                   {engagementStatus !== 'ACTIVE' && (
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getEngagementStatusBadgeClasses(engagementStatus)}`}>
-                      {statusIcon && <span>{statusIcon}</span>}
+                      <EngagementStatusIcon status={engagementStatus} className="w-3.5 h-3.5" />
                       {statusLabel}
                     </span>
                   )}
@@ -426,7 +441,9 @@ const ListView = ({
                   {/* Archived Badge - only shown in Everything mode for archived items */}
                   {isArchivedInEverything && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
-                      <span>📦</span>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
                       Archived
                     </span>
                   )}
