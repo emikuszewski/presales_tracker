@@ -446,7 +446,7 @@ const DetailView = ({
             {hasAnyIntegration && (
               <div className="flex items-center gap-1 mr-2">
                 {hasSlack && (
-                  
+                  <a
                     href={engagement.slackUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -457,7 +457,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDrive && (
-                  
+                  <a
                     href={engagement.driveFolderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -468,7 +468,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDocs && (
-                  
+                  <a
                     href={engagement.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -479,7 +479,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSlides && (
-                  
+                  <a
                     href={engagement.slidesUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -490,7 +490,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSheets && (
-                  
+                  <a
                     href={engagement.sheetsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
