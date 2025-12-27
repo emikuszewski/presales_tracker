@@ -132,13 +132,15 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
         );
 
       // ============================================
-      // IMMUTA - Vertical bar/pillar (stylized "I")
+      // IMMUTA - Dark rounded square with white vertical bar (far right)
       // ============================================
       case 'IMMUTA':
         return (
-          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
-            {/* Vertical bar - centered pillar shape */}
-            <rect x="9" y="2" width="6" height="20" />
+          <svg viewBox="0 0 24 24" className={sizeClass}>
+            {/* Rounded square background */}
+            <rect x="1" y="1" width="22" height="22" rx="4" fill={fillColor}/>
+            {/* Vertical bar - far right, 5px wide, slightly rounded */}
+            <rect x="15" y="4" width="5" height="16" rx="1" fill="white"/>
           </svg>
         );
 
