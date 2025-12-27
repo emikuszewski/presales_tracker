@@ -4,7 +4,9 @@ import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels } from
 import { 
   getEngagementStatusBorderClasses, 
   getEngagementStatusBadgeClasses,
-  shouldShowStale 
+  shouldShowStale,
+  getDerivedCurrentPhase,
+  getPhaseBadgeClasses
 } from '../utils';
 
 /**
@@ -342,6 +344,13 @@ const ListView = ({
           const isArchivedInEverything = showEverything && engagement.isArchived === true;
           const hasCompetitors = engagement.competitors && engagement.competitors.length > 0;
           
+          // Derive the current phase from actual phase data (fixes stale currentPhase bug)
+          const derivedCurrentPhase = getDerivedCurrentPhase(engagement.phases);
+          const derivedPhaseData = engagement.phases[derivedCurrentPhase];
+          const derivedPhaseStatus = derivedPhaseData?.status || 'PENDING';
+          const derivedPhaseLabel = phaseLabels[derivedCurrentPhase] || derivedCurrentPhase;
+          const { badgeClasses, dotClasses } = getPhaseBadgeClasses(derivedPhaseStatus);
+          
           return (
             <div
               key={engagement.id}
@@ -398,37 +407,11 @@ const ListView = ({
                     })}
                   </div>
 
-                  {/* Current Phase Badge */}
-                  {(() => {
-                    const currentPhaseData = engagement.phases[engagement.currentPhase];
-                    const currentStatus = currentPhaseData?.status || 'PENDING';
-                    const phaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
-                    
-                    let badgeClasses, dotClasses;
-                    if (currentStatus === 'COMPLETE') {
-                      badgeClasses = 'bg-emerald-50 text-emerald-700';
-                      dotClasses = 'bg-emerald-500';
-                    } else if (currentStatus === 'IN_PROGRESS') {
-                      badgeClasses = 'bg-blue-50 text-blue-700';
-                      dotClasses = 'bg-blue-500';
-                    } else if (currentStatus === 'BLOCKED') {
-                      badgeClasses = 'bg-amber-50 text-amber-700';
-                      dotClasses = 'bg-amber-500';
-                    } else if (currentStatus === 'SKIPPED') {
-                      badgeClasses = 'bg-gray-50 text-gray-400';
-                      dotClasses = 'bg-gray-300';
-                    } else {
-                      badgeClasses = 'bg-gray-100 text-gray-600';
-                      dotClasses = 'bg-gray-400';
-                    }
-
-                    return (
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
-                        {phaseLabel}
-                      </span>
-                    );
-                  })()}
+                  {/* Current Phase Badge - now uses derived phase */}
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+                    {derivedPhaseLabel}
+                  </span>
 
                   {/* Engagement Status Badge - hidden for ACTIVE (default state) */}
                   {engagementStatus !== 'ACTIVE' && (
