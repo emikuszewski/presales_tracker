@@ -471,7 +471,7 @@ function App() {
         Header() {
           return (
             <div className="text-center py-8">
-              <h1 className="text-2xl font-medium text-gray-900">Pre-Sales Engagement Tracker</h1>
+              <h1 className="text-2xl font-medium text-gray-900">SE Tracker</h1>
               <p className="text-gray-500 mt-2">Sign in with your PlainID email</p>
             </div>
           );
