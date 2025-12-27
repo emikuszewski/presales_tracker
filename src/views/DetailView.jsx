@@ -391,10 +391,12 @@ const DetailView = ({
   onClearNavigationOptions,
   onToggleArchive,
   onBack,
-  onModalStateChange  // NEW: Layer 1 - Report modal state to App
+  onModalStateChange,  // Layer 1 - Report modal state to App
+  activeTab,           // Lifted to App for conflict refresh persistence
+  onTabChange          // Lifted to App for conflict refresh persistence
 }) => {
-  // Tab state
-  const [activeTab, setActiveTab] = useState('progress');
+  // Local alias for convenience
+  const setActiveTab = onTabChange;
   
   // Highlight state for activities
   const [highlightedActivityId, setHighlightedActivityId] = useState(null);
