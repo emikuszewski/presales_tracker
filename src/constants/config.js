@@ -49,6 +49,7 @@ export const competitorConfig = [
   { id: 'CERBOS', label: 'Cerbos', logoType: 'initials', initials: 'Cb' },
   { id: 'CYBERARK', label: 'CyberArk', logoType: 'simplified' },
   { id: 'FORGEROCK', label: 'ForgeRock', logoType: 'simplified' },
+  { id: 'IMMUTA', label: 'Immuta', logoType: 'svg' },
   { id: 'KEYCLOAK', label: 'Keycloak', logoType: 'svg' },
   { id: 'MICROSOFT_ENTRA', label: 'Microsoft Entra', logoType: 'svg' },
   { id: 'NEXTLABS', label: 'NextLabs', logoType: 'initials', initials: 'NL' },
