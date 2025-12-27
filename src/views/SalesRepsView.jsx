@@ -1,0 +1,162 @@
+import React, { useState } from 'react';
+
+/**
+ * Sales Reps Management View
+ * Allows adding and removing sales reps (AEs)
+ * Shows engagement count for each rep
+ */
+const SalesRepsView = ({
+  salesReps,
+  onCreateSalesRep,
+  onDeleteSalesRep,
+  getEngagementCount,
+  onBack
+}) => {
+  const [newRepName, setNewRepName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  // Handle adding a new sales rep
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newRepName.trim() || isAdding) return;
+
+    setIsAdding(true);
+    const result = await onCreateSalesRep(newRepName.trim());
+    if (result) {
+      setNewRepName('');
+    }
+    setIsAdding(false);
+  };
+
+  // Handle deleting a sales rep
+  const handleDelete = async (repId) => {
+    if (deletingId) return;
+    
+    setDeletingId(repId);
+    await onDeleteSalesRep(repId);
+    setDeletingId(null);
+  };
+
+  return (
+    <div>
+      {/* Back button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Engagements
+      </button>
+
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-medium text-gray-900">Sales Reps</h2>
+        <p className="text-gray-500 mt-1">
+          {salesReps.length} sales rep{salesReps.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {/* Add New Rep Form */}
+      <form onSubmit={handleAdd} className="mb-6">
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={newRepName}
+            onChange={(e) => setNewRepName(e.target.value)}
+            placeholder="Enter sales rep name..."
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            disabled={isAdding}
+          />
+          <button
+            type="submit"
+            disabled={!newRepName.trim() || isAdding}
+            className="px-5 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isAdding ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Adding...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Sales Rep
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Sales Reps List */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {salesReps.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <p className="text-gray-500">No sales reps added yet</p>
+            <p className="text-sm text-gray-400 mt-1">Add sales reps to track which AE is assigned to each engagement</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {salesReps.map((rep) => {
+              const engagementCount = getEngagementCount(rep.id);
+              const isDeleting = deletingId === rep.id;
+              
+              return (
+                <li key={rep.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    {/* Purple avatar */}
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{rep.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {engagementCount} engagement{engagementCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => handleDelete(rep.id)}
+                    disabled={isDeleting}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    title={engagementCount > 0 ? `Will unassign from ${engagementCount} engagement${engagementCount !== 1 ? 's' : ''}` : 'Delete sales rep'}
+                  >
+                    {isDeleting ? (
+                      <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Help text */}
+      {salesReps.length > 0 && (
+        <p className="text-sm text-gray-400 mt-4">
+          Deleting a sales rep will unassign them from any engagements they're currently assigned to.
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default SalesRepsView;
