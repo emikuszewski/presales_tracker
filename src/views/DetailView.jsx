@@ -259,7 +259,7 @@ const DetailView = ({
   // Tab counts for badges
   const activityCount = engagement?.activities?.length || 0;
   const unreadCount = engagement?.unreadChanges || 0;
-  const notesCount = engagement ? Object.values(engagement.phases || {}).filter(p => p?.notes?.trim()).length : 0;
+  const notesCount = engagement?.totalNotesCount || 0;
 
   // Handle navigation options (scroll to activity, etc.)
   useEffect(() => {
@@ -284,19 +284,44 @@ const DetailView = ({
     }
   }, [navigationOptions, engagement, onClearNavigationOptions]);
 
-  // Handle scroll to phase (from activity links)
+  // Handle scroll to phase (from activity links or notes click)
   useEffect(() => {
-    if (scrollToPhase) {
-      setActiveTab('progress');
-      // Clear after a short delay to allow tab switch
+    if (scrollToPhase && activeTab === 'notes') {
+      // Clear after a short delay to allow the NotesTab to pick it up
       const timer = setTimeout(() => {
         setScrollToPhase(null);
-      }, 100);
+      }, 200);
       return () => clearTimeout(timer);
     }
-  }, [scrollToPhase]);
+  }, [scrollToPhase, activeTab]);
 
-  // Update handlers
+  // ============================================
+  // PHASE HANDLERS - Adapts ProgressTab props to detail.phase methods
+  // ============================================
+
+  /**
+   * Phase status change handler
+   * Adapts ProgressTab signature (phaseType, newStatus) to detail.phase.save signature (phaseType, { status, notes })
+   */
+  const handlePhaseStatusChange = useCallback((phaseType, newStatus) => {
+    if (detail?.phase?.save) {
+      detail.phase.save(phaseType, { status: newStatus });
+    }
+  }, [detail]);
+
+  /**
+   * Notes click handler from ProgressTab
+   * Switches to notes tab and scrolls to the clicked phase
+   */
+  const handlePhaseNotesClick = useCallback((phaseType) => {
+    setScrollToPhase(phaseType);
+    setActiveTab('notes');
+  }, []);
+
+  // ============================================
+  // UPDATE HANDLERS
+  // ============================================
+
   const handleUpdateDetails = useCallback((updatedData) => {
     if (detail?.details?.update) {
       detail.details.update(updatedData);
@@ -359,11 +384,11 @@ const DetailView = ({
   const currentPhaseLabel = phaseLabels[engagement.currentPhase] || engagement.currentPhase;
 
   // Check for integration links
-  const hasSlack = engagement.slackChannel;
-  const hasDrive = engagement.driveFolder;
-  const hasDocs = engagement.docLink;
-  const hasSlides = engagement.slidesLink;
-  const hasSheets = engagement.sheetsLink;
+  const hasSlack = engagement.slackUrl;
+  const hasDrive = engagement.driveFolderUrl;
+  const hasDocs = engagement.docsUrl;
+  const hasSlides = engagement.slidesUrl;
+  const hasSheets = engagement.sheetsUrl;
   const hasAnyIntegration = hasSlack || hasDrive || hasDocs || hasSlides || hasSheets;
 
   return (
@@ -413,55 +438,55 @@ const DetailView = ({
               <div className="flex items-center gap-1 mr-2">
                 {hasSlack && (
                   <a
-                    href={engagement.slackChannel}
+                    href={engagement.slackUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Slack Channel"
+                    title={engagement.slackChannel || 'Slack Channel'}
                   >
                     <SlackIcon className="w-5 h-5" />
                   </a>
                 )}
                 {hasDrive && (
                   <a
-                    href={engagement.driveFolder}
+                    href={engagement.driveFolderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Drive"
+                    title={engagement.driveFolderName || 'Google Drive'}
                   >
                     <DriveIcon className="w-5 h-5" />
                   </a>
                 )}
                 {hasDocs && (
                   <a
-                    href={engagement.docLink}
+                    href={engagement.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Docs"
+                    title={engagement.docsName || 'Google Docs'}
                   >
                     <DocsIcon className="w-5 h-5" />
                   </a>
                 )}
                 {hasSlides && (
                   <a
-                    href={engagement.slidesLink}
+                    href={engagement.slidesUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Slides"
+                    title={engagement.slidesName || 'Google Slides'}
                   >
                     <SlidesIcon className="w-5 h-5" />
                   </a>
                 )}
                 {hasSheets && (
                   <a
-                    href={engagement.sheetsLink}
+                    href={engagement.sheetsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Google Sheets"
+                    title={engagement.sheetsName || 'Google Sheets'}
                   >
                     <SheetsIcon className="w-5 h-5" />
                   </a>
@@ -521,23 +546,23 @@ const DetailView = ({
           {activeTab === 'progress' && (
             <ProgressTab
               engagement={engagement}
-              detail={detail}
-              scrollToPhase={scrollToPhase}
-              onEditDetails={() => setShowEditDetailsModal(true)}
-              onEditOwners={() => setShowOwnersModal(true)}
-              getOwnerInfo={getOwnerInfo}
-              owners={owners}
+              onStatusChange={handlePhaseStatusChange}
+              onAddLink={detail?.phase?.addLink}
+              onRemoveLink={detail?.phase?.removeLink}
+              onNotesClick={handlePhaseNotesClick}
             />
           )}
           
           {activeTab === 'activity' && (
             <ActivityTab
               engagement={engagement}
-              detail={detail}
-              highlightedActivityId={highlightedActivityId}
               getOwnerInfo={getOwnerInfo}
-              currentUser={currentUser}
-              onNavigateToPhase={setScrollToPhase}
+              onAddActivity={detail?.activity?.add}
+              onAddComment={detail?.activity?.addComment}
+              onDeleteComment={detail?.activity?.deleteComment}
+              onEditActivity={detail?.activity?.edit}
+              onDeleteActivity={detail?.activity?.delete}
+              highlightId={highlightedActivityId}
             />
           )}
           
@@ -545,13 +570,20 @@ const DetailView = ({
             <HistoryTab
               engagement={engagement}
               getOwnerInfo={getOwnerInfo}
+              lastViewedAt={engagement.lastViewedAt}
+              currentUserId={currentUser?.id}
+              onMarkViewed={detail?.view?.update ? () => detail.view.update(engagement.id) : null}
             />
           )}
           
           {activeTab === 'notes' && (
             <NotesTab
               engagement={engagement}
-              detail={detail}
+              getOwnerInfo={getOwnerInfo}
+              onAddNote={detail?.note?.add}
+              onEditNote={detail?.note?.edit}
+              onDeleteNote={detail?.note?.delete}
+              scrollToPhase={scrollToPhase}
             />
           )}
         </div>
