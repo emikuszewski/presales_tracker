@@ -274,6 +274,61 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
+  // Sales Rep update operation - WITH OPTIMISTIC LOCKING
+  var salesRepUpdate = useCallback(async function(salesRepId, salesRepName) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      
+      // Check for conflicts before updating
+      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      if (conflictCheck.conflict) {
+        console.warn('[OptimisticLock] Conflict detected for engagement sales rep update');
+        if (onConflict) {
+          onConflict({ recordType: 'engagement' });
+        }
+        return false;
+      }
+      
+      var oldRepId = selectedEngagement.salesRepId;
+      var oldRepName = selectedEngagement.salesRepName;
+
+      var result = await dataClient.models.Engagement.update({
+        id: selectedEngagement.id,
+        salesRepId: salesRepId || null
+      });
+
+      // Update local state with new updatedAt
+      updateEngagementInState(selectedEngagement.id, {
+        salesRepId: salesRepId || null,
+        salesRepName: salesRepName || null,
+        updatedAt: result.data.updatedAt
+      });
+
+      // Build change log description
+      if (logChangeAsync) {
+        var description;
+        if (!oldRepId && salesRepId) {
+          description = 'Assigned ' + salesRepName;
+        } else if (oldRepId && !salesRepId) {
+          description = 'Removed ' + (oldRepName || 'sales rep');
+        } else if (oldRepId && salesRepId) {
+          description = 'Changed from ' + (oldRepName || 'unknown') + ' to ' + salesRepName;
+        }
+        
+        if (description) {
+          logChangeAsync(selectedEngagement.id, 'SALES_REP_CHANGED', description, oldRepName || null, salesRepName || null);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating sales rep:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
+
   // Phase operations - WITH OPTIMISTIC LOCKING
   var phaseSave = useCallback(async function(phaseType, phaseData) {
     if (!selectedEngagement) return;
@@ -1040,6 +1095,9 @@ var useEngagementDetail = function(params) {
     },
     competitors: {
       update: competitorsUpdate
+    },
+    salesRep: {
+      update: salesRepUpdate
     }
   };
 };
