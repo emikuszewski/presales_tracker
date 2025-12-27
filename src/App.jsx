@@ -13,7 +13,8 @@ import {
   EngagementsAdminView,
   ListView,
   DetailView,
-  NewEngagementView
+  NewEngagementView,
+  SalesRepsView
 } from './views';
 
 // Import custom hooks
@@ -23,7 +24,8 @@ import {
   useTeamOperations,
   useEngagementList,
   useEngagementDetail,
-  useVisibilityRefresh
+  useVisibilityRefresh,
+  useSalesRepsOperations
 } from './hooks';
 
 // Main App Component (inside Authenticator)
@@ -45,6 +47,7 @@ function PresalesTracker() {
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
+    salesRepId: '',
     salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
     driveFolderName: '', driveFolderUrl: '',
     docsName: '', docsUrl: '',
@@ -80,6 +83,8 @@ function PresalesTracker() {
     setAllTeamMembers,
     engagements,
     setEngagements,
+    salesReps,
+    setSalesReps,
     engagementViews,
     setEngagementViews,
     loading,
@@ -109,6 +114,15 @@ function PresalesTracker() {
     setAllTeamMembers,
     setTeamMembers,
     fetchAllData,
+    client
+  });
+
+  // Sales reps operations
+  const { createSalesRep, deleteSalesRep, getEngagementCount } = useSalesRepsOperations({
+    salesReps,
+    setSalesReps,
+    engagements,
+    setEngagements,
     client
   });
 
@@ -311,6 +325,7 @@ function PresalesTracker() {
             currentUser={currentUser}
             onTeamClick={() => navigateTo('admin')}
             onEngagementsClick={() => navigateTo('engagements-admin')}
+            onSalesRepsClick={() => navigateTo('salesreps')}
             onSignOut={handleSignOut}
           />
         </div>
@@ -336,6 +351,16 @@ function PresalesTracker() {
             getOwnerInfo={getOwnerInfo}
             getCascadeInfo={getCascadeInfo}
             onDeleteEngagement={handleDeleteEngagement}
+            onBack={() => navigateTo('list')}
+          />
+        )}
+
+        {view === 'salesreps' && (
+          <SalesRepsView
+            salesReps={salesReps}
+            onCreateSalesRep={createSalesRep}
+            onDeleteSalesRep={deleteSalesRep}
+            getEngagementCount={getEngagementCount}
             onBack={() => navigateTo('list')}
           />
         )}
@@ -380,6 +405,7 @@ function PresalesTracker() {
             key={`detail-${selectedEngagement.id}-${conflictResetCounter}`}
             engagement={selectedEngagement}
             teamMembers={teamMembers}
+            salesReps={salesReps}
             currentUser={currentUser}
             getOwnerInfo={getOwnerInfo}
             detail={detail}
@@ -398,6 +424,7 @@ function PresalesTracker() {
             newEngagement={newEngagement}
             setNewEngagement={setNewEngagement}
             teamMembers={teamMembers}
+            salesReps={salesReps}
             onSubmit={handleCreateEngagement}
             onBack={() => navigateTo('list')}
           />
