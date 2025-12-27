@@ -390,7 +390,8 @@ const DetailView = ({
   navigationOptions,
   onClearNavigationOptions,
   onToggleArchive,
-  onBack
+  onBack,
+  onModalStateChange  // NEW: Layer 1 - Report modal state to App
 }) => {
   // Tab state
   const [activeTab, setActiveTab] = useState('progress');
@@ -407,6 +408,30 @@ const DetailView = ({
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+
+  // ============================================
+  // LAYER 1: Report modal state to App
+  // This allows App to skip visibility refresh when a modal is open
+  // ============================================
+  useEffect(() => {
+    const hasOpenModal = 
+      showEditDetailsModal || 
+      showOwnersModal || 
+      showIntegrationsModal || 
+      showCompetitionModal || 
+      showArchiveConfirm;
+    
+    if (onModalStateChange) {
+      onModalStateChange(hasOpenModal);
+    }
+  }, [
+    showEditDetailsModal,
+    showOwnersModal,
+    showIntegrationsModal,
+    showCompetitionModal,
+    showArchiveConfirm,
+    onModalStateChange
+  ]);
 
   // Get owners with full info
   const owners = useMemo(() => {
