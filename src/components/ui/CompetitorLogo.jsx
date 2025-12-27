@@ -5,7 +5,7 @@ import { competitorConfigMap } from '../../constants';
  * Renders a competitor logo in monochrome gray (#6B7280)
  * Brand-accurate SVG logos optimized for 20-28px chip display
  * 
- * All 21 competitors implemented with recognizable brand logos
+ * All 22 competitors implemented with recognizable brand logos
  */
 const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) => {
   const config = competitorConfigMap[competitor];
@@ -128,6 +128,17 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
             {/* Diagonal stripe cutouts (negative space) */}
             <path d="M12 6l4 2v2l-4-2V6z" fill="white"/>
             <path d="M12 12l4 2v2l-4-2v-2z" fill="white"/>
+          </svg>
+        );
+
+      // ============================================
+      // IMMUTA - Vertical bar/pillar (stylized "I")
+      // ============================================
+      case 'IMMUTA':
+        return (
+          <svg viewBox="0 0 24 24" className={sizeClass} fill={fillColor}>
+            {/* Vertical bar - centered pillar shape */}
+            <rect x="9" y="2" width="6" height="20" />
           </svg>
         );
 
