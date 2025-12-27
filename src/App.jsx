@@ -57,6 +57,7 @@ function PresalesTracker() {
   // LAYER 2: CONFLICT MODAL STATE
   // ============================================
   const [conflictInfo, setConflictInfo] = useState(null);
+  const [conflictResetCounter, setConflictResetCounter] = useState(0);
   
   // ============================================
   // MODAL STATE TRACKING (for Layer 1)
@@ -169,6 +170,7 @@ function PresalesTracker() {
     if (currentUser?.id) {
       fetchAllData(currentUser.id);
     }
+    setConflictResetCounter(c => c + 1); // Force DetailView remount to close any edit forms
     setConflictInfo(null);
   }, [fetchAllData, currentUser?.id]);
 
@@ -369,6 +371,7 @@ function PresalesTracker() {
 
         {view === 'detail' && selectedEngagement && (
           <DetailView
+            key={`detail-${selectedEngagement.id}-${conflictResetCounter}`}
             engagement={selectedEngagement}
             teamMembers={teamMembers}
             currentUser={currentUser}
