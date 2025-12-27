@@ -17,14 +17,27 @@ var useSalesRepsOperations = function(params) {
    * @returns {Promise<Object|null>} The created sales rep or null on error
    */
   var createSalesRep = useCallback(async function(name) {
-    if (!name || !name.trim()) return null;
+    if (!name || !name.trim()) {
+      console.error('[SalesReps] Cannot create: name is empty');
+      return null;
+    }
+
+    console.log('[SalesReps] Creating sales rep:', name);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
       
+      if (!dataClient || !dataClient.models || !dataClient.models.SalesRep) {
+        console.error('[SalesReps] Error: SalesRep model not available. Have you deployed the schema?');
+        alert('Error: SalesRep model not available. Please deploy your Amplify schema first.');
+        return null;
+      }
+      
       var result = await dataClient.models.SalesRep.create({
         name: name.trim()
       });
+
+      console.log('[SalesReps] Create result:', result);
 
       if (result.data) {
         setSalesReps(function(prev) {
@@ -34,9 +47,16 @@ var useSalesRepsOperations = function(params) {
         });
         return result.data;
       }
+      
+      if (result.errors) {
+        console.error('[SalesReps] API errors:', result.errors);
+        alert('Error creating sales rep: ' + JSON.stringify(result.errors));
+      }
+      
       return null;
     } catch (error) {
-      console.error('Error creating sales rep:', error);
+      console.error('[SalesReps] Error creating sales rep:', error);
+      alert('Error creating sales rep: ' + error.message);
       return null;
     }
   }, [client, setSalesReps]);
@@ -113,4 +133,3 @@ var useSalesRepsOperations = function(params) {
 };
 
 export default useSalesRepsOperations;
-
