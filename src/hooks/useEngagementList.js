@@ -264,29 +264,19 @@ var useEngagementList = function(params) {
    * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
    */
   var handleCreateEngagement = useCallback(async function(overrides) {
-    // DEBUG: Log inputs
-    console.log('=== DEBUG: handleCreateEngagement called ===');
-    console.log('currentUser:', currentUser);
-    console.log('newEngagement:', newEngagement);
-    console.log('overrides:', overrides);
-
     if (!currentUser || !newEngagement.company || !newEngagement.contactName) {
-      console.log('DEBUG: Early return - missing required fields');
-      console.log('  currentUser:', !!currentUser);
-      console.log('  company:', newEngagement.company);
-      console.log('  contactName:', newEngagement.contactName);
       return;
     }
 
     // Merge overrides with newEngagement
     var engagementData = Object.assign({}, newEngagement, overrides || {});
-    console.log('DEBUG: Merged engagementData:', engagementData);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
       var today = new Date().toISOString().split('T')[0];
 
-      console.log('DEBUG: About to call Engagement.create with:', {
+      // Build the create payload - IMPORTANT: omit salesRepId if empty (GSI constraint)
+      var createPayload = {
         company: engagementData.company,
         contactName: engagementData.contactName,
         contactEmail: engagementData.contactEmail || null,
@@ -298,22 +288,6 @@ var useEngagementList = function(params) {
         lastActivity: today,
         ownerId: currentUser.id,
         isArchived: false,
-        salesRepId: engagementData.salesRepId || null
-      });
-
-      var result = await dataClient.models.Engagement.create({
-        company: engagementData.company,
-        contactName: engagementData.contactName,
-        contactEmail: engagementData.contactEmail || null,
-        contactPhone: engagementData.contactPhone || null,
-        industry: engagementData.industry || 'TECHNOLOGY',
-        dealSize: engagementData.dealSize || null,
-        currentPhase: 'DISCOVER',
-        startDate: today,
-        lastActivity: today,
-        ownerId: currentUser.id,
-        isArchived: false,
-        salesRepId: engagementData.salesRepId || null,
         salesforceId: engagementData.salesforceId || null,
         salesforceUrl: engagementData.salesforceUrl || null,
         jiraTicket: engagementData.jiraTicket || null,
@@ -328,19 +302,19 @@ var useEngagementList = function(params) {
         slidesUrl: engagementData.slidesUrl || null,
         sheetsName: engagementData.sheetsName || null,
         sheetsUrl: engagementData.sheetsUrl || null
-      });
+      };
 
-      // DEBUG: Log the result
-      console.log('DEBUG: Engagement.create result:', result);
-      console.log('DEBUG: result.data:', result.data);
-      console.log('DEBUG: result.errors:', result.errors);
+      // Only include salesRepId if it has a value (GSI doesn't allow null)
+      if (engagementData.salesRepId) {
+        createPayload.salesRepId = engagementData.salesRepId;
+      }
+
+      var result = await dataClient.models.Engagement.create(createPayload);
 
       var createdEngagement = result.data;
 
-      // DEBUG: Check if create failed
       if (!createdEngagement) {
-        console.error('DEBUG: Engagement.create returned null data!');
-        console.error('DEBUG: Full result object:', JSON.stringify(result, null, 2));
+        console.error('Failed to create engagement:', result.errors);
         return;
       }
 
@@ -387,7 +361,7 @@ var useEngagementList = function(params) {
         isStale: false,
         daysSinceActivity: 0,
         hasSystemOwner: false,
-        salesRepName: engagementData.salesRepName || null
+        salesRepName: null
       });
 
       setEngagements(function(prev) { return [enrichedEngagement].concat(prev); });
