@@ -68,16 +68,17 @@ const DealSizeInput = ({
 };
 
 /**
- * Modal for editing engagement details (company, contact, industry, deal size)
+ * Modal for editing engagement details (company, contact, industry, deal size, sales rep)
  * Manages its own local form state
  */
-const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
+const EditDetailsModal = ({ isOpen, onClose, initialData, onSave, salesReps = [] }) => {
   const [formData, setFormData] = useState({
     company: '',
     contactName: '',
     contactEmail: '',
     contactPhone: '',
-    industry: 'TECHNOLOGY'
+    industry: 'TECHNOLOGY',
+    salesRepId: ''
   });
 
   // Separate state for deal size parts
@@ -93,7 +94,8 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
         contactName: initialData.contactName || '',
         contactEmail: initialData.contactEmail || '',
         contactPhone: initialData.contactPhone || '',
-        industry: initialData.industry || 'TECHNOLOGY'
+        industry: initialData.industry || 'TECHNOLOGY',
+        salesRepId: initialData.salesRepId || ''
       });
       
       // Parse existing deal size into parts
@@ -119,13 +121,18 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
       ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
       : null;
     
+    // Find selected sales rep name for state update
+    const selectedRep = salesReps.find(rep => rep.id === formData.salesRepId);
+    
     onSave({
       company: formData.company.trim(),
       contactName: formData.contactName.trim(),
       contactEmail: formData.contactEmail.trim() || null,
       contactPhone: formData.contactPhone.trim() || null,
       industry: formData.industry,
-      dealSize: formattedDealSize
+      dealSize: formattedDealSize,
+      salesRepId: formData.salesRepId || null,
+      salesRepName: selectedRep ? selectedRep.name : null
     });
   };
 
@@ -231,6 +238,25 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave }) => {
               ))}
             </select>
           </div>
+
+          {/* Sales Rep Dropdown */}
+          {salesReps.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sales Rep
+              </label>
+              <select 
+                value={formData.salesRepId}
+                onChange={e => updateField('salesRepId', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              >
+                <option value="">Select a sales rep...</option>
+                {salesReps.map(rep => (
+                  <option key={rep.id} value={rep.id}>{rep.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           
           {/* New Deal Size Input */}
           <DealSizeInput
