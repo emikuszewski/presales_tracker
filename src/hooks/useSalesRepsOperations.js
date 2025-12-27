@@ -81,6 +81,53 @@ var useSalesRepsOperations = function(params) {
   }, [client, setSalesReps]);
 
   /**
+   * Update a sales rep's details
+   * @param {string} salesRepId - The ID of the sales rep to update
+   * @param {Object} updates - { name?, email? }
+   * @returns {Promise<Object|null>} The updated sales rep or null on error
+   */
+  var updateSalesRep = useCallback(async function(salesRepId, updates) {
+    if (!salesRepId) return null;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      
+      var updateData = { id: salesRepId };
+      
+      if (updates.name !== undefined) {
+        updateData.name = updates.name.trim();
+        updateData.initials = generateInitials(updates.name);
+      }
+      if (updates.email !== undefined) {
+        updateData.email = updates.email.trim() || null;
+      }
+
+      console.log('[SalesReps] Updating sales rep:', updateData);
+      
+      var result = await dataClient.models.SalesRep.update(updateData);
+
+      if (result.data) {
+        setSalesReps(function(prev) {
+          return prev.map(function(rep) {
+            if (rep.id === salesRepId) {
+              return result.data;
+            }
+            return rep;
+          }).sort(function(a, b) {
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+          });
+        });
+        return result.data;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[SalesReps] Error updating sales rep:', error);
+      return null;
+    }
+  }, [client, setSalesReps]);
+
+  /**
    * Delete a sales rep and clean up references
    * Sets salesRepId to null on all affected engagements before deleting
    * @param {string} salesRepId - The ID of the sales rep to delete
@@ -146,6 +193,7 @@ var useSalesRepsOperations = function(params) {
 
   return {
     createSalesRep: createSalesRep,
+    updateSalesRep: updateSalesRep,
     deleteSalesRep: deleteSalesRep,
     getEngagementCount: getEngagementCount
   };
