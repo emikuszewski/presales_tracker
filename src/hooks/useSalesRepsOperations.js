@@ -12,6 +12,19 @@ var useSalesRepsOperations = function(params) {
   var client = params.client;
 
   /**
+   * Generate initials from a name
+   * "Greg Berg" → "GB", "Madonna" → "M"
+   */
+  var generateInitials = function(name) {
+    if (!name) return '?';
+    var parts = name.trim().split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0].charAt(0).toUpperCase();
+    }
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  /**
    * Create a new sales rep
    * @param {string} name - The sales rep's name
    * @returns {Promise<Object|null>} The created sales rep or null on error
@@ -22,7 +35,9 @@ var useSalesRepsOperations = function(params) {
       return null;
     }
 
-    console.log('[SalesReps] Creating sales rep:', name);
+    var trimmedName = name.trim();
+    var initials = generateInitials(trimmedName);
+    console.log('[SalesReps] Creating sales rep:', trimmedName, 'initials:', initials);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
@@ -33,9 +48,13 @@ var useSalesRepsOperations = function(params) {
         return null;
       }
       
-      var result = await dataClient.models.SalesRep.create({
-        name: name.trim()
-      });
+      var inputData = { 
+        name: trimmedName,
+        initials: initials
+      };
+      console.log('[SalesReps] Input data:', JSON.stringify(inputData));
+      
+      var result = await dataClient.models.SalesRep.create(inputData);
 
       console.log('[SalesReps] Create result:', result);
 
