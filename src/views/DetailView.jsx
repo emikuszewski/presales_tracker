@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Modal,
   SlackIcon,
@@ -26,9 +26,36 @@ import {
 import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab } from '../components/engagement';
 
 /**
+ * Three-dot/ellipsis icon for overflow menu
+ */
+const EllipsisIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+  </svg>
+);
+
+/**
+ * Pencil icon for Edit Details
+ */
+const PencilIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+/**
+ * People/users icon for Manage Owners
+ */
+const UsersIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+
+/**
  * Gear/cog icon for integrations editing
  */
-const GearIcon = ({ className = "w-5 h-5" }) => (
+const GearIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -38,7 +65,7 @@ const GearIcon = ({ className = "w-5 h-5" }) => (
 /**
  * Archive icon - box with down arrow (for archiving)
  */
-const ArchiveIcon = ({ className = "w-5 h-5" }) => (
+const ArchiveIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4l3 3m0 0l3-3m-3 3V9" />
   </svg>
@@ -47,7 +74,7 @@ const ArchiveIcon = ({ className = "w-5 h-5" }) => (
 /**
  * Restore icon - box with up arrow (for restoring from archive)
  */
-const RestoreIcon = ({ className = "w-5 h-5" }) => (
+const RestoreIcon = ({ className = "w-4 h-4" }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4l3-3m0 0l3 3m-3-3v7" />
   </svg>
@@ -219,6 +246,135 @@ const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => 
         size="xs"
       />
     </button>
+  );
+};
+
+/**
+ * Three-dot overflow menu component
+ * Contains: Edit Details, Manage Owners, Edit Integrations, divider, Archive/Restore
+ */
+const OverflowMenu = ({ 
+  isArchived, 
+  onEditDetails, 
+  onManageOwners, 
+  onEditIntegrations, 
+  onArchive 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on ESC
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  const handleMenuItemClick = (action) => {
+    setIsOpen(false);
+    action();
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+        title="More options"
+      >
+        <EllipsisIcon className="w-5 h-5 text-gray-600" />
+      </button>
+
+      {isOpen && (
+        <div 
+          className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[180px]"
+          style={{ animation: 'menuFadeIn 0.1s ease-out' }}
+        >
+          {/* Edit Details */}
+          <button
+            onClick={() => handleMenuItemClick(onEditDetails)}
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+          >
+            <PencilIcon className="w-4 h-4 text-gray-500" />
+            Edit Details
+          </button>
+
+          {/* Manage Owners */}
+          <button
+            onClick={() => handleMenuItemClick(onManageOwners)}
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+          >
+            <UsersIcon className="w-4 h-4 text-gray-500" />
+            Manage Owners
+          </button>
+
+          {/* Edit Integrations */}
+          <button
+            onClick={() => handleMenuItemClick(onEditIntegrations)}
+            className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
+          >
+            <GearIcon className="w-4 h-4 text-gray-500" />
+            Edit Integrations
+          </button>
+
+          {/* Divider */}
+          <div className="my-1 border-t border-gray-100" />
+
+          {/* Archive / Restore */}
+          {isArchived ? (
+            <button
+              onClick={() => handleMenuItemClick(onArchive)}
+              className="w-full px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50 flex items-center gap-2.5"
+            >
+              <RestoreIcon className="w-4 h-4 text-green-600" />
+              Restore
+            </button>
+          ) : (
+            <button
+              onClick={() => handleMenuItemClick(onArchive)}
+              className="w-full px-3 py-2 text-left text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2.5"
+            >
+              <ArchiveIcon className="w-4 h-4 text-amber-600" />
+              Archive
+            </button>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes menuFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 
@@ -440,11 +596,11 @@ const DetailView = ({
             />
           </div>
 
-          {/* Right: Integration links + Settings + Archive */}
+          {/* Right: Integration links + Three-dot menu */}
           <div className="flex items-center gap-2">
-            {/* Integration links */}
+            {/* Integration links - visible when configured */}
             {hasAnyIntegration && (
-              <div className="flex items-center gap-1 mr-2">
+              <div className="flex items-center gap-1 mr-1">
                 {hasSlack && (
                   <a
                     href={engagement.slackUrl}
@@ -503,27 +659,14 @@ const DetailView = ({
               </div>
             )}
 
-            {/* Settings button */}
-            <button
-              onClick={() => setShowIntegrationsModal(true)}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Edit Integrations"
-            >
-              <GearIcon className="w-5 h-5 text-gray-600" />
-            </button>
-
-            {/* Archive/Restore button */}
-            <button
-              onClick={handleArchive}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              title={engagement.isArchived ? 'Restore engagement' : 'Archive engagement'}
-            >
-              {engagement.isArchived ? (
-                <RestoreIcon className="w-5 h-5 text-gray-600" />
-              ) : (
-                <ArchiveIcon className="w-5 h-5 text-gray-600" />
-              )}
-            </button>
+            {/* Three-dot overflow menu */}
+            <OverflowMenu
+              isArchived={engagement.isArchived}
+              onEditDetails={() => setShowEditDetailsModal(true)}
+              onManageOwners={() => setShowOwnersModal(true)}
+              onEditIntegrations={() => setShowIntegrationsModal(true)}
+              onArchive={handleArchive}
+            />
           </div>
         </div>
       </div>
