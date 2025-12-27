@@ -215,6 +215,41 @@ export const getClosedBannerClasses = (status) => {
 };
 
 // ============================================================================
+// PHASE UTILITIES
+// ============================================================================
+
+/**
+ * Derive the current display phase from phase data
+ * Scans phases in order (DISCOVER → ENABLE), returns first that is NOT COMPLETE and NOT SKIPPED
+ * Falls back to ENABLE if all phases are COMPLETE or SKIPPED
+ * 
+ * This fixes the bug where stored currentPhase gets stale when phases are marked
+ * COMPLETE directly without going through IN_PROGRESS first.
+ * 
+ * @param {Object} phases - Object mapping phase IDs to phase data
+ * @returns {string} The derived current phase ID
+ */
+export const getDerivedCurrentPhase = (phases) => {
+  if (!phases) return 'DISCOVER';
+  
+  // Phase order - hardcoded to avoid circular dependency with constants
+  const phaseOrder = ['DISCOVER', 'DESIGN', 'DEMONSTRATE', 'VALIDATE', 'ENABLE'];
+  
+  for (const phaseId of phaseOrder) {
+    const phaseData = phases[phaseId];
+    const status = phaseData?.status || 'PENDING';
+    
+    // Return first phase that is NOT COMPLETE and NOT SKIPPED
+    if (status !== 'COMPLETE' && status !== 'SKIPPED') {
+      return phaseId;
+    }
+  }
+  
+  // All phases are COMPLETE or SKIPPED, return ENABLE
+  return 'ENABLE';
+};
+
+// ============================================================================
 // ENGAGEMENT UTILITIES
 // ============================================================================
 
