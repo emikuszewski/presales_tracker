@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 
 // Import constants
 import { ALLOWED_DOMAIN } from './constants';
 
 // Import components
-import { AvatarMenu } from './components';
+import { AvatarMenu, ConflictModal } from './components';
 
 // Import views
 import {
@@ -22,7 +22,8 @@ import {
   useAuth,
   useTeamOperations,
   useEngagementList,
-  useEngagementDetail
+  useEngagementDetail,
+  useVisibilityRefresh
 } from './hooks';
 
 // Main App Component (inside Authenticator)
@@ -51,6 +52,17 @@ function PresalesTracker() {
     sheetsName: '', sheetsUrl: '',
     slackChannel: '', slackUrl: ''
   });
+
+  // ============================================
+  // LAYER 2: CONFLICT MODAL STATE
+  // ============================================
+  const [conflictInfo, setConflictInfo] = useState(null);
+  
+  // ============================================
+  // MODAL STATE TRACKING (for Layer 1)
+  // Tracks whether DetailView has any modal open
+  // ============================================
+  const [hasOpenModal, setHasOpenModal] = useState(false);
 
   // ============================================
   // HOOKS - Data and Operations
@@ -136,7 +148,40 @@ function PresalesTracker() {
     }
   });
 
+  // ============================================
+  // LAYER 2: CONFLICT HANDLER
+  // ============================================
+  
+  /**
+   * Called by useEngagementDetail when a conditional write fails
+   * @param {Object} info - { recordType: string }
+   */
+  const handleConflict = useCallback((info) => {
+    console.log('[App] Conflict detected:', info);
+    setConflictInfo(info);
+  }, []);
+
+  /**
+   * Handle refresh from conflict modal
+   * Triggers full data refresh and closes modal
+   */
+  const handleConflictRefresh = useCallback(() => {
+    if (currentUser?.id) {
+      fetchAllData(currentUser.id);
+    }
+    setConflictInfo(null);
+  }, [fetchAllData, currentUser?.id]);
+
+  /**
+   * Handle dismiss from conflict modal
+   * Just closes modal, user stays on stale data
+   */
+  const handleConflictDismiss = useCallback(() => {
+    setConflictInfo(null);
+  }, []);
+
   // Engagement detail operations (namespaced)
+  // Pass onConflict callback for Layer 2 optimistic locking
   const detail = useEngagementDetail({
     selectedEngagement,
     updateEngagementInState,
@@ -145,7 +190,30 @@ function PresalesTracker() {
     setEngagementViews,
     logChangeAsync,
     getOwnerInfo,
-    client
+    client,
+    onConflict: handleConflict
+  });
+
+  // ============================================
+  // LAYER 1: VISIBILITY-BASED REFRESH
+  // ============================================
+  
+  /**
+   * Callback for visibility refresh
+   * Wraps fetchAllData with current user ID
+   */
+  const handleVisibilityRefresh = useCallback(() => {
+    if (currentUser?.id) {
+      console.log('[App] Visibility refresh triggered');
+      fetchAllData(currentUser.id);
+    }
+  }, [fetchAllData, currentUser?.id]);
+
+  // Set up visibility-based refresh (Layer 1)
+  useVisibilityRefresh({
+    onRefresh: handleVisibilityRefresh,
+    hasOpenModal,
+    currentView: view
   });
 
   // ============================================
@@ -310,6 +378,7 @@ function PresalesTracker() {
             onClearNavigationOptions={clearNavigationOptions}
             onToggleArchive={handleToggleArchive}
             onBack={() => navigateTo('list')}
+            onModalStateChange={setHasOpenModal}
           />
         )}
 
@@ -323,6 +392,14 @@ function PresalesTracker() {
           />
         )}
       </main>
+
+      {/* Layer 2: Conflict Modal */}
+      <ConflictModal
+        isOpen={conflictInfo !== null}
+        recordType={conflictInfo?.recordType || 'record'}
+        onRefresh={handleConflictRefresh}
+        onDismiss={handleConflictDismiss}
+      />
     </div>
   );
 }
