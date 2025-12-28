@@ -265,11 +265,7 @@ var useEngagementList = function(params) {
    * @param {Object} changeLog - The created change log record
    */
   var addChangeLogToState = function(engagementId, changeLog) {
-    if (!changeLog) {
-      console.log('[ChangeLog] No changeLog to add (null/undefined)');
-      return;
-    }
-    console.log('[ChangeLog] Adding to state:', changeLog.changeType, '-', changeLog.description);
+    if (!changeLog) return;
     updateEngagementInState(engagementId, function(eng) {
       return Object.assign({}, eng, {
         changeLogs: [changeLog].concat(eng.changeLogs || [])
@@ -425,12 +421,10 @@ var useEngagementList = function(params) {
         if (shouldArchive) {
           // Archiving - set isStale to false
           stateUpdate.isStale = false;
-          console.log('[Recalculate] handleToggleArchive (archive):', eng.company, '| isStale:', eng.isStale, '→ false');
         } else {
           // Restoring - recalculate isStale based on current engagement state
           var restoredEngagement = Object.assign({}, eng, { isArchived: false });
           stateUpdate.isStale = recalculateIsStale(restoredEngagement);
-          console.log('[Recalculate] handleToggleArchive (restore):', eng.company, '| isStale:', eng.isStale, '→', stateUpdate.isStale);
         }
         
         return Object.assign({}, eng, stateUpdate);
