@@ -26,6 +26,17 @@ import {
 import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab } from '../components/engagement';
 
 /**
+ * Human-readable labels for phase statuses (used in tooltips)
+ */
+const phaseStatusLabels = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In Progress',
+  COMPLETE: 'Complete',
+  BLOCKED: 'Blocked',
+  SKIPPED: 'Skipped'
+};
+
+/**
  * Three-dot/ellipsis icon for overflow menu
  */
 const EllipsisIcon = ({ className = "w-5 h-5" }) => (
@@ -614,11 +625,16 @@ const DetailView = ({
               <p className="text-sm text-gray-500">{engagement.contactName}</p>
             </div>
 
-            {/* Phase badge - now uses derived phase with dynamic styling */}
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${badgeClasses}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
-              {derivedPhaseLabel}
-            </span>
+            {/* Phase badge - now uses derived phase with dynamic styling and status tooltip */}
+            <div 
+              className="phase-badge-tooltip"
+              data-tooltip={phaseStatusLabels[derivedPhaseStatus] || 'Pending'}
+            >
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${badgeClasses}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+                {derivedPhaseLabel}
+              </span>
+            </div>
 
             {/* Status dropdown */}
             <EngagementStatusDropdown 
