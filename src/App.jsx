@@ -94,6 +94,7 @@ function PresalesTracker() {
     getOwnerInfo,
     logChangeAsync,
     fetchAllData,
+    refreshSingleEngagement,
     client
   } = usePresalesData(selectedEngagementId);
 
@@ -199,6 +200,7 @@ function PresalesTracker() {
 
   // Engagement detail operations (namespaced)
   // Pass onConflict callback for Layer 2 optimistic locking
+  // Pass refreshSingleEngagement for targeted refresh after mutations
   const detail = useEngagementDetail({
     selectedEngagement,
     updateEngagementInState,
@@ -208,7 +210,8 @@ function PresalesTracker() {
     logChangeAsync,
     getOwnerInfo,
     client,
-    onConflict: handleConflict
+    onConflict: handleConflict,
+    refreshSingleEngagement: refreshSingleEngagement
   });
 
   // ============================================
