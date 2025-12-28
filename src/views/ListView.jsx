@@ -10,6 +10,17 @@ import {
 } from '../utils';
 
 /**
+ * Human-readable labels for phase statuses (used in tooltips)
+ */
+const phaseStatusLabels = {
+  PENDING: 'Pending',
+  IN_PROGRESS: 'In Progress',
+  COMPLETE: 'Complete',
+  BLOCKED: 'Blocked',
+  SKIPPED: 'Skipped'
+};
+
+/**
  * List view showing all engagements with minimal filter UI
  * - Single control row: Search + Filters button
  * - Collapsible filter panel
@@ -415,11 +426,16 @@ const ListView = ({
                     })}
                   </div>
 
-                  {/* Current Phase Badge - now uses derived phase */}
-                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
-                    {derivedPhaseLabel}
-                  </span>
+                  {/* Current Phase Badge - now uses derived phase with status tooltip */}
+                  <div 
+                    className="phase-badge-tooltip"
+                    data-tooltip={phaseStatusLabels[derivedPhaseStatus] || 'Pending'}
+                  >
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full ${badgeClasses}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${dotClasses}`}></span>
+                      {derivedPhaseLabel}
+                    </span>
+                  </div>
 
                   {/* Engagement Status Badge - hidden for ACTIVE (default state) */}
                   {engagementStatus !== 'ACTIVE' && (
