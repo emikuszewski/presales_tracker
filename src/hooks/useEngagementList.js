@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { phaseConfig, phaseLabels } from '../constants';
-import { computePipelineTotal, formatPipelineTotal } from '../utils';
+import { computePipelineTotal, formatPipelineTotal, recalculateIsStale } from '../utils';
 
 var useEngagementList = function(params) {
   var engagements = params.engagements;
@@ -260,6 +260,20 @@ var useEngagementList = function(params) {
   }, []);
 
   /**
+   * Helper to add a change log to the engagement's changeLogs array
+   * @param {string} engagementId - The engagement ID
+   * @param {Object} changeLog - The created change log record
+   */
+  var addChangeLogToState = function(engagementId, changeLog) {
+    if (!changeLog) return;
+    updateEngagementInState(engagementId, function(eng) {
+      return Object.assign({}, eng, {
+        changeLogs: [changeLog].concat(eng.changeLogs || [])
+      });
+    });
+  };
+
+  /**
    * Create new engagement
    * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
    */
@@ -389,6 +403,7 @@ var useEngagementList = function(params) {
   }, [currentUser, newEngagement, setNewEngagement, setView, setEngagements, logChangeAsync, client]);
 
   // Toggle archive status
+  // GROUP B: Updated to add changeLog to state immediately + recalculate isStale when restoring
   var handleToggleArchive = useCallback(async function(engagementId, shouldArchive) {
     try {
       var dataClient = typeof client === 'function' ? client() : client;
@@ -398,14 +413,30 @@ var useEngagementList = function(params) {
         isArchived: shouldArchive
       });
 
-      updateEngagementInState(engagementId, { isArchived: shouldArchive });
+      // When restoring (unarchiving), we need to recalculate isStale
+      // When archiving, isStale should be false (archived engagements are never stale)
+      updateEngagementInState(engagementId, function(eng) {
+        var stateUpdate = { isArchived: shouldArchive };
+        
+        if (shouldArchive) {
+          // Archiving - set isStale to false
+          stateUpdate.isStale = false;
+        } else {
+          // Restoring - recalculate isStale based on current engagement state
+          var restoredEngagement = Object.assign({}, eng, { isArchived: false });
+          stateUpdate.isStale = recalculateIsStale(restoredEngagement);
+        }
+        
+        return Object.assign({}, eng, stateUpdate);
+      });
 
       if (logChangeAsync) {
-        logChangeAsync(
+        var changeLog = await logChangeAsync(
           engagementId, 
           shouldArchive ? 'ARCHIVED' : 'RESTORED', 
           shouldArchive ? 'Archived engagement' : 'Restored engagement'
         );
+        addChangeLogToState(engagementId, changeLog);
       }
     } catch (error) {
       console.error('Error toggling archive:', error);
