@@ -1,95 +1,195 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import {
-  groupBy,
-  parseLinks,
-  isEngagementStale,
-  getDaysSinceActivity,
-  safeJsonParse
-} from '../utils';
-import { phaseConfig, SYSTEM_SE_TEAM } from '../constants';
+import { groupBy, parseLinks, safeJsonParse, isEngagementStale, getDaysSinceActivity } from '../utils';
+import { SYSTEM_SE_TEAM } from '../constants';
 
-const usePresalesData = (selectedEngagementId) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [allTeamMembers, setAllTeamMembers] = useState([]);
-  const [engagements, setEngagements] = useState([]);
-  const [salesReps, setSalesReps] = useState([]);
-  const [engagementViews, setEngagementViews] = useState({});
-  const [loading, setLoading] = useState(true);
+/**
+ * Enrich a single engagement with all related data
+ * This function is extracted to be reusable for both initial fetch and targeted refresh
+ * 
+ * @param {Object} eng - Raw engagement object from database
+ * @param {Object} relatedData - Object containing all related data
+ * @param {Object} relatedData.phasesGrouped - Phases grouped by engagementId
+ * @param {Object} relatedData.activitiesGrouped - Activities grouped by engagementId
+ * @param {Object} relatedData.commentsGrouped - Comments grouped by activityId
+ * @param {Object} relatedData.ownersGrouped - Ownership records grouped by engagementId
+ * @param {Object} relatedData.changeLogsGrouped - Change logs grouped by engagementId
+ * @param {Object} relatedData.phaseNotesGrouped - Phase notes grouped by engagementId
+ * @param {Array} relatedData.viewsData - All engagement views
+ * @param {Array} relatedData.salesRepsData - All sales reps
+ * @param {Array} relatedData.systemUserIds - IDs of system users
+ * @param {string} relatedData.currentUserId - Current user's ID
+ * @returns {Object} Enriched engagement object
+ */
+function enrichSingleEngagement(eng, relatedData) {
+  var phasesGrouped = relatedData.phasesGrouped;
+  var activitiesGrouped = relatedData.activitiesGrouped;
+  var commentsGrouped = relatedData.commentsGrouped;
+  var ownersGrouped = relatedData.ownersGrouped;
+  var changeLogsGrouped = relatedData.changeLogsGrouped;
+  var phaseNotesGrouped = relatedData.phaseNotesGrouped;
+  var viewsData = relatedData.viewsData;
+  var salesRepsData = relatedData.salesRepsData;
+  var systemUserIds = relatedData.systemUserIds;
+  var currentUserId = relatedData.currentUserId;
 
-  const selectedEngagement = useMemo(function() {
-    if (!selectedEngagementId) return null;
-    return engagements.find(function(e) { return e.id === selectedEngagementId; }) || null;
-  }, [engagements, selectedEngagementId]);
-
-  const updateEngagementInState = useCallback(function(engagementId, updater) {
-    setEngagements(function(prev) {
-      return prev.map(function(e) {
-        if (e.id === engagementId) {
-          return typeof updater === 'function' ? updater(e) : Object.assign({}, e, updater);
-        }
-        return e;
-      });
+  // Build phases object
+  var phases = {};
+  var engagementPhases = phasesGrouped[eng.id] || [];
+  engagementPhases.forEach(function(phase) {
+    phases[phase.phaseType] = Object.assign({}, phase, {
+      links: parseLinks(phase.links)
     });
-  }, []);
+  });
 
-  const getOwnerInfo = useCallback(function(ownerId) {
+  // Build activities with comments
+  var engagementActivities = activitiesGrouped[eng.id] || [];
+  var activitiesWithComments = engagementActivities.map(function(activity) {
+    var activityComments = commentsGrouped[activity.id] || [];
+    activityComments.sort(function(a, b) {
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+    return Object.assign({}, activity, { comments: activityComments });
+  });
+  activitiesWithComments.sort(function(a, b) {
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  // Get ownership records and owner IDs
+  var ownershipRecords = ownersGrouped[eng.id] || [];
+  var ownerIds = ownershipRecords.map(function(o) { return o.teamMemberId; });
+  if (ownerIds.length === 0 && eng.ownerId) {
+    ownerIds = [eng.ownerId];
+  }
+
+  // Get change logs
+  var engagementChangeLogs = changeLogsGrouped[eng.id] || [];
+  engagementChangeLogs.sort(function(a, b) {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  // Get phase notes
+  var engagementPhaseNotes = phaseNotesGrouped[eng.id] || [];
+  engagementPhaseNotes.sort(function(a, b) {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  // Group notes by phase
+  var notesByPhase = {};
+  engagementPhaseNotes.forEach(function(note) {
+    if (!notesByPhase[note.phaseType]) {
+      notesByPhase[note.phaseType] = [];
+    }
+    notesByPhase[note.phaseType].push(note);
+  });
+
+  // Calculate unread changes
+  var viewRecord = viewsData.find(function(v) {
+    return v.visitorId === currentUserId && v.engagementId === eng.id;
+  });
+  var lastViewedAt = viewRecord ? viewRecord.lastViewedAt : null;
+  var unreadChanges = 0;
+  if (lastViewedAt && currentUserId) {
+    unreadChanges = engagementChangeLogs.filter(function(log) {
+      return new Date(log.createdAt) > new Date(lastViewedAt) && log.userId !== currentUserId;
+    }).length;
+  }
+
+  // Check if engagement has system owner
+  var hasSystemOwner = ownerIds.some(function(id) {
+    return systemUserIds.indexOf(id) !== -1;
+  });
+
+  // Get sales rep name
+  var salesRepName = null;
+  if (eng.salesRepId) {
+    var salesRep = salesRepsData.find(function(rep) {
+      return rep.id === eng.salesRepId;
+    });
+    if (salesRep) {
+      salesRepName = salesRep.name;
+    }
+  }
+
+  // Parse competitors from JSON string
+  var competitors = safeJsonParse(eng.competitors, []);
+
+  // Build the enriched engagement object
+  var enrichedEngagement = Object.assign({}, eng, {
+    phases: phases,
+    activities: activitiesWithComments,
+    ownerIds: ownerIds,
+    ownershipRecords: ownershipRecords,
+    changeLogs: engagementChangeLogs,
+    phaseNotes: engagementPhaseNotes,
+    notesByPhase: notesByPhase,
+    totalNotesCount: engagementPhaseNotes.length,
+    unreadChanges: unreadChanges,
+    lastViewedAt: lastViewedAt,
+    hasSystemOwner: hasSystemOwner,
+    salesRepName: salesRepName,
+    competitors: competitors
+  });
+
+  // Calculate derived fields
+  enrichedEngagement.isStale = isEngagementStale(enrichedEngagement);
+  enrichedEngagement.daysSinceActivity = getDaysSinceActivity(enrichedEngagement);
+
+  return enrichedEngagement;
+}
+
+var usePresalesData = function() {
+  var client = generateClient();
+  
+  var stateResult = useState([]);
+  var engagements = stateResult[0];
+  var setEngagements = stateResult[1];
+  
+  var teamMembersState = useState([]);
+  var allTeamMembers = teamMembersState[0];
+  var setAllTeamMembers = teamMembersState[1];
+  
+  var salesRepsState = useState([]);
+  var salesReps = salesRepsState[0];
+  var setSalesReps = salesRepsState[1];
+  
+  var loadingState = useState(true);
+  var loading = loadingState[0];
+  var setLoading = loadingState[1];
+  
+  var currentUserState = useState(null);
+  var currentUser = currentUserState[0];
+  var setCurrentUser = currentUserState[1];
+
+  /**
+   * Get owner info by ID
+   * Returns initials, name, and display info for a team member
+   * Now handles inactive users and system users
+   */
+  var getOwnerInfo = useCallback(function(ownerId) {
+    if (!ownerId) return { initials: '?', name: 'Unknown', isActive: true, isSystemUser: false };
+    
     var member = allTeamMembers.find(function(m) { return m.id === ownerId; });
-    return member || { name: 'Unknown', initials: '?' };
+    if (member) {
+      return {
+        initials: member.initials || member.name?.substring(0, 2).toUpperCase() || '??',
+        name: member.name || 'Unknown',
+        isActive: member.isActive !== false,
+        isSystemUser: member.isSystemUser === true,
+        colorClass: member.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+      };
+    }
+    
+    return { initials: '??', name: 'Unknown User', isActive: true, isSystemUser: false };
   }, [allTeamMembers]);
 
-  const logChangeAsync = useCallback(function(engagementId, changeType, description, previousValue, newValue) {
-    if (!currentUser) return;
-    
-    var client = generateClient();
-    client.models.ChangeLog.create({
-      engagementId: engagementId,
-      userId: currentUser.id,
-      changeType: changeType,
-      description: description,
-      previousValue: previousValue || null,
-      newValue: newValue || null
-    }).catch(function(e) { console.error('Error logging change:', e); });
-  }, [currentUser]);
-
-  const ensureSystemUser = useCallback(async function(existingMembers) {
-    var seTeamExists = existingMembers.some(function(m) {
-      return m.email === SYSTEM_SE_TEAM.EMAIL || m.isSystemUser === true;
-    });
-
-    if (seTeamExists) {
-      return existingMembers;
-    }
-
+  /**
+   * Fetch all data from the database
+   * Loads engagements, phases, activities, comments, team members, ownership, change logs, views, phase notes, sales reps
+   */
+  var fetchAllData = useCallback(async function() {
     try {
-      var client = generateClient();
-      var result = await client.models.TeamMember.create({
-        email: SYSTEM_SE_TEAM.EMAIL,
-        name: SYSTEM_SE_TEAM.NAME,
-        initials: SYSTEM_SE_TEAM.INITIALS,
-        isAdmin: false,
-        isActive: true,
-        isSystemUser: true
-      });
-
-      console.log('Created SE Team system user:', result.data.id);
-      return existingMembers.concat([result.data]);
-    } catch (error) {
-      if (error.message && error.message.indexOf('unique') !== -1) {
-        console.log('SE Team already created by another session');
-        var client2 = generateClient();
-        var refreshed = await client2.models.TeamMember.list();
-        return refreshed.data;
-      }
-      console.error('Error creating SE Team system user:', error);
-      return existingMembers;
-    }
-  }, []);
-
-  const fetchAllData = useCallback(async function(userId) {
-    try {
-      var client = generateClient();
+      setLoading(true);
       
       var results = await Promise.all([
         client.models.TeamMember.list(),
@@ -99,193 +199,183 @@ const usePresalesData = (selectedEngagementId) => {
         client.models.EngagementOwner.list(),
         client.models.Comment.list(),
         client.models.ChangeLog.list(),
-        userId 
-          ? client.models.EngagementView.list({ filter: { visitorId: { eq: userId } } }).catch(function() { return { data: [] }; })
-          : Promise.resolve({ data: [] }),
-        client.models.PhaseNote.list().catch(function() { return { data: [] }; }),
-        client.models.SalesRep.list().catch(function() { return { data: [] }; })
+        client.models.EngagementView.list(),
+        client.models.PhaseNote.list(),
+        client.models.SalesRep.list()
       ]);
-
-      var allMembersData = results[0].data;
-      var engagementData = results[1].data;
-      var allPhases = results[2].data;
-      var allActivities = results[3].data;
-      var allOwnershipRecords = results[4].data;
-      var allComments = results[5].data;
-      var allChangeLogs = results[6].data;
-      var allViews = results[7].data;
-      var allPhaseNotes = results[8].data;
-      var allSalesReps = results[9].data;
-
-      // Sort and store sales reps
-      var sortedSalesReps = allSalesReps.sort(function(a, b) {
-        return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-      });
-      setSalesReps(sortedSalesReps);
-
-      // Create salesReps lookup map
-      var salesRepsMap = {};
-      allSalesReps.forEach(function(rep) {
-        salesRepsMap[rep.id] = rep;
-      });
-
-      allMembersData = await ensureSystemUser(allMembersData);
-
-      var phasesByEngagement = groupBy(allPhases, 'engagementId');
-      var activitiesByEngagement = groupBy(allActivities, 'engagementId');
-      var ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
-      var commentsByActivity = groupBy(allComments, 'activityId');
-      var changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
-      var phaseNotesByEngagement = groupBy(allPhaseNotes, 'engagementId');
       
-      var viewsMap = {};
-      allViews.forEach(function(v) {
-        viewsMap[v.engagementId] = v;
+      var teamData = results[0].data || [];
+      var engagementData = results[1].data || [];
+      var phaseData = results[2].data || [];
+      var activityData = results[3].data || [];
+      var ownerData = results[4].data || [];
+      var commentData = results[5].data || [];
+      var changeLogData = results[6].data || [];
+      var viewsData = results[7].data || [];
+      var phaseNotesData = results[8].data || [];
+      var salesRepsData = results[9].data || [];
+      
+      // Sort sales reps alphabetically
+      salesRepsData.sort(function(a, b) {
+        return (a.name || '').localeCompare(b.name || '');
       });
-      setEngagementViews(viewsMap);
-
-      setAllTeamMembers(allMembersData);
-      var activeMembers = allMembersData.filter(function(m) { return m.isActive !== false; });
-      setTeamMembers(activeMembers);
-
-      var systemUserIds = allMembersData
+      
+      // Store team members with active status and system user flag
+      var processedTeamMembers = teamData.map(function(member) {
+        return Object.assign({}, member, {
+          isActive: member.isActive !== false,
+          isSystemUser: member.isSystemUser === true
+        });
+      });
+      
+      // Sort team members: active first, then by name, system users at end
+      processedTeamMembers.sort(function(a, b) {
+        // System users go last
+        if (a.isSystemUser && !b.isSystemUser) return 1;
+        if (!a.isSystemUser && b.isSystemUser) return -1;
+        // Then sort by active status
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        // Then alphabetically
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      
+      setAllTeamMembers(processedTeamMembers);
+      setSalesReps(salesRepsData);
+      
+      // Get system user IDs for hasSystemOwner calculation
+      var systemUserIds = processedTeamMembers
         .filter(function(m) { return m.isSystemUser === true; })
         .map(function(m) { return m.id; });
-
+      
+      // Get current user ID
+      var currentUserId = currentUser ? currentUser.id : null;
+      
+      // Group related data by engagement/activity ID for efficient lookup
+      var phasesGrouped = groupBy(phaseData, 'engagementId');
+      var activitiesGrouped = groupBy(activityData, 'engagementId');
+      var commentsGrouped = groupBy(commentData, 'activityId');
+      var ownersGrouped = groupBy(ownerData, 'engagementId');
+      var changeLogsGrouped = groupBy(changeLogData, 'engagementId');
+      var phaseNotesGrouped = groupBy(phaseNotesData, 'engagementId');
+      
+      // Build related data object for enrichment function
+      var relatedData = {
+        phasesGrouped: phasesGrouped,
+        activitiesGrouped: activitiesGrouped,
+        commentsGrouped: commentsGrouped,
+        ownersGrouped: ownersGrouped,
+        changeLogsGrouped: changeLogsGrouped,
+        phaseNotesGrouped: phaseNotesGrouped,
+        viewsData: viewsData,
+        salesRepsData: salesRepsData,
+        systemUserIds: systemUserIds,
+        currentUserId: currentUserId
+      };
+      
+      // Enrich each engagement using the extracted function
       var enrichedEngagements = engagementData.map(function(eng) {
-        var phases = phasesByEngagement[eng.id] || [];
-        var activities = activitiesByEngagement[eng.id] || [];
-        var ownershipRecords = ownershipByEngagement[eng.id] || [];
-        var changeLogs = (changeLogsByEngagement[eng.id] || [])
-          .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
-        var phaseNotes = (phaseNotesByEngagement[eng.id] || [])
-          .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
-
-        var activitiesWithComments = activities
-          .map(function(activity) {
-            return Object.assign({}, activity, {
-              comments: (commentsByActivity[activity.id] || [])
-                .sort(function(a, b) { return new Date(a.createdAt) - new Date(b.createdAt); })
-            });
-          })
-          .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-
-        var phasesObj = {};
-        phaseConfig.forEach(function(p) {
-          var existingPhase = phases.find(function(ph) { return ph.phaseType === p.id; });
-          if (existingPhase) {
-            var parsedLinks = parseLinks(existingPhase.links);
-            phasesObj[p.id] = Object.assign({}, existingPhase, { links: parsedLinks });
-          } else {
-            phasesObj[p.id] = {
-              phaseType: p.id,
-              status: 'PENDING',
-              completedDate: null,
-              notes: '',
-              links: []
-            };
-          }
-        });
-
-        var ownerIds = ownershipRecords.map(function(o) { return o.teamMemberId; });
-        if (ownerIds.length === 0 && eng.ownerId) {
-          ownerIds.push(eng.ownerId);
-        }
-
-        var userView = viewsMap[eng.id];
-        var unreadChanges = 0;
-        if (userView && userId) {
-          var lastViewed = new Date(userView.lastViewedAt);
-          unreadChanges = changeLogs.filter(function(log) {
-            return new Date(log.createdAt) > lastViewed && log.userId !== userId;
-          }).length;
-        } else if (changeLogs.length > 0 && userId) {
-          unreadChanges = changeLogs.filter(function(log) { return log.userId !== userId; }).length;
-        }
-
-        var hasSystemOwner = ownerIds.some(function(id) { return systemUserIds.indexOf(id) !== -1; });
-
-        var notesByPhase = {};
-        phaseConfig.forEach(function(p) {
-          notesByPhase[p.id] = phaseNotes.filter(function(n) { return n.phaseType === p.id; });
-        });
-
-        var totalNotesCount = phaseNotes.length;
-
-        // Default engagementStatus to 'ACTIVE' if not set (backwards compatibility)
-        var engagementStatus = eng.engagementStatus || 'ACTIVE';
-
-        // Parse competitors from JSON string
-        var competitors = safeJsonParse(eng.competitors, []);
-
-        // Get sales rep name if assigned
-        var salesRepName = null;
-        if (eng.salesRepId && salesRepsMap[eng.salesRepId]) {
-          salesRepName = salesRepsMap[eng.salesRepId].name;
-        }
-
-        // Build enriched engagement with new status and competitor fields
-        var enrichedEng = Object.assign({}, eng, {
-          phases: phasesObj,
-          activities: activitiesWithComments,
-          ownerIds: ownerIds,
-          ownershipRecords: ownershipRecords,
-          changeLogs: changeLogs,
-          phaseNotes: phaseNotes,
-          notesByPhase: notesByPhase,
-          totalNotesCount: totalNotesCount,
-          unreadChanges: unreadChanges,
-          daysSinceActivity: getDaysSinceActivity(eng),
-          hasSystemOwner: hasSystemOwner,
-          engagementStatus: engagementStatus,
-          closedReason: eng.closedReason || null,
-          // Competitor fields
-          competitors: competitors,
-          competitorNotes: eng.competitorNotes || null,
-          otherCompetitorName: eng.otherCompetitorName || null,
-          // Sales rep field
-          salesRepName: salesRepName
-        });
-
-        // Calculate isStale using the enriched engagement (which includes engagementStatus)
-        enrichedEng.isStale = isEngagementStale(enrichedEng);
-
-        return enrichedEng;
+        return enrichSingleEngagement(eng, relatedData);
       });
-
+      
       setEngagements(enrichedEngagements);
-
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setLoading(false);
     }
-  }, [ensureSystemUser]);
+  }, [client, currentUser]);
 
-  // Return a client getter (not a static client) so it's created when needed
-  var getClient = useCallback(function() {
-    return generateClient();
+  /**
+   * Log a change to the ChangeLog table (fire-and-forget)
+   * @param {string} engagementId - ID of the engagement
+   * @param {string} changeType - Type of change (e.g., 'PHASE_UPDATE', 'ACTIVITY_ADDED')
+   * @param {string} description - Human-readable description
+   * @param {string} previousValue - Previous value (optional)
+   * @param {string} newValue - New value (optional)
+   */
+  var logChangeAsync = useCallback(function(engagementId, changeType, description, previousValue, newValue) {
+    if (!currentUser) return;
+    
+    client.models.ChangeLog.create({
+      engagementId: engagementId,
+      userId: currentUser.id,
+      changeType: changeType,
+      description: description,
+      previousValue: previousValue || null,
+      newValue: newValue || null
+    }).catch(function(e) { console.error('Error logging change:', e); });
+  }, [client, currentUser]);
+
+  /**
+   * Update a single engagement in state
+   * @param {string} engagementId - ID of the engagement to update
+   * @param {Object|Function} updates - Object with updates or function that receives current engagement and returns updates
+   */
+  var updateEngagementInState = useCallback(function(engagementId, updates) {
+    setEngagements(function(prev) {
+      return prev.map(function(eng) {
+        if (eng.id !== engagementId) return eng;
+        
+        if (typeof updates === 'function') {
+          return Object.assign({}, eng, updates(eng));
+        }
+        return Object.assign({}, eng, updates);
+      });
+    });
   }, []);
 
+  /**
+   * Check for conflicts before updating a record (optimistic locking)
+   * @param {string} modelName - Name of the model (e.g., 'Engagement', 'Phase')
+   * @param {string} recordId - ID of the record
+   * @param {string} expectedUpdatedAt - Expected updatedAt timestamp
+   * @returns {Object} { conflict: boolean, fresh: Object|null, wasDeleted: boolean }
+   */
+  var checkForConflict = useCallback(async function(modelName, recordId, expectedUpdatedAt) {
+    try {
+      var model = client.models[modelName];
+      if (!model) {
+        console.error('Unknown model:', modelName);
+        return { conflict: false, fresh: null, wasDeleted: false };
+      }
+      
+      var result = await model.get({ id: recordId });
+      
+      if (!result.data) {
+        return { conflict: true, fresh: null, wasDeleted: true };
+      }
+      
+      var freshRecord = result.data;
+      var isConflict = freshRecord.updatedAt !== expectedUpdatedAt;
+      
+      return {
+        conflict: isConflict,
+        fresh: freshRecord,
+        wasDeleted: false
+      };
+    } catch (error) {
+      console.error('Error checking for conflict:', error);
+      return { conflict: false, fresh: null, wasDeleted: false };
+    }
+  }, [client]);
+
   return {
-    currentUser: currentUser,
-    setCurrentUser: setCurrentUser,
-    teamMembers: teamMembers,
-    setTeamMembers: setTeamMembers,
-    allTeamMembers: allTeamMembers,
-    setAllTeamMembers: setAllTeamMembers,
     engagements: engagements,
     setEngagements: setEngagements,
+    allTeamMembers: allTeamMembers,
+    setAllTeamMembers: setAllTeamMembers,
     salesReps: salesReps,
     setSalesReps: setSalesReps,
-    engagementViews: engagementViews,
-    setEngagementViews: setEngagementViews,
     loading: loading,
-    setLoading: setLoading,
-    selectedEngagement: selectedEngagement,
-    updateEngagementInState: updateEngagementInState,
+    currentUser: currentUser,
+    setCurrentUser: setCurrentUser,
+    fetchAllData: fetchAllData,
     getOwnerInfo: getOwnerInfo,
     logChangeAsync: logChangeAsync,
-    fetchAllData: fetchAllData,
-    client: getClient // App.jsx expects 'client'
+    updateEngagementInState: updateEngagementInState,
+    checkForConflict: checkForConflict,
+    client: client
   };
 };
 
