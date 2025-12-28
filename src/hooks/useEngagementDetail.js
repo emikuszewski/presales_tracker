@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { isClosedStatus } from '../utils';
+import { isClosedStatus, recalculateIsStale, recalculateDaysSinceActivity } from '../utils';
 import { engagementStatusLabels, competitorLabels } from '../constants';
 
 var useEngagementDetail = function(params) {
@@ -99,6 +99,7 @@ var useEngagementDetail = function(params) {
   }, [currentUser, engagementViews, setEngagementViews, updateEngagementInState, client]);
 
   // Engagement status operations - WITH OPTIMISTIC LOCKING
+  // GROUP B: Updated to add changeLog to state immediately
   var statusUpdate = useCallback(async function(newStatus, closedReason) {
     if (!selectedEngagement) return false;
 
@@ -151,7 +152,7 @@ var useEngagementDetail = function(params) {
 
       updateEngagementInState(selectedEngagement.id, stateUpdate);
 
-      // Log the change
+      // Log the change and update state immediately
       if (logChangeAsync) {
         var oldLabel = engagementStatusLabels[oldStatus] || oldStatus;
         var newLabel = engagementStatusLabels[newStatus] || newStatus;
@@ -159,7 +160,8 @@ var useEngagementDetail = function(params) {
         if (closedReason) {
           description += ': "' + (closedReason.length > 50 ? closedReason.substring(0, 50) + '...' : closedReason) + '"';
         }
-        logChangeAsync(selectedEngagement.id, 'STATUS_CHANGED', description, oldStatus, newStatus);
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'STATUS_CHANGED', description, oldStatus, newStatus);
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -349,6 +351,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Phase operations - WITH OPTIMISTIC LOCKING
+  // GROUP B: Updated to add changeLog to state immediately
   var phaseSave = useCallback(async function(phaseType, phaseData) {
     if (!selectedEngagement) return;
 
@@ -411,7 +414,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        logChangeAsync(selectedEngagement.id, 'PHASE_UPDATE', 'Updated ' + phaseType + ' phase to ' + phaseData.status);
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'PHASE_UPDATE', 'Updated ' + phaseType + ' phase to ' + phaseData.status);
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
       console.error('Error saving phase:', error);
@@ -503,6 +507,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, client, onConflict]);
 
   // Activity operations - activityAdd does NOT need locking (it's a create)
+  // GROUP B: Updated to add changeLog to state immediately + recalculate derived fields
   var activityAdd = useCallback(async function(activityData) {
     if (!selectedEngagement) return false;
 
@@ -523,18 +528,30 @@ var useEngagementDetail = function(params) {
 
       var newActivity = Object.assign({}, result.data, { comments: [] });
 
+      // Build the updated engagement to recalculate derived fields
+      var updatedEngagement = Object.assign({}, selectedEngagement, {
+        lastActivity: activityData.date,
+        activities: [newActivity].concat(selectedEngagement.activities)
+      });
+
+      // Recalculate derived fields
+      var newIsStale = recalculateIsStale(updatedEngagement);
+      var newDaysSinceActivity = recalculateDaysSinceActivity(activityData.date);
+
       updateEngagementInState(selectedEngagement.id, function(eng) {
         return Object.assign({}, eng, {
           lastActivity: activityData.date,
           activities: [newActivity].concat(eng.activities),
-          isStale: false
+          isStale: newIsStale,
+          daysSinceActivity: newDaysSinceActivity
         });
       });
 
       if (logChangeAsync) {
         var desc = activityData.description;
         var truncated = desc.length > 50 ? desc.substring(0, 50) + '...' : desc;
-        logChangeAsync(selectedEngagement.id, 'ACTIVITY_ADDED', 'Added ' + activityData.type + ': ' + truncated);
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_ADDED', 'Added ' + activityData.type + ': ' + truncated);
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
