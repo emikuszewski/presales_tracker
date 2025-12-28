@@ -147,7 +147,24 @@ const usePresalesData = (selectedEngagementId) => {
     setEngagements(function(prev) {
       return prev.map(function(e) {
         if (e.id === engagementId) {
-          return typeof updater === 'function' ? updater(e) : Object.assign({}, e, updater);
+          var updated = typeof updater === 'function' ? updater(e) : Object.assign({}, e, updater);
+          
+          // DEBUG: Log state changes for key fields
+          var changedFields = [];
+          if (e.lastActivity !== updated.lastActivity) changedFields.push('lastActivity: ' + e.lastActivity + ' → ' + updated.lastActivity);
+          if (e.isStale !== updated.isStale) changedFields.push('isStale: ' + e.isStale + ' → ' + updated.isStale);
+          if (e.daysSinceActivity !== updated.daysSinceActivity) changedFields.push('daysSinceActivity: ' + e.daysSinceActivity + ' → ' + updated.daysSinceActivity);
+          if (e.currentPhase !== updated.currentPhase) changedFields.push('currentPhase: ' + e.currentPhase + ' → ' + updated.currentPhase);
+          if (e.engagementStatus !== updated.engagementStatus) changedFields.push('status: ' + e.engagementStatus + ' → ' + updated.engagementStatus);
+          if (e.isArchived !== updated.isArchived) changedFields.push('isArchived: ' + e.isArchived + ' → ' + updated.isArchived);
+          if ((e.changeLogs || []).length !== (updated.changeLogs || []).length) changedFields.push('changeLogs: ' + (e.changeLogs || []).length + ' → ' + (updated.changeLogs || []).length);
+          if ((e.activities || []).length !== (updated.activities || []).length) changedFields.push('activities: ' + (e.activities || []).length + ' → ' + (updated.activities || []).length);
+          
+          if (changedFields.length > 0) {
+            console.log('[OptimisticUpdate]', e.company, '|', changedFields.join(', '));
+          }
+          
+          return updated;
         }
         return e;
       });
