@@ -52,11 +52,7 @@ var useEngagementDetail = function(params) {
    * @param {Object} changeLog - The created change log record
    */
   var addChangeLogToState = function(engagementId, changeLog) {
-    if (!changeLog) {
-      console.log('[ChangeLog] No changeLog to add (null/undefined)');
-      return;
-    }
-    console.log('[ChangeLog] Adding to state:', changeLog.changeType, '-', changeLog.description);
+    if (!changeLog) return;
     updateEngagementInState(engagementId, function(eng) {
       return Object.assign({}, eng, {
         changeLogs: [changeLog].concat(eng.changeLogs || [])
@@ -542,12 +538,6 @@ var useEngagementDetail = function(params) {
       var newIsStale = recalculateIsStale(updatedEngagement);
       var newDaysSinceActivity = recalculateDaysSinceActivity(activityData.date);
 
-      console.log('[Recalculate] activityAdd:', {
-        lastActivity: activityData.date,
-        isStale: selectedEngagement.isStale + ' → ' + newIsStale,
-        daysSinceActivity: selectedEngagement.daysSinceActivity + ' → ' + newDaysSinceActivity
-      });
-
       updateEngagementInState(selectedEngagement.id, function(eng) {
         return Object.assign({}, eng, {
           lastActivity: activityData.date,
@@ -712,13 +702,6 @@ var useEngagementDetail = function(params) {
       // Recalculate derived fields
       var newIsStale = recalculateIsStale(updatedEngagement);
       var newDaysSinceActivity = recalculateDaysSinceActivity(newLastActivity);
-
-      console.log('[Recalculate] activityDelete:', {
-        lastActivity: selectedEngagement.lastActivity + ' → ' + newLastActivity,
-        isStale: selectedEngagement.isStale + ' → ' + newIsStale,
-        daysSinceActivity: selectedEngagement.daysSinceActivity + ' → ' + newDaysSinceActivity,
-        activitiesRemaining: remainingActivities.length
-      });
 
       // Update local state with all derived fields
       updateEngagementInState(selectedEngagement.id, function(eng) {
