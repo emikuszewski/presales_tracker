@@ -30,6 +30,7 @@ const FilterPanel = ({
   setFilterStale,
   setShowArchived,
   setShowEverything,
+  onEverythingManualEnable,
   // Data
   teamMembers,
   currentUser,
@@ -78,7 +79,17 @@ const FilterPanel = ({
 
   // Handler for Everything toggle
   const handleEverythingClick = () => {
-    setShowEverything(!showEverything);
+    if (showEverything) {
+      // Turning off - just use setShowEverything
+      setShowEverything(false);
+    } else {
+      // Turning on - use manual enable handler to clear override flag
+      if (onEverythingManualEnable) {
+        onEverythingManualEnable();
+      } else {
+        setShowEverything(true);
+      }
+    }
   };
 
   if (!isOpen) return null;
