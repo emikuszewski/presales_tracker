@@ -350,6 +350,61 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
+  // Partner update operation - WITH OPTIMISTIC LOCKING
+  var partnerUpdate = useCallback(async function(partnerName) {
+    if (!selectedEngagement) return false;
+
+    try {
+      var dataClient = typeof client === 'function' ? client() : client;
+      
+      // Check for conflicts before updating
+      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      if (conflictCheck.conflict) {
+        console.warn('[OptimisticLock] Conflict detected for engagement partner update');
+        if (onConflict) {
+          onConflict({ recordType: 'engagement' });
+        }
+        return false;
+      }
+      
+      var oldPartnerName = selectedEngagement.partnerName;
+      var newPartnerName = partnerName && partnerName.trim() ? partnerName.trim() : null;
+
+      var result = await dataClient.models.Engagement.update({
+        id: selectedEngagement.id,
+        partnerName: newPartnerName
+      });
+
+      // Update local state with new updatedAt
+      updateEngagementInState(selectedEngagement.id, {
+        partnerName: newPartnerName,
+        updatedAt: result.data.updatedAt
+      });
+
+      // Build change log description and update state immediately
+      if (logChangeAsync) {
+        var description;
+        if (!oldPartnerName && newPartnerName) {
+          description = 'Added partner: ' + newPartnerName;
+        } else if (oldPartnerName && !newPartnerName) {
+          description = 'Removed partner: ' + oldPartnerName;
+        } else if (oldPartnerName && newPartnerName && oldPartnerName !== newPartnerName) {
+          description = 'Changed partner from ' + oldPartnerName + ' to ' + newPartnerName;
+        }
+        
+        if (description) {
+          var changeLog = await logChangeAsync(selectedEngagement.id, 'PARTNER_UPDATED', description, oldPartnerName || null, newPartnerName || null);
+          addChangeLogToState(selectedEngagement.id, changeLog);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error updating partner:', error);
+      return false;
+    }
+  }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
+
   // Phase operations - WITH OPTIMISTIC LOCKING
   // GROUP B: Updated to add changeLog to state immediately
   var phaseSave = useCallback(async function(phaseType, phaseData) {
@@ -1169,6 +1224,9 @@ var useEngagementDetail = function(params) {
     },
     salesRep: {
       update: salesRepUpdate
+    },
+    partner: {
+      update: partnerUpdate
     }
   };
 };
