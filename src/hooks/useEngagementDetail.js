@@ -46,6 +46,20 @@ var useEngagementDetail = function(params) {
     return { conflict: false, fresh: result.data, wasDeleted: false };
   };
 
+  /**
+   * Helper to add a change log to the engagement's changeLogs array
+   * @param {string} engagementId - The engagement ID
+   * @param {Object} changeLog - The created change log record
+   */
+  var addChangeLogToState = function(engagementId, changeLog) {
+    if (!changeLog) return;
+    updateEngagementInState(engagementId, function(eng) {
+      return Object.assign({}, eng, {
+        changeLogs: [changeLog].concat(eng.changeLogs || [])
+      });
+    });
+  };
+
   // View operations
   var viewUpdate = useCallback(async function(engagementId) {
     if (!currentUser || !engagementId) return;
@@ -190,6 +204,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, client, onConflict]);
 
   // Competitors update operation - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var competitorsUpdate = useCallback(async function(competitorData) {
     if (!selectedEngagement) return false;
 
@@ -227,7 +242,7 @@ var useEngagementDetail = function(params) {
         updatedAt: result.data.updatedAt
       });
 
-      // Build change log description
+      // Build change log description and update state immediately
       if (logChangeAsync) {
         var addedCompetitors = newCompetitors.filter(function(c) { return oldCompetitors.indexOf(c) === -1; });
         var removedCompetitors = oldCompetitors.filter(function(c) { return newCompetitors.indexOf(c) === -1; });
@@ -264,7 +279,8 @@ var useEngagementDetail = function(params) {
         
         if (descParts.length > 0) {
           var description = descParts.join('; ');
-          logChangeAsync(selectedEngagement.id, 'COMPETITORS_UPDATED', description);
+          var changeLog = await logChangeAsync(selectedEngagement.id, 'COMPETITORS_UPDATED', description);
+          addChangeLogToState(selectedEngagement.id, changeLog);
         }
       }
 
@@ -276,6 +292,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Sales Rep update operation - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var salesRepUpdate = useCallback(async function(salesRepId, salesRepName) {
     if (!selectedEngagement) return false;
 
@@ -307,7 +324,7 @@ var useEngagementDetail = function(params) {
         updatedAt: result.data.updatedAt
       });
 
-      // Build change log description
+      // Build change log description and update state immediately
       if (logChangeAsync) {
         var description;
         if (!oldRepId && salesRepId) {
@@ -319,7 +336,8 @@ var useEngagementDetail = function(params) {
         }
         
         if (description) {
-          logChangeAsync(selectedEngagement.id, 'SALES_REP_CHANGED', description, oldRepName || null, salesRepName || null);
+          var changeLog = await logChangeAsync(selectedEngagement.id, 'SALES_REP_CHANGED', description, oldRepName || null, salesRepName || null);
+          addChangeLogToState(selectedEngagement.id, changeLog);
         }
       }
 
@@ -400,6 +418,7 @@ var useEngagementDetail = function(params) {
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
+  // GROUP A: Updated to add changeLog to state immediately
   var phaseAddLink = useCallback(async function(phaseType, linkData) {
     if (!selectedEngagement) return;
 
@@ -437,13 +456,15 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        logChangeAsync(selectedEngagement.id, 'LINK_ADDED', 'Added link "' + linkData.title + '" to ' + phaseType);
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'LINK_ADDED', 'Added link "' + linkData.title + '" to ' + phaseType);
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
       console.error('Error adding link:', error);
     }
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
+  // phaseRemoveLink - no change logging, so not in Group A
   var phaseRemoveLink = useCallback(async function(phaseType, linkIndex) {
     if (!selectedEngagement) return;
 
@@ -524,6 +545,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client]);
 
   // activityEdit - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var activityEdit = useCallback(async function(activityId, updates) {
     if (!selectedEngagement) return false;
 
@@ -596,7 +618,8 @@ var useEngagementDetail = function(params) {
         var truncated = updates.description.length > 40 
           ? updates.description.substring(0, 40) + '...' 
           : updates.description;
-        logChangeAsync(selectedEngagement.id, 'ACTIVITY_EDITED', 'Edited activity: "' + truncated + '"');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_EDITED', 'Edited activity: "' + truncated + '"');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -676,6 +699,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // activityAddComment - NO locking (it's a create)
+  // GROUP A: Updated to add changeLog to state immediately
   var activityAddComment = useCallback(async function(activityId, commentText) {
     if (!selectedEngagement || !currentUser || !commentText) return false;
 
@@ -702,7 +726,8 @@ var useEngagementDetail = function(params) {
 
       if (logChangeAsync) {
         var truncated = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
-        logChangeAsync(selectedEngagement.id, 'COMMENT_ADDED', 'Commented: "' + truncated + '"');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_ADDED', 'Commented: "' + truncated + '"');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -713,6 +738,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
 
   // activityDeleteComment - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var activityDeleteComment = useCallback(async function(commentId) {
     if (!selectedEngagement) return false;
 
@@ -754,7 +780,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        logChangeAsync(selectedEngagement.id, 'COMMENT_DELETED', 'Deleted a comment');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_DELETED', 'Deleted a comment');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -765,6 +792,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // noteAdd - NO locking (it's a create)
+  // GROUP A: Updated to add changeLog to state immediately
   var noteAdd = useCallback(async function(phaseType, text) {
     if (!selectedEngagement || !currentUser || !text) return false;
 
@@ -799,7 +827,8 @@ var useEngagementDetail = function(params) {
 
       if (logChangeAsync) {
         var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        logChangeAsync(selectedEngagement.id, 'NOTE_ADDED', 'Added note to ' + phaseType + ': "' + truncated + '"');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_ADDED', 'Added note to ' + phaseType + ': "' + truncated + '"');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -810,6 +839,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, currentUser, updateEngagementInState, logChangeAsync, client]);
 
   // noteEdit - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var noteEdit = useCallback(async function(noteId, phaseType, text) {
     if (!selectedEngagement || !noteId || !text) return false;
 
@@ -868,7 +898,8 @@ var useEngagementDetail = function(params) {
 
       if (logChangeAsync) {
         var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        logChangeAsync(selectedEngagement.id, 'NOTE_EDITED', 'Edited note in ' + phaseType + ': "' + truncated + '"');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_EDITED', 'Edited note in ' + phaseType + ': "' + truncated + '"');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -879,6 +910,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // noteDelete - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var noteDelete = useCallback(async function(noteId, phaseType) {
     if (!selectedEngagement || !noteId) return false;
 
@@ -922,7 +954,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        logChangeAsync(selectedEngagement.id, 'NOTE_DELETED', 'Deleted note from ' + phaseType);
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_DELETED', 'Deleted note from ' + phaseType);
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
@@ -933,6 +966,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Integrations operations - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var integrationsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
 
@@ -954,7 +988,8 @@ var useEngagementDetail = function(params) {
       updateEngagementInState(selectedEngagement.id, Object.assign({}, updates, { updatedAt: result.data.updatedAt }));
 
       if (logChangeAsync) {
-        logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integrations');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integrations');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
       console.error('Error updating integrations:', error);
@@ -987,6 +1022,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, client, onConflict]);
 
   // ownerAdd - NO locking (it's a create)
+  // GROUP A: Updated to add changeLog to state immediately
   var ownerAdd = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
@@ -1009,7 +1045,8 @@ var useEngagementDetail = function(params) {
 
       if (logChangeAsync) {
         var member = getOwnerInfo(memberId);
-        logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', 'Added ' + member.name + ' as owner');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', 'Added ' + member.name + ' as owner');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
       console.error('Error adding owner:', error);
@@ -1017,6 +1054,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, getOwnerInfo, client]);
 
   // ownerRemove - WITH OPTIMISTIC LOCKING
+  // GROUP A: Updated to add changeLog to state immediately
   var ownerRemove = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
@@ -1051,7 +1089,8 @@ var useEngagementDetail = function(params) {
 
       if (logChangeAsync) {
         var member = getOwnerInfo(memberId);
-        logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', 'Removed ' + member.name + ' as owner');
+        var changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', 'Removed ' + member.name + ' as owner');
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
       console.error('Error removing owner:', error);
