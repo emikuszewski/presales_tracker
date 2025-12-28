@@ -365,17 +365,33 @@ const ListView = ({
           const derivedPhaseLabel = phaseLabels[derivedCurrentPhase] || derivedCurrentPhase;
           const { badgeClasses, dotClasses } = getPhaseBadgeClasses(derivedPhaseStatus);
           
+          // Partner indicator
+          const hasPartner = engagement.partnerName && engagement.partnerName.trim();
+          const partnerTooltip = hasPartner ? `Partner: ${engagement.partnerName}` : '';
+          // Truncate partner name for inline display (max 20 chars)
+          const truncatedPartnerName = hasPartner && engagement.partnerName.length > 20 
+            ? engagement.partnerName.substring(0, 20) + '...' 
+            : engagement.partnerName;
+          
           return (
             <div
               key={engagement.id}
               onClick={() => onSelectEngagement(engagement.id)}
-              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${statusBorderClasses}`}
+              className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${statusBorderClasses} ${hasPartner ? 'partner-indicator-card' : ''}`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-3">
                   <OwnersDisplay ownerIds={engagement.ownerIds} size="md" getOwnerInfo={getOwnerInfo} currentUserId={currentUser?.id} />
                   <div>
                     <div className="flex items-center gap-2">
+                      {hasPartner && (
+                        <div 
+                          className="partner-dot-tooltip"
+                          data-tooltip={partnerTooltip}
+                        >
+                          <span className="partner-dot"></span>
+                        </div>
+                      )}
                       <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
                       {engagement.unreadChanges > 0 && (
                         <NotificationBadge count={engagement.unreadChanges} />
