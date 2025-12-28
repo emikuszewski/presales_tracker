@@ -323,6 +323,11 @@ var useEngagementList = function(params) {
         createPayload.salesRepId = engagementData.salesRepId;
       }
 
+      // Only include partnerName if it has a value
+      if (engagementData.partnerName && engagementData.partnerName.trim()) {
+        createPayload.partnerName = engagementData.partnerName.trim();
+      }
+
       var result = await dataClient.models.Engagement.create(createPayload);
 
       var createdEngagement = result.data;
@@ -375,7 +380,8 @@ var useEngagementList = function(params) {
         isStale: false,
         daysSinceActivity: 0,
         hasSystemOwner: false,
-        salesRepName: null
+        salesRepName: null,
+        partnerName: engagementData.partnerName || null
       });
 
       setEngagements(function(prev) { return [enrichedEngagement].concat(prev); });
@@ -388,7 +394,7 @@ var useEngagementList = function(params) {
       setNewEngagement({
         company: '', contactName: '', contactEmail: '', contactPhone: '', 
         industry: 'TECHNOLOGY', dealSize: '', ownerIds: currentUser ? [currentUser.id] : [],
-        salesRepId: '',
+        salesRepId: '', partnerName: '',
         salesforceId: '', salesforceUrl: '', jiraTicket: '', jiraUrl: '', 
         driveFolderName: '', driveFolderUrl: '',
         docsName: '', docsUrl: '',
