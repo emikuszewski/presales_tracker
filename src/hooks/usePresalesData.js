@@ -224,6 +224,137 @@ const usePresalesData = (selectedEngagementId) => {
     }
   }, []);
 
+  /**
+   * Refresh a single engagement from the database
+   * Fetches engagement + related data (phases, activities, owners, changeLogs, phaseNotes, view)
+   * Skips comments - preserves existing comments from current state
+   * Uses enrichSingleEngagement for consistent enrichment
+   * Merges into state only if data has changed
+   * 
+   * @param {string} engagementId - ID of the engagement to refresh
+   * @returns {Promise<void>}
+   */
+  const refreshSingleEngagement = useCallback(async function(engagementId) {
+    if (!engagementId) return;
+    
+    try {
+      var client = generateClient();
+      var userId = currentUser ? currentUser.id : null;
+      
+      // Fetch engagement and related data in parallel
+      // Note: We skip comments - they will be preserved from current state
+      var results = await Promise.all([
+        client.models.Engagement.get({ id: engagementId }),
+        client.models.Phase.list({ filter: { engagementId: { eq: engagementId } } }),
+        client.models.Activity.list({ filter: { engagementId: { eq: engagementId } } }),
+        client.models.EngagementOwner.list({ filter: { engagementId: { eq: engagementId } } }),
+        client.models.ChangeLog.list({ filter: { engagementId: { eq: engagementId } } }),
+        client.models.PhaseNote.list({ filter: { engagementId: { eq: engagementId } } }),
+        userId 
+          ? client.models.EngagementView.list({ filter: { engagementId: { eq: engagementId }, visitorId: { eq: userId } } }).catch(function() { return { data: [] }; })
+          : Promise.resolve({ data: [] })
+      ]);
+      
+      var engagementResult = results[0];
+      var phasesData = results[1].data || [];
+      var activitiesData = results[2].data || [];
+      var ownersData = results[3].data || [];
+      var changeLogsData = results[4].data || [];
+      var phaseNotesData = results[5].data || [];
+      var viewsData = results[6].data || [];
+      
+      // If engagement not found (deleted), remove from state
+      if (!engagementResult.data) {
+        setEngagements(function(prev) {
+          return prev.filter(function(e) { return e.id !== engagementId; });
+        });
+        return;
+      }
+      
+      var freshEngagement = engagementResult.data;
+      
+      // Get existing engagement from state to preserve comments
+      var existingEngagement = null;
+      setEngagements(function(prev) {
+        existingEngagement = prev.find(function(e) { return e.id === engagementId; });
+        return prev; // No change yet, just reading
+      });
+      
+      // Build comments lookup from existing state (we don't refetch comments)
+      var commentsByActivity = {};
+      if (existingEngagement && existingEngagement.activities) {
+        existingEngagement.activities.forEach(function(activity) {
+          if (activity.comments) {
+            commentsByActivity[activity.id] = activity.comments;
+          }
+        });
+      }
+      
+      // Build salesRepsMap from current salesReps state
+      var salesRepsMap = {};
+      salesReps.forEach(function(rep) {
+        salesRepsMap[rep.id] = rep;
+      });
+      
+      // Get systemUserIds from allTeamMembers
+      var systemUserIds = allTeamMembers
+        .filter(function(m) { return m.isSystemUser === true; })
+        .map(function(m) { return m.id; });
+      
+      // Build viewsMap
+      var viewsMap = {};
+      viewsData.forEach(function(v) {
+        viewsMap[v.engagementId] = v;
+      });
+      
+      // Build enrichment context
+      var enrichmentContext = {
+        phasesByEngagement: { [engagementId]: phasesData },
+        activitiesByEngagement: { [engagementId]: activitiesData },
+        ownershipByEngagement: { [engagementId]: ownersData },
+        commentsByActivity: commentsByActivity,
+        changeLogsByEngagement: { [engagementId]: changeLogsData },
+        phaseNotesByEngagement: { [engagementId]: phaseNotesData },
+        viewsMap: viewsMap,
+        salesRepsMap: salesRepsMap,
+        systemUserIds: systemUserIds,
+        userId: userId
+      };
+      
+      // Enrich the engagement
+      var enrichedEngagement = enrichSingleEngagement(freshEngagement, enrichmentContext);
+      
+      // Merge into state
+      setEngagements(function(prev) {
+        var found = false;
+        var updated = prev.map(function(e) {
+          if (e.id === engagementId) {
+            found = true;
+            // Shallow comparison - only update if something changed
+            // Compare updatedAt as a quick check
+            if (e.updatedAt === enrichedEngagement.updatedAt && 
+                e.changeLogs.length === enrichedEngagement.changeLogs.length &&
+                e.activities.length === enrichedEngagement.activities.length) {
+              return e; // No change
+            }
+            return enrichedEngagement;
+          }
+          return e;
+        });
+        
+        // If not found, add it (shouldn't happen in normal flow)
+        if (!found) {
+          updated.push(enrichedEngagement);
+        }
+        
+        return updated;
+      });
+      
+    } catch (error) {
+      console.error('Error refreshing single engagement:', error);
+    }
+  }, [currentUser, allTeamMembers, salesReps]);
+
   const fetchAllData = useCallback(async function(userId) {
     try {
       var client = generateClient();
@@ -340,6 +471,7 @@ const usePresalesData = (selectedEngagementId) => {
     getOwnerInfo: getOwnerInfo,
     logChangeAsync: logChangeAsync,
     fetchAllData: fetchAllData,
+    refreshSingleEngagement: refreshSingleEngagement,
     client: getClient // App.jsx expects 'client'
   };
 };
