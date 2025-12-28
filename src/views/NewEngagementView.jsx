@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { industries, industryLabels } from '../constants';
+import { getAvatarColorClasses } from '../utils';
 
 /**
  * Format deal size from amount and unit parts
@@ -24,8 +25,8 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
       <div className="flex flex-wrap gap-2">
         {teamMembers.map(member => {
           const isSelected = selectedOwnerIds.includes(member.id);
-          const isSystemUser = member.id === 'SYSTEM';
-          const colorClasses = member.colorClass || 'bg-gray-200 text-gray-600';
+          const isSystemUser = member.isSystemUser === true;
+          const colorClasses = getAvatarColorClasses(member);
           
           return (
             <button
