@@ -105,6 +105,9 @@ const schema = a.schema({
     salesRepId: a.id(),
     salesRep: a.belongsTo('SalesRep', 'salesRepId'),
     
+    // Partner tracking - simple text field for partner company name
+    partnerName: a.string(),
+    
     // Integration fields
     salesforceId: a.string(),
     salesforceUrl: a.string(),
@@ -245,7 +248,8 @@ const schema = a.schema({
       'NOTE_DELETED',
       'STATUS_CHANGED',
       'COMPETITORS_UPDATED',
-      'SALES_REP_CHANGED'
+      'SALES_REP_CHANGED',
+      'PARTNER_UPDATED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
