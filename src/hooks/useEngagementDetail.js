@@ -12,6 +12,7 @@ var useEngagementDetail = function(params) {
   var getOwnerInfo = params.getOwnerInfo;
   var client = params.client;
   var onConflict = params.onConflict; // Callback for conflict handling
+  var refreshSingleEngagement = params.refreshSingleEngagement; // For targeted refresh after mutations
 
   /**
    * Helper to check for conflicts before update/delete operations.
