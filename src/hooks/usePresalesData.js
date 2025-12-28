@@ -159,18 +159,35 @@ const usePresalesData = (selectedEngagementId) => {
     return member || { name: 'Unknown', initials: '?' };
   }, [allTeamMembers]);
 
-  const logChangeAsync = useCallback(function(engagementId, changeType, description, previousValue, newValue) {
-    if (!currentUser) return;
+  /**
+   * Log a change to the ChangeLog table
+   * Returns the created log record, or null on failure
+   * 
+   * @param {string} engagementId - ID of the engagement
+   * @param {string} changeType - Type of change (e.g., 'PHASE_UPDATE', 'ACTIVITY_ADDED')
+   * @param {string} description - Human-readable description
+   * @param {string} previousValue - Previous value (optional)
+   * @param {string} newValue - New value (optional)
+   * @returns {Promise<Object|null>} Created log record or null
+   */
+  const logChangeAsync = useCallback(async function(engagementId, changeType, description, previousValue, newValue) {
+    if (!currentUser) return null;
     
-    var client = generateClient();
-    client.models.ChangeLog.create({
-      engagementId: engagementId,
-      userId: currentUser.id,
-      changeType: changeType,
-      description: description,
-      previousValue: previousValue || null,
-      newValue: newValue || null
-    }).catch(function(e) { console.error('Error logging change:', e); });
+    try {
+      var client = generateClient();
+      var result = await client.models.ChangeLog.create({
+        engagementId: engagementId,
+        userId: currentUser.id,
+        changeType: changeType,
+        description: description,
+        previousValue: previousValue || null,
+        newValue: newValue || null
+      });
+      return result.data || null;
+    } catch (e) {
+      console.error('Error logging change:', e);
+      return null;
+    }
   }, [currentUser]);
 
   const ensureSystemUser = useCallback(async function(existingMembers) {
