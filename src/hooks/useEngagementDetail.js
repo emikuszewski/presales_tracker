@@ -647,6 +647,7 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // activityDelete - WITH OPTIMISTIC LOCKING
+  // GROUP C: Updated to add changeLog to state immediately + recalculate all derived fields
   var activityDelete = useCallback(async function(activityId) {
     if (!selectedEngagement) return false;
 
@@ -692,20 +693,33 @@ var useEngagementDetail = function(params) {
         lastActivity: newLastActivity
       });
 
-      // Update local state
+      // Build the updated engagement to recalculate derived fields
+      var updatedEngagement = Object.assign({}, selectedEngagement, {
+        lastActivity: newLastActivity,
+        activities: remainingActivities
+      });
+
+      // Recalculate derived fields
+      var newIsStale = recalculateIsStale(updatedEngagement);
+      var newDaysSinceActivity = recalculateDaysSinceActivity(newLastActivity);
+
+      // Update local state with all derived fields
       updateEngagementInState(selectedEngagement.id, function(eng) {
         return Object.assign({}, eng, {
           activities: eng.activities.filter(function(a) { return a.id !== activityId; }),
-          lastActivity: newLastActivity
+          lastActivity: newLastActivity,
+          isStale: newIsStale,
+          daysSinceActivity: newDaysSinceActivity
         });
       });
 
       if (logChangeAsync) {
-        logChangeAsync(
+        var changeLog = await logChangeAsync(
           selectedEngagement.id, 
           'ACTIVITY_DELETED', 
           'Deleted ' + activity.type + ' activity from ' + activity.date
         );
+        addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
       return true;
