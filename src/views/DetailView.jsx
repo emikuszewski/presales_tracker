@@ -528,9 +528,17 @@ const DetailView = ({
       detail.salesRep.update(newSalesRepId, updatedData.salesRepName);
     }
     
-    // Update other details (excluding salesRep fields)
+    // Check if partner changed
+    const oldPartnerName = engagement?.partnerName || null;
+    const newPartnerName = updatedData.partnerName || null;
+    
+    if (oldPartnerName !== newPartnerName && detail?.partner?.update) {
+      detail.partner.update(newPartnerName);
+    }
+    
+    // Update other details (excluding salesRep and partner fields - they have separate handlers)
     if (detail?.details?.update) {
-      const { salesRepId, salesRepName, ...otherData } = updatedData;
+      const { salesRepId, salesRepName, partnerName, ...otherData } = updatedData;
       detail.details.update(otherData);
     }
     setShowEditDetailsModal(false);
@@ -604,10 +612,14 @@ const DetailView = ({
   const hasSheets = engagement.sheetsUrl;
   const hasAnyIntegration = hasSlack || hasDrive || hasDocs || hasSlides || hasSheets;
 
+  // Partner indicator
+  const hasPartner = engagement.partnerName && engagement.partnerName.trim();
+  const partnerTooltip = hasPartner ? `Partner: ${engagement.partnerName}` : '';
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-4 py-3">
+      <div className={`border-b border-gray-200 bg-white px-4 py-3 ${hasPartner ? 'partner-indicator-detail' : ''}`}>
         <div className="flex items-center justify-between">
           {/* Left: Back button + Company name + Phase + Status */}
           <div className="flex items-center gap-3">
@@ -621,7 +633,17 @@ const DetailView = ({
             </button>
             
             <div>
-              <h1 className="text-xl font-medium text-gray-900">{engagement.company}</h1>
+              <div className="flex items-center gap-2">
+                {hasPartner && (
+                  <div 
+                    className="partner-dot-tooltip"
+                    data-tooltip={partnerTooltip}
+                  >
+                    <span className="partner-dot"></span>
+                  </div>
+                )}
+                <h1 className="text-xl font-medium text-gray-900">{engagement.company}</h1>
+              </div>
               <p className="text-sm text-gray-500">{engagement.contactName}</p>
             </div>
 
