@@ -78,7 +78,8 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave, salesReps = []
     contactEmail: '',
     contactPhone: '',
     industry: 'TECHNOLOGY',
-    salesRepId: ''
+    salesRepId: '',
+    partnerName: ''
   });
 
   // Separate state for deal size parts
@@ -95,7 +96,8 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave, salesReps = []
         contactEmail: initialData.contactEmail || '',
         contactPhone: initialData.contactPhone || '',
         industry: initialData.industry || 'TECHNOLOGY',
-        salesRepId: initialData.salesRepId || ''
+        salesRepId: initialData.salesRepId || '',
+        partnerName: initialData.partnerName || ''
       });
       
       // Parse existing deal size into parts
@@ -132,7 +134,8 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave, salesReps = []
       industry: formData.industry,
       dealSize: formattedDealSize,
       salesRepId: formData.salesRepId || null,
-      salesRepName: selectedRep ? selectedRep.name : null
+      salesRepName: selectedRep ? selectedRep.name : null,
+      partnerName: formData.partnerName.trim() || null
     });
   };
 
@@ -185,6 +188,18 @@ const EditDetailsModal = ({ isOpen, onClose, initialData, onSave, salesReps = []
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               placeholder="Acme Corporation" 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Partner Name
+            </label>
+            <input 
+              type="text" 
+              value={formData.partnerName}
+              onChange={e => updateField('partnerName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Mickey Martin" 
             />
           </div>
           <div>
