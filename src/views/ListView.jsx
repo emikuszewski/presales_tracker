@@ -53,7 +53,9 @@ const ListView = ({
     setShowArchived,
     setShowEverything,
     setSearchQuery,
-    clearAllFilters
+    clearAllFilters,
+    handleEverythingManualDisable,
+    handleEverythingManualEnable
   } = filterActions;
 
   // Local state for filter panel visibility
@@ -68,7 +70,7 @@ const ListView = ({
       key: 'everything', 
       label: 'Everything', 
       isBlue: true, 
-      onRemove: () => setShowEverything(false) 
+      onRemove: () => handleEverythingManualDisable() 
     });
   } else {
     if (showArchived) nonDefaultFilters.push({ key: 'status', label: 'Archived', onRemove: () => setShowArchived(false) });
@@ -276,6 +278,7 @@ const ListView = ({
         setFilterStale={setFilterStale}
         setShowArchived={setShowArchived}
         setShowEverything={setShowEverything}
+        onEverythingManualEnable={handleEverythingManualEnable}
         teamMembers={teamMembers}
         currentUser={currentUser}
         staleCount={staleCount}
