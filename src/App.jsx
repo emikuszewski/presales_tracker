@@ -44,6 +44,7 @@ function PresalesTracker() {
   const [showArchived, setShowArchived] = useState(false);
   const [showEverything, setShowEverything] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [everythingManuallyDisabled, setEverythingManuallyDisabled] = useState(false);
   const [newEngagement, setNewEngagement] = useState({
     company: '', contactName: '', contactEmail: '', contactPhone: '', 
     industry: 'TECHNOLOGY', dealSize: '', ownerIds: [],
@@ -250,6 +251,25 @@ function PresalesTracker() {
     setSearchQuery('');
     setFilterOwner('mine');
     setShowEverything(false);
+    setEverythingManuallyDisabled(false);
+  };
+
+  /**
+   * Handle manual disable of Everything filter (via chip removal)
+   * Sets the manual override flag so auto-enable doesn't re-trigger
+   */
+  const handleEverythingManualDisable = () => {
+    setShowEverything(false);
+    setEverythingManuallyDisabled(true);
+  };
+
+  /**
+   * Handle manual enable of Everything filter (via FilterPanel button)
+   * Clears the manual override flag
+   */
+  const handleEverythingManualEnable = () => {
+    setShowEverything(true);
+    setEverythingManuallyDisabled(false);
   };
 
   // ============================================
@@ -293,6 +313,23 @@ function PresalesTracker() {
   useEffect(() => {
     initializeUser();
   }, [user]);
+
+  // Auto-enable Everything filter when search is active
+  // Auto-disable when search is cleared (resets manual override)
+  useEffect(() => {
+    const hasSearchQuery = searchQuery.trim().length > 0;
+    
+    if (hasSearchQuery) {
+      // Only auto-enable if not manually disabled
+      if (!everythingManuallyDisabled) {
+        setShowEverything(true);
+      }
+    } else {
+      // Search cleared - reset to default state
+      setShowEverything(false);
+      setEverythingManuallyDisabled(false);
+    }
+  }, [searchQuery, everythingManuallyDisabled]);
 
   // ============================================
   // LOADING STATE
@@ -396,7 +433,9 @@ function PresalesTracker() {
               setShowArchived,
               setShowEverything,
               setSearchQuery,
-              clearAllFilters
+              clearAllFilters,
+              handleEverythingManualDisable,
+              handleEverythingManualEnable
             }}
             onSelectEngagement={(id) => navigateTo('detail', id)}
             onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivity: activityId })}
