@@ -200,8 +200,6 @@ const PhaseNotesSection = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const hasNotes = notes && notes.length > 0;
 
-  // FIX: Determine if label should be muted (pending phase with no notes)
-  // Instead of applying opacity-60 to the entire wrapper, we now only mute the label text
   const isLabelMuted = isPending && !hasNotes;
 
   const handleStartEdit = (note) => {
@@ -228,8 +226,6 @@ const PhaseNotesSection = ({
   };
 
   return (
-    // FIX: Removed opacity-60 from this wrapper div
-    // This prevents CSS opacity from affecting any future interactive elements
     <div ref={scrollRef} className="border rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
@@ -245,7 +241,6 @@ const PhaseNotesSection = ({
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-          {/* FIX: Apply muted text color to label when pending without notes */}
           <span className={`font-medium ${isLabelMuted ? 'text-gray-400' : 'text-gray-900'}`}>
             {phaseInfo.label}
           </span>
@@ -274,4 +269,92 @@ const PhaseNotesSection = ({
                   onCancelEdit={handleCancelEdit}
                 />
                 {showDeleteConfirm?.id === note.id && (
-                  <div className="bg-red-50 bord
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+                    <span className="text-sm text-red-700">Delete this note?</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowDeleteConfirm(null)}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleConfirmDelete(note)}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-2">No notes yet</p>
+          )}
+          <AddNoteInput onAdd={onAddNote} phaseType={phaseType} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const NotesTab = ({ 
+  engagement, 
+  getOwnerInfo, 
+  onAddNote, 
+  onEditNote, 
+  onDeleteNote, 
+  scrollToPhase 
+}) => {
+  const [expandedPhases, setExpandedPhases] = useState(() => {
+    const expanded = {};
+    phaseConfig.forEach(p => {
+      expanded[p.id] = engagement?.notesByPhase?.[p.id]?.length > 0;
+    });
+    return expanded;
+  });
+  const scrollRefs = useRef({});
+
+  useEffect(() => {
+    if (scrollToPhase) {
+      setExpandedPhases(prev => ({ ...prev, [scrollToPhase]: true }));
+      setTimeout(() => {
+        scrollRefs.current[scrollToPhase]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [scrollToPhase]);
+
+  const currentPhase = engagement?.currentPhase || 'DISCOVER';
+  const currentPhaseIndex = phaseConfig.findIndex(p => p.id === currentPhase);
+
+  const togglePhase = (phaseId) => {
+    setExpandedPhases(prev => ({ ...prev, [phaseId]: !prev[phaseId] }));
+  };
+
+  return (
+    <div className="p-4 space-y-3">
+      <p className="text-sm text-gray-500 mb-4">
+        Running notes for each phase. Notes are shared with all engagement owners.
+      </p>
+      {phaseConfig.map((phaseInfo, idx) => (
+        <PhaseNotesSection
+          key={phaseInfo.id}
+          phaseType={phaseInfo.id}
+          phaseInfo={phaseInfo}
+          notes={engagement?.notesByPhase?.[phaseInfo.id] || []}
+          isPending={idx > currentPhaseIndex}
+          isExpanded={expandedPhases[phaseInfo.id] || false}
+          onToggle={() => togglePhase(phaseInfo.id)}
+          getOwnerInfo={getOwnerInfo}
+          onAddNote={onAddNote}
+          onEditNote={onEditNote}
+          onDeleteNote={onDeleteNote}
+          scrollRef={(el) => { scrollRefs.current[phaseInfo.id] = el; }}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default NotesTab;
