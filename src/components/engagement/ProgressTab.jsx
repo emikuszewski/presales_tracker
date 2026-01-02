@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { phaseConfig } from '../../constants';
-import { formatDate } from '../../utils';
+import { formatDate, formatRelativeTime } from '../../utils';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -26,11 +26,132 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, onAddLink, onRemoveLink, onNotesClick }) => {
+/**
+ * Extract first name from full name
+ * For system users (like "SE Team"), return full name
+ */
+const getFirstName = (fullName, isSystemUser) => {
+  if (!fullName) return 'SE Team';
+  if (isSystemUser) return fullName;
+  
+  const parts = fullName.trim().split(' ');
+  return parts[0] || fullName;
+};
+
+/**
+ * Inline note input component for adding notes from Progress tab
+ */
+const InlineNoteInput = ({ phaseType, onAdd, onCancel }) => {
+  const [text, setText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    await onAdd(phaseType, text.trim());
+    setText('');
+    setIsSubmitting(false);
+    onCancel(); // Close the form after saving
+  };
+
+  const handleKeyDown = (e) => {
+    // Submit on Cmd/Ctrl + Enter
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    }
+    // Cancel on Escape
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+
+  return (
+    <div className="mt-3 bg-gray-50 rounded-lg p-3">
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Add a note..."
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white"
+        rows={3}
+      />
+      <div className="flex justify-end gap-2 mt-2">
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={!text.trim() || isSubmitting}
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Note preview component - shows latest note with author and timestamp
+ */
+const NotePreview = ({ note, getOwnerInfo, onClick }) => {
+  if (!note) return null;
+
+  // Get author info - fallback to SE Team if unknown
+  const author = getOwnerInfo(note.authorId);
+  const authorName = author?.name || 'SE Team';
+  const isSystemUser = author?.isSystemUser || !author?.name;
+  const firstName = getFirstName(authorName, isSystemUser);
+  const relativeTime = formatRelativeTime(note.createdAt);
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left group"
+    >
+      {/* Note text - 2 lines max with ellipsis */}
+      <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-gray-900 transition-colors">
+        "{note.text}"
+      </p>
+      {/* Attribution */}
+      <p className="text-xs text-gray-400 mt-1">
+        — {firstName}, {relativeTime}
+      </p>
+    </button>
+  );
+};
+
+const PhaseCard = ({ 
+  phase, 
+  phaseType, 
+  phaseInfo, 
+  latestNote,
+  notesCount, 
+  onStatusChange, 
+  onAddLink, 
+  onRemoveLink, 
+  onNotesClick,
+  onAddNote,
+  getOwnerInfo
+}) => {
   const [showAddLink, setShowAddLink] = useState(false);
   const [linkTitle, setLinkTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
 
   const handleAddLink = () => {
     if (linkTitle.trim() && linkUrl.trim()) {
@@ -48,31 +169,41 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
     setShowStatusDropdown(false);
   };
 
+  const handleNotePreviewClick = () => {
+    onNotesClick(phaseType);
+  };
+
+  const handleAddNoteClick = () => {
+    setShowAddNote(true);
+  };
+
+  const handleCancelAddNote = () => {
+    setShowAddNote(false);
+  };
+
   const isPending = phase.status === 'PENDING';
   const isSkipped = phase.status === 'SKIPPED';
   const isBlocked = phase.status === 'BLOCKED';
 
   // Determine if content should be muted (PENDING or SKIPPED states)
-  // FIX: No longer applying opacity to the entire card wrapper
-  // Instead, selectively mute text content while keeping interactive elements at full strength
   const isMuted = isPending || isSkipped;
 
   // All available statuses for the dropdown
   const allStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETE', 'BLOCKED', 'SKIPPED'];
 
+  // Check if we have notes
+  const hasNotes = notesCount > 0;
+
   return (
-    // FIX: Removed opacity-75 and opacity-60 from this wrapper div
-    // This prevents CSS opacity from affecting dropdown stacking context
     <div className={`bg-white rounded-lg border ${isBlocked ? 'border-amber-300' : 'border-gray-200'} p-4`}>
+      {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {/* FIX: Apply muted text color to label instead of card-level opacity */}
-          {/* SKIPPED gets line-through + muted, PENDING gets just muted */}
           <h3 className={`font-medium ${isSkipped ? 'text-gray-400 line-through' : isPending ? 'text-gray-400' : 'text-gray-900'}`}>
             {phaseInfo.label}
           </h3>
           
-          {/* Status dropdown - stays at full visual strength */}
+          {/* Status dropdown */}
           <div className="relative">
             <button 
               onClick={() => setShowStatusDropdown(!showStatusDropdown)} 
@@ -117,12 +248,51 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
         )}
       </div>
 
-      {/* FIX: Apply muted text to description for PENDING/SKIPPED states */}
-      <p className={`text-sm mb-3 ${isMuted ? 'text-gray-400' : 'text-gray-500'}`}>
-        {phaseInfo.description}
-      </p>
+      {/* Note preview area OR Add note button */}
+      <div className={`mb-3 ${isMuted ? 'opacity-75' : ''}`}>
+        {hasNotes ? (
+          <div className="flex items-start gap-2">
+            <div className="flex-1">
+              <NotePreview 
+                note={latestNote} 
+                getOwnerInfo={getOwnerInfo}
+                onClick={handleNotePreviewClick}
+              />
+            </div>
+            {/* Add note button [+] */}
+            <button
+              onClick={handleAddNoteClick}
+              className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+              title="Add note"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAddNoteClick}
+            className="w-full py-3 text-sm text-gray-500 hover:text-blue-600 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1 transition-colors border border-dashed border-gray-200 hover:border-blue-300"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add note
+          </button>
+        )}
+      </div>
 
-      {/* Links section - stays at full visual strength for accessibility */}
+      {/* Inline add note form */}
+      {showAddNote && onAddNote && (
+        <InlineNoteInput
+          phaseType={phaseType}
+          onAdd={onAddNote}
+          onCancel={handleCancelAddNote}
+        />
+      )}
+
+      {/* Links section */}
       {phase.links && phase.links.length > 0 && (
         <div className="mb-3">
           <div className="flex flex-wrap gap-2">
@@ -151,9 +321,10 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
         </div>
       )}
 
+      {/* Bottom action row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Add Link button - stays at full visual strength, hidden for SKIPPED */}
+          {/* Add Link button - hidden for SKIPPED */}
           {!showAddLink && !isSkipped && (
             <button 
               onClick={() => setShowAddLink(true)} 
@@ -167,13 +338,13 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
           )}
         </div>
 
-        {/* Notes count button - stays at full visual strength */}
+        {/* Notes count button */}
         {notesCount > 0 && (
           <button 
             onClick={() => onNotesClick(phaseType)} 
             className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1"
           >
-            📝 {notesCount} note{notesCount !== 1 ? 's' : ''}
+            📝 {notesCount} note{notesCount !== 1 ? 's' : ''} →
           </button>
         )}
       </div>
@@ -218,14 +389,24 @@ const PhaseCard = ({ phase, phaseType, phaseInfo, notesCount, onStatusChange, on
   );
 };
 
-const ProgressTab = ({ engagement, onStatusChange, onAddLink, onRemoveLink, onNotesClick }) => {
+const ProgressTab = ({ 
+  engagement, 
+  onStatusChange, 
+  onAddLink, 
+  onRemoveLink, 
+  onNotesClick,
+  onAddNote,
+  getOwnerInfo
+}) => {
   if (!engagement) return null;
 
   return (
     <div className="space-y-4 p-4">
       {phaseConfig.map((phaseInfo) => {
         const phase = engagement.phases?.[phaseInfo.id] || { status: 'PENDING', completedDate: null, links: [] };
-        const notesCount = engagement.notesByPhase?.[phaseInfo.id]?.length || 0;
+        const phaseNotes = engagement.notesByPhase?.[phaseInfo.id] || [];
+        const notesCount = phaseNotes.length;
+        const latestNote = phaseNotes[0] || null; // Notes are sorted newest first
 
         return (
           <PhaseCard
@@ -233,11 +414,14 @@ const ProgressTab = ({ engagement, onStatusChange, onAddLink, onRemoveLink, onNo
             phase={phase}
             phaseType={phaseInfo.id}
             phaseInfo={phaseInfo}
+            latestNote={latestNote}
             notesCount={notesCount}
             onStatusChange={onStatusChange}
             onAddLink={onAddLink}
             onRemoveLink={onRemoveLink}
             onNotesClick={onNotesClick}
+            onAddNote={onAddNote}
+            getOwnerInfo={getOwnerInfo}
           />
         );
       })}
