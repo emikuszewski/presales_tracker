@@ -459,6 +459,7 @@ function PresalesTracker() {
             onModalStateChange={setHasOpenModal}
             activeTab={detailActiveTab}
             onTabChange={setDetailActiveTab}
+            onRefresh={() => refreshSingleEngagement(selectedEngagement.id)}
           />
         )}
 
