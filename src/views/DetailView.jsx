@@ -521,6 +521,53 @@ const DetailView = ({
     };
   }, []);
 
+  // ============================================
+  // AUTO-REFRESH: Silent refresh on mount/engagement change
+  // Ensures fresh data when opening an engagement
+  // ============================================
+  useEffect(() => {
+    // Silent refresh - call onRefresh directly without loading indicator
+    if (onRefresh && !hasOpenModal) {
+      onRefresh();
+    }
+    // Only depend on engagement.id to trigger on engagement change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagement.id]);
+
+  // ============================================
+  // AUTO-REFRESH: Silent refresh on tab visibility change
+  // Handles "switched to Slack and came back" scenario
+  // ============================================
+  useEffect(() => {
+    let lastHiddenAt = null;
+    const VISIBILITY_THRESHOLD_MS = 5000; // 5 seconds
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible' && lastHiddenAt !== null) {
+        const hiddenDuration = Date.now() - lastHiddenAt;
+        
+        // Only refresh if hidden for at least 5 seconds
+        if (hiddenDuration >= VISIBILITY_THRESHOLD_MS) {
+          // Skip if modal is open (user might have unsaved changes)
+          if (!hasOpenModal && onRefresh) {
+            console.log(`[DetailView] Tab was hidden for ${Math.round(hiddenDuration / 1000)}s, triggering silent refresh`);
+            onRefresh();
+          }
+        }
+        
+        lastHiddenAt = null;
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasOpenModal, onRefresh]);
+
   // Get owners with full info
   const owners = useMemo(() => {
     if (!engagement || !engagement.ownerIds) return [];
