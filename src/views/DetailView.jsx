@@ -788,6 +788,8 @@ const DetailView = ({
               onAddLink={detail?.phase?.addLink}
               onRemoveLink={detail?.phase?.removeLink}
               onNotesClick={handlePhaseNotesClick}
+              onAddNote={detail?.note?.add}
+              getOwnerInfo={getOwnerInfo}
             />
           )}
           
