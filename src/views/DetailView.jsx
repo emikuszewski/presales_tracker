@@ -92,6 +92,72 @@ const RestoreIcon = ({ className = "w-4 h-4" }) => (
 );
 
 /**
+ * Refresh icon - circular arrow
+ */
+const RefreshIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+);
+
+/**
+ * Checkmark icon - for success state
+ */
+const CheckIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+/**
+ * Refresh button with loading/success states
+ * States: idle (refresh icon) -> loading (spinner) -> success (checkmark) -> idle
+ */
+const RefreshButton = ({ onClick, disabled, refreshState }) => {
+  const isLoading = refreshState === 'loading';
+  const isSuccess = refreshState === 'success';
+  
+  // Determine button styling based on state
+  const buttonClasses = `p-1.5 rounded-lg transition-colors ${
+    disabled || isLoading || isSuccess
+      ? 'cursor-not-allowed opacity-50'
+      : 'hover:bg-gray-100'
+  }`;
+  
+  // Determine which icon to show
+  const renderIcon = () => {
+    if (isLoading) {
+      return (
+        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      );
+    }
+    if (isSuccess) {
+      return <CheckIcon className="w-5 h-5 text-green-600" />;
+    }
+    return <RefreshIcon className="w-5 h-5 text-gray-600" />;
+  };
+  
+  // Determine tooltip based on state
+  const getTitle = () => {
+    if (isLoading) return 'Refreshing...';
+    if (isSuccess) return 'Refreshed!';
+    if (disabled) return 'Close modal to refresh';
+    return 'Refresh engagement';
+  };
+  
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || isLoading || isSuccess}
+      className={buttonClasses}
+      title={getTitle()}
+    >
+      {renderIcon()}
+    </button>
+  );
+};
+
+/**
  * All engagement status options
  */
 const ALL_STATUSES = ['ACTIVE', 'ON_HOLD', 'UNRESPONSIVE', 'WON', 'LOST', 'DISQUALIFIED', 'NO_DECISION'];
@@ -405,7 +471,8 @@ const DetailView = ({
   onBack,
   onModalStateChange,  // Layer 1 - Report modal state to App
   activeTab,           // Lifted to App for conflict refresh persistence
-  onTabChange          // Lifted to App for conflict refresh persistence
+  onTabChange,         // Lifted to App for conflict refresh persistence
+  onRefresh            // Refresh engagement data
 }) => {
   // Local alias for convenience
   const setActiveTab = onTabChange;
@@ -423,29 +490,36 @@ const DetailView = ({
   const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
+  // Refresh button state: 'idle' | 'loading' | 'success'
+  const [refreshState, setRefreshState] = useState('idle');
+  const refreshTimeoutRef = useRef(null);
+
+  // Compute hasOpenModal for disabling refresh button
+  const hasOpenModal = 
+    showEditDetailsModal || 
+    showOwnersModal || 
+    showIntegrationsModal || 
+    showCompetitionModal || 
+    showArchiveConfirm;
+
   // ============================================
   // LAYER 1: Report modal state to App
   // This allows App to skip visibility refresh when a modal is open
   // ============================================
   useEffect(() => {
-    const hasOpenModal = 
-      showEditDetailsModal || 
-      showOwnersModal || 
-      showIntegrationsModal || 
-      showCompetitionModal || 
-      showArchiveConfirm;
-    
     if (onModalStateChange) {
       onModalStateChange(hasOpenModal);
     }
-  }, [
-    showEditDetailsModal,
-    showOwnersModal,
-    showIntegrationsModal,
-    showCompetitionModal,
-    showArchiveConfirm,
-    onModalStateChange
-  ]);
+  }, [hasOpenModal, onModalStateChange]);
+
+  // Cleanup refresh timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Get owners with full info
   const owners = useMemo(() => {
@@ -584,6 +658,34 @@ const DetailView = ({
     onToggleArchive(engagement.id);
     setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
+
+  /**
+   * Handle refresh button click
+   * Manages state transitions: idle -> loading -> success -> idle
+   */
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh || refreshState !== 'idle' || hasOpenModal) return;
+    
+    setRefreshState('loading');
+    
+    try {
+      await onRefresh();
+      setRefreshState('success');
+      
+      // Clear any existing timeout
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+      
+      // Return to idle after 1.5 seconds
+      refreshTimeoutRef.current = setTimeout(() => {
+        setRefreshState('idle');
+      }, 1500);
+    } catch (error) {
+      console.error('Error refreshing engagement:', error);
+      setRefreshState('idle');
+    }
+  }, [onRefresh, refreshState, hasOpenModal]);
 
   // Early return if no engagement
   if (!engagement) {
@@ -744,6 +846,13 @@ const DetailView = ({
                 )}
               </div>
             )}
+
+            {/* Refresh button */}
+            <RefreshButton
+              onClick={handleRefresh}
+              disabled={hasOpenModal}
+              refreshState={refreshState}
+            />
 
             {/* Three-dot overflow menu */}
             <OverflowMenu
