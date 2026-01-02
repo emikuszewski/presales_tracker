@@ -16,13 +16,13 @@ export const SYSTEM_SE_TEAM = {
   INITIALS: 'SE'
 };
 
-// Phase configuration with labels and descriptions
+// Phase configuration with labels
 export const phaseConfig = [
-  { id: "DISCOVER", label: "Discover", description: "Technical qualification & requirements gathering" },
-  { id: "DESIGN", label: "Design", description: "Solution architecture & POC scoping" },
-  { id: "DEMONSTRATE", label: "Demonstrate", description: "Demos, workshops & technical deep-dives" },
-  { id: "VALIDATE", label: "Validate", description: "POC execution & technical proof" },
-  { id: "ENABLE", label: "Enable", description: "Handoff, training & success planning" }
+  { id: "DISCOVER", label: "Discover" },
+  { id: "DESIGN", label: "Design" },
+  { id: "DEMONSTRATE", label: "Demonstrate" },
+  { id: "VALIDATE", label: "Validate" },
+  { id: "ENABLE", label: "Enable" }
 ];
 
 // Activity type options
