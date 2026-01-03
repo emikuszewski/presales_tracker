@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 
 // Import constants
@@ -33,11 +34,75 @@ function PresalesTracker() {
   const { user } = useAuthenticator((context) => [context.user]);
   
   // ============================================
+  // ROUTING - URL-derived state
+  // ============================================
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Derive current view from URL pathname
+  const view = useMemo(() => {
+    const pathname = location.pathname;
+    if (pathname === '/engagement/new') return 'new';
+    if (pathname.startsWith('/engagement/')) return 'detail';
+    if (pathname === '/admin/team') return 'admin';
+    if (pathname === '/admin/engagements') return 'engagements-admin';
+    if (pathname === '/admin/salesreps') return 'salesreps';
+    return 'list';
+  }, [location.pathname]);
+  
+  // Derive engagement ID from URL (for detail view)
+  const engagementIdFromUrl = useMemo(() => {
+    const match = location.pathname.match(/^\/engagement\/([^/]+)$/);
+    if (match && match[1] !== 'new') return match[1];
+    return null;
+  }, [location.pathname]);
+  
+  // Track previous engagement ID for tab reset
+  const prevEngagementIdRef = useRef(null);
+  
+  // ============================================
+  // NAVIGATION HELPER (URL-based)
+  // ============================================
+  
+  /**
+   * Centralized navigation using React Router
+   * @param {string} targetView - The view to navigate to
+   * @param {string|null} engagementId - Optional engagement ID
+   * @param {Object|null} options - Optional navigation options (e.g., { scrollToActivity: '123' })
+   */
+  const navigateTo = useCallback((targetView, engagementId = null, options = null) => {
+    let url;
+    switch(targetView) {
+      case 'list':
+        url = '/';
+        break;
+      case 'detail':
+        url = `/engagement/${engagementId}`;
+        if (options?.scrollToActivity) {
+          url += `?scrollToActivity=${options.scrollToActivity}`;
+        }
+        break;
+      case 'new':
+        url = '/engagement/new';
+        break;
+      case 'admin':
+        url = '/admin/team';
+        break;
+      case 'engagements-admin':
+        url = '/admin/engagements';
+        break;
+      case 'salesreps':
+        url = '/admin/salesreps';
+        break;
+      default:
+        url = '/';
+    }
+    navigate(url);
+  }, [navigate]);
+
+  // ============================================
   // UI STATE (stays in component)
   // ============================================
-  const [selectedEngagementId, setSelectedEngagementId] = useState(null);
-  const [view, setView] = useState('list');
-  const [navigationOptions, setNavigationOptions] = useState(null);
   const [filterPhase, setFilterPhase] = useState('all');
   const [filterOwner, setFilterOwner] = useState('mine');
   const [filterStale, setFilterStale] = useState(false);
@@ -75,6 +140,7 @@ function PresalesTracker() {
   // ============================================
   
   // Core data hook - owns all data state
+  // Now receives engagement ID from URL
   const {
     currentUser,
     setCurrentUser,
@@ -97,7 +163,7 @@ function PresalesTracker() {
     fetchAllData,
     refreshSingleEngagement,
     client
-  } = usePresalesData(selectedEngagementId);
+  } = usePresalesData(engagementIdFromUrl);
 
   // Auth operations
   const { initializeUser, handleSignOut } = useAuth({
@@ -129,6 +195,7 @@ function PresalesTracker() {
   });
 
   // Engagement list operations
+  // Now uses navigateTo instead of setView/setSelectedEngagementId
   const {
     filteredEngagements,
     staleCount,
@@ -149,9 +216,7 @@ function PresalesTracker() {
     currentUser,
     newEngagement,
     setNewEngagement,
-    setView,
-    selectedEngagementId,
-    setSelectedEngagementId,
+    navigateTo,
     updateEngagementInState,
     fetchAllData,
     logChangeAsync,
@@ -216,6 +281,28 @@ function PresalesTracker() {
   });
 
   // ============================================
+  // URL-BASED NAVIGATION EFFECTS
+  // ============================================
+  
+  /**
+   * Handle engagement change via URL
+   * - Reset tab to 'progress' when navigating to a different engagement
+   * - Track engagement view for "last viewed" badge
+   */
+  useEffect(() => {
+    if (engagementIdFromUrl && engagementIdFromUrl !== prevEngagementIdRef.current) {
+      // Reset tab to progress for new engagement
+      setDetailActiveTab('progress');
+      
+      // Track view when navigating to detail
+      if (detail?.view?.update) {
+        detail.view.update(engagementIdFromUrl);
+      }
+    }
+    prevEngagementIdRef.current = engagementIdFromUrl;
+  }, [engagementIdFromUrl, detail]);
+
+  // ============================================
   // LAYER 1: VISIBILITY-BASED REFRESH
   // ============================================
   
@@ -270,39 +357,6 @@ function PresalesTracker() {
   const handleEverythingManualEnable = () => {
     setShowEverything(true);
     setEverythingManuallyDisabled(false);
-  };
-
-  // ============================================
-  // NAVIGATION HELPER
-  // ============================================
-  
-  /**
-   * Centralized navigation to prevent bugs from forgetting to clear selection
-   * @param {string} targetView - The view to navigate to
-   * @param {string|null} engagementId - Optional engagement ID
-   * @param {Object|null} options - Optional navigation options (e.g., { scrollToActivity: '123' })
-   */
-  const navigateTo = (targetView, engagementId = null, options = null) => {
-    setView(targetView);
-    setSelectedEngagementId(engagementId);
-    setNavigationOptions(options);
-    
-    // Reset tab to progress when navigating to a different engagement
-    if (targetView === 'detail' && engagementId !== selectedEngagementId) {
-      setDetailActiveTab('progress');
-    }
-    
-    // Track view when navigating to detail
-    if (targetView === 'detail' && engagementId) {
-      detail.view.update(engagementId);
-    }
-  };
-
-  /**
-   * Clear navigation options after they've been consumed
-   */
-  const clearNavigationOptions = () => {
-    setNavigationOptions(null);
   };
 
   // ============================================
@@ -371,108 +425,120 @@ function PresalesTracker() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Using Routes */}
       <main className="max-w-5xl mx-auto px-6 py-10">
-        {view === 'admin' && (
-          <AdminView
-            currentUser={currentUser}
-            allTeamMembers={allTeamMembers}
-            engagements={engagements}
-            onToggleActive={handleToggleUserActive}
-            onToggleAdmin={handleToggleUserAdmin}
-            onBack={() => navigateTo('list')}
-          />
-        )}
+        <Routes>
+          {/* List View - Home */}
+          <Route path="/" element={
+            <ListView
+              engagements={filteredEngagements}
+              teamMembers={teamMembers}
+              currentUser={currentUser}
+              staleCount={staleCount}
+              totalInViewMode={totalInViewMode}
+              inProgressInViewMode={inProgressInViewMode}
+              totalEverythingCount={totalEverythingCount}
+              pipelineTotalFormatted={pipelineTotalFormatted}
+              pipelineDealsCount={pipelineDealsCount}
+              getOwnerInfo={getOwnerInfo}
+              filters={{
+                filterPhase,
+                filterOwner,
+                filterStale,
+                showArchived,
+                showEverything,
+                searchQuery
+              }}
+              filterActions={{
+                setFilterPhase,
+                setFilterOwner,
+                setFilterStale,
+                setShowArchived,
+                setShowEverything,
+                setSearchQuery,
+                clearAllFilters,
+                handleEverythingManualDisable,
+                handleEverythingManualEnable
+              }}
+              onSelectEngagement={(id) => navigateTo('detail', id)}
+              onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivity: activityId })}
+              onNewEngagement={() => navigateTo('new')}
+            />
+          } />
 
-        {view === 'engagements-admin' && (
-          <EngagementsAdminView
-            engagements={engagements}
-            currentUser={currentUser}
-            getOwnerInfo={getOwnerInfo}
-            getCascadeInfo={getCascadeInfo}
-            onDeleteEngagement={handleDeleteEngagement}
-            onBack={() => navigateTo('list')}
-          />
-        )}
+          {/* New Engagement - Must come before :id route */}
+          <Route path="/engagement/new" element={
+            <NewEngagementView
+              newEngagement={newEngagement}
+              setNewEngagement={setNewEngagement}
+              teamMembers={teamMembers}
+              salesReps={salesReps}
+              onSubmit={handleCreateEngagement}
+              onBack={() => navigateTo('list')}
+            />
+          } />
 
-        {view === 'salesreps' && (
-          <SalesRepsView
-            salesReps={salesReps}
-            onCreateSalesRep={createSalesRep}
-            onUpdateSalesRep={updateSalesRep}
-            onDeleteSalesRep={deleteSalesRep}
-            getEngagementCount={getEngagementCount}
-            onBack={() => navigateTo('list')}
-          />
-        )}
+          {/* Engagement Detail */}
+          <Route path="/engagement/:id" element={
+            selectedEngagement ? (
+              <DetailView
+                key={`detail-${engagementIdFromUrl}-${conflictResetCounter}`}
+                engagement={selectedEngagement}
+                teamMembers={teamMembers}
+                salesReps={salesReps}
+                currentUser={currentUser}
+                getOwnerInfo={getOwnerInfo}
+                detail={detail}
+                onToggleArchive={handleToggleArchive}
+                onBack={() => navigateTo('list')}
+                onModalStateChange={setHasOpenModal}
+                activeTab={detailActiveTab}
+                onTabChange={setDetailActiveTab}
+                onRefresh={() => refreshSingleEngagement(engagementIdFromUrl)}
+              />
+            ) : (
+              // Engagement not found - redirect to list
+              <Navigate to="/" replace />
+            )
+          } />
 
-        {view === 'list' && (
-          <ListView
-            engagements={filteredEngagements}
-            teamMembers={teamMembers}
-            currentUser={currentUser}
-            staleCount={staleCount}
-            totalInViewMode={totalInViewMode}
-            inProgressInViewMode={inProgressInViewMode}
-            totalEverythingCount={totalEverythingCount}
-            pipelineTotalFormatted={pipelineTotalFormatted}
-            pipelineDealsCount={pipelineDealsCount}
-            getOwnerInfo={getOwnerInfo}
-            filters={{
-              filterPhase,
-              filterOwner,
-              filterStale,
-              showArchived,
-              showEverything,
-              searchQuery
-            }}
-            filterActions={{
-              setFilterPhase,
-              setFilterOwner,
-              setFilterStale,
-              setShowArchived,
-              setShowEverything,
-              setSearchQuery,
-              clearAllFilters,
-              handleEverythingManualDisable,
-              handleEverythingManualEnable
-            }}
-            onSelectEngagement={(id) => navigateTo('detail', id)}
-            onNavigateToActivity={(engagementId, activityId) => navigateTo('detail', engagementId, { scrollToActivity: activityId })}
-            onNewEngagement={() => navigateTo('new')}
-          />
-        )}
+          {/* Admin Views */}
+          <Route path="/admin/team" element={
+            <AdminView
+              currentUser={currentUser}
+              allTeamMembers={allTeamMembers}
+              engagements={engagements}
+              onToggleActive={handleToggleUserActive}
+              onToggleAdmin={handleToggleUserAdmin}
+              onBack={() => navigateTo('list')}
+            />
+          } />
 
-        {view === 'detail' && selectedEngagement && (
-          <DetailView
-            key={`detail-${selectedEngagement.id}-${conflictResetCounter}`}
-            engagement={selectedEngagement}
-            teamMembers={teamMembers}
-            salesReps={salesReps}
-            currentUser={currentUser}
-            getOwnerInfo={getOwnerInfo}
-            detail={detail}
-            navigationOptions={navigationOptions}
-            onClearNavigationOptions={clearNavigationOptions}
-            onToggleArchive={handleToggleArchive}
-            onBack={() => navigateTo('list')}
-            onModalStateChange={setHasOpenModal}
-            activeTab={detailActiveTab}
-            onTabChange={setDetailActiveTab}
-            onRefresh={() => refreshSingleEngagement(selectedEngagement.id)}
-          />
-        )}
+          <Route path="/admin/engagements" element={
+            <EngagementsAdminView
+              engagements={engagements}
+              currentUser={currentUser}
+              getOwnerInfo={getOwnerInfo}
+              getCascadeInfo={getCascadeInfo}
+              onDeleteEngagement={handleDeleteEngagement}
+              onBack={() => navigateTo('list')}
+            />
+          } />
 
-        {view === 'new' && (
-          <NewEngagementView
-            newEngagement={newEngagement}
-            setNewEngagement={setNewEngagement}
-            teamMembers={teamMembers}
-            salesReps={salesReps}
-            onSubmit={handleCreateEngagement}
-            onBack={() => navigateTo('list')}
-          />
-        )}
+          <Route path="/admin/salesreps" element={
+            <SalesRepsView
+              salesReps={salesReps}
+              onCreateSalesRep={createSalesRep}
+              onUpdateSalesRep={updateSalesRep}
+              onDeleteSalesRep={deleteSalesRep}
+              getEngagementCount={getEngagementCount}
+              onBack={() => navigateTo('list')}
+            />
+          } />
+
+          {/* Catch-all - redirect unknown routes to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       {/* Layer 2: Conflict Modal */}
