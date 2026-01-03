@@ -132,6 +132,10 @@ export default function CommandPalette({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    // Debug: see what methods are available
+    console.log('chat methods:', Object.keys(client.conversations.chat));
+    console.log('chat object:', client.conversations.chat);
+
     const userMessage = input.trim();
     const context = buildContext();
     const messageWithContext = userMessage + context;
