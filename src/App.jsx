@@ -137,11 +137,6 @@ function PresalesTracker() {
   const [hasOpenModal, setHasOpenModal] = useState(false);
 
   // ============================================
-  // GARY - AI ASSISTANT
-  // ============================================
-  const { isOpen: isGaryOpen, open: openGary, close: closeGary, hasNotification: garyHasNotification } = useGary(engagements, currentUser);
-
-  // ============================================
   // HOOKS - Data and Operations
   // ============================================
   
@@ -170,6 +165,11 @@ function PresalesTracker() {
     refreshSingleEngagement,
     client
   } = usePresalesData(engagementIdFromUrl);
+
+  // ============================================
+  // GARY - AI ASSISTANT (must be after usePresalesData)
+  // ============================================
+  const { isOpen: isGaryOpen, open: openGary, close: closeGary, hasNotification: garyHasNotification } = useGary(engagements, currentUser);
 
   // Auth operations
   const { initializeUser, handleSignOut } = useAuth({
