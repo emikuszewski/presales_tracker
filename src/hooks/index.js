@@ -6,3 +6,4 @@ export { default as useTeamOperations } from './useTeamOperations';
 export { default as useEngagementList } from './useEngagementList';
 export { default as useVisibilityRefresh } from './useVisibilityRefresh';
 export { default as useSalesRepsOperations } from './useSalesRepsOperations';
+export { default as useCommandPalette } from './useCommandPalette';
