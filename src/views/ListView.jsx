@@ -21,6 +21,32 @@ const phaseStatusLabels = {
 };
 
 /**
+ * Extract first name from full name for display
+ * For system users (like "SE Team"), returns the full name unchanged
+ * @param {string} fullName - Full name string
+ * @param {boolean} isSystemUser - Whether this is a system user
+ * @returns {string} First name or full name for system users
+ */
+const getFirstName = (fullName, isSystemUser) => {
+  if (!fullName) return 'Unknown';
+  if (isSystemUser) return fullName;
+  
+  const parts = fullName.trim().split(' ');
+  return parts[0] || fullName;
+};
+
+/**
+ * Format possessive form of a name
+ * Handles names ending in 's' correctly (e.g., "James's")
+ * @param {string} name - The name to make possessive
+ * @returns {string} Possessive form of the name
+ */
+const formatPossessive = (name) => {
+  if (!name) return "Unknown's";
+  return `${name}'s`;
+};
+
+/**
  * List view showing all engagements with minimal filter UI
  * - Single control row: Search + Filters button
  * - Collapsible filter panel
@@ -72,6 +98,24 @@ const ListView = ({
   // Local state for filter panel visibility
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
+  /**
+   * Determine if currently viewing own engagements
+   * True if filterOwner is 'mine' OR if viewing self via avatar click
+   */
+  const isViewingOwnEngagements = filterOwner === 'mine' || filterOwner === currentUser?.id;
+
+  /**
+   * Get the first name of the currently filtered owner (for specific team member view)
+   * Returns null if viewing 'mine', 'all', or own engagements via avatar
+   */
+  const getFilteredOwnerFirstName = () => {
+    if (filterOwner === 'mine' || filterOwner === 'all' || filterOwner === currentUser?.id) {
+      return null;
+    }
+    const ownerInfo = getOwnerInfo(filterOwner);
+    return getFirstName(ownerInfo.name, ownerInfo.isSystemUser);
+  };
+
   // Calculate which filters are non-default (for badge count and chips)
   const nonDefaultFilters = [];
   
@@ -86,7 +130,11 @@ const ListView = ({
   } else {
     if (showArchived) nonDefaultFilters.push({ key: 'status', label: 'Archived', onRemove: () => setShowArchived(false) });
     if (filterOwner !== 'mine') {
-      const ownerLabel = filterOwner === 'all' ? 'All Team' : getOwnerInfo(filterOwner).name;
+      // Use first name for specific team members, "All Team" for all
+      const ownerInfo = getOwnerInfo(filterOwner);
+      const ownerLabel = filterOwner === 'all' 
+        ? 'All Team' 
+        : getFirstName(ownerInfo.name, ownerInfo.isSystemUser);
       nonDefaultFilters.push({ key: 'owner', label: `View: ${ownerLabel}`, onRemove: () => setFilterOwner('mine') });
     }
   }
@@ -204,12 +252,81 @@ const ListView = ({
 
   /**
    * Render header title based on filter state
+   * Reflects ownership: My, All, or [Name]'s
+   * Reflects status: Active (default, no label) or Archived
    */
   const renderTitle = () => {
+    // Everything mode - special case, shows all engagements across all filters
     if (showEverything) {
       return 'All Engagements';
     }
-    return showArchived ? 'Archived Engagements' : 'Engagements';
+
+    // Determine the ownership prefix
+    let ownerPrefix;
+    if (isViewingOwnEngagements) {
+      ownerPrefix = 'My';
+    } else if (filterOwner === 'all') {
+      ownerPrefix = 'All';
+    } else {
+      // Specific team member - use possessive first name
+      const firstName = getFilteredOwnerFirstName();
+      ownerPrefix = formatPossessive(firstName);
+    }
+
+    // Combine with archived status
+    if (showArchived) {
+      return `${ownerPrefix} Archived Engagements`;
+    }
+    
+    return `${ownerPrefix} Engagements`;
+  };
+
+  /**
+   * Render empty state message based on filter state
+   * Personalized by ownership context
+   */
+  const renderEmptyState = () => {
+    // If filters are active (beyond just owner/status), show filter message
+    if (hasActiveFilters) {
+      return (
+        <div>
+          <p className="text-gray-400 mb-3">No engagements match your filters</p>
+          <button
+            onClick={clearAllFilters}
+            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
+          >
+            Clear all filters
+          </button>
+        </div>
+      );
+    }
+
+    // Everything mode
+    if (showEverything) {
+      return <p className="text-gray-400">No engagements yet</p>;
+    }
+
+    // Personalized empty states based on ownership
+    if (isViewingOwnEngagements) {
+      // Viewing own engagements
+      if (showArchived) {
+        return <p className="text-gray-400">You don't have any archived engagements</p>;
+      }
+      return <p className="text-gray-400">You don't have any engagements yet</p>;
+    } else if (filterOwner === 'all') {
+      // Viewing all team engagements
+      if (showArchived) {
+        return <p className="text-gray-400">No archived team engagements</p>;
+      }
+      return <p className="text-gray-400">No team engagements yet</p>;
+    } else {
+      // Viewing specific team member's engagements
+      const firstName = getFilteredOwnerFirstName();
+      if (showArchived) {
+        return <p className="text-gray-400">{firstName} doesn't have any archived engagements</p>;
+      }
+      return <p className="text-gray-400">{firstName} doesn't have any engagements yet</p>;
+    }
   };
 
   return (
@@ -222,14 +339,12 @@ const ListView = ({
           </h2>
           {renderSubtitle()}
         </div>
-        {!showArchived && !showEverything && (
-          <button 
-            onClick={onNewEngagement}
-            className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            + New Engagement
-          </button>
-        )}
+        <button 
+          onClick={onNewEngagement}
+          className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
+        >
+          + New Engagement
+        </button>
       </div>
 
       {/* Minimal Control Row: Search + Filters Button */}
@@ -500,21 +615,7 @@ const ListView = ({
         {/* Empty State */}
         {engagements.length === 0 && (
           <div className="text-center py-12">
-            {hasActiveFilters ? (
-              <div>
-                <p className="text-gray-400 mb-3">No engagements match your filters</p>
-                <button
-                  onClick={clearAllFilters}
-                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
-                >
-                  Clear all filters
-                </button>
-              </div>
-            ) : (
-              <p className="text-gray-400">
-                {showArchived ? 'No archived engagements' : showEverything ? 'No engagements yet' : 'No engagements yet'}
-              </p>
-            )}
+            {renderEmptyState()}
           </div>
         )}
       </div>
