@@ -27,5 +27,7 @@ export {
 } from './modals';
 // Layout components
 export { AvatarMenu, FilterPanel } from './layout';
-// AI components
+// Gary components (the AI assistant)
+export { GaryPanel, GaryButton } from './gary';
+// Legacy AI components export for backwards compatibility
 export { AssistantPanel, AssistantButton } from './ai';
