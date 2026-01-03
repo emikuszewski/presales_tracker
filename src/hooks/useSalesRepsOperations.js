@@ -31,19 +31,16 @@ var useSalesRepsOperations = function(params) {
    */
   var createSalesRep = useCallback(async function(name) {
     if (!name || !name.trim()) {
-      console.error('[SalesReps] Cannot create: name is empty');
       return null;
     }
 
     var trimmedName = name.trim();
     var initials = generateInitials(trimmedName);
-    console.log('[SalesReps] Creating sales rep:', trimmedName, 'initials:', initials);
 
     try {
       var dataClient = typeof client === 'function' ? client() : client;
       
       if (!dataClient || !dataClient.models || !dataClient.models.SalesRep) {
-        console.error('[SalesReps] Error: SalesRep model not available. Have you deployed the schema?');
         alert('Error: SalesRep model not available. Please deploy your Amplify schema first.');
         return null;
       }
@@ -52,11 +49,8 @@ var useSalesRepsOperations = function(params) {
         name: trimmedName,
         initials: initials
       };
-      console.log('[SalesReps] Input data:', JSON.stringify(inputData));
       
       var result = await dataClient.models.SalesRep.create(inputData);
-
-      console.log('[SalesReps] Create result:', result);
 
       if (result.data) {
         setSalesReps(function(prev) {
@@ -68,7 +62,6 @@ var useSalesRepsOperations = function(params) {
       }
       
       if (result.errors) {
-        console.error('[SalesReps] API errors:', result.errors);
         alert('Error creating sales rep: ' + JSON.stringify(result.errors));
       }
       
@@ -101,8 +94,6 @@ var useSalesRepsOperations = function(params) {
       if (updates.email !== undefined) {
         updateData.email = updates.email.trim() || null;
       }
-
-      console.log('[SalesReps] Updating sales rep:', updateData);
       
       var result = await dataClient.models.SalesRep.update(updateData);
 
