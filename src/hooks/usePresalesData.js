@@ -210,11 +210,9 @@ const usePresalesData = (selectedEngagementId) => {
         isSystemUser: true
       });
 
-      console.log('Created SE Team system user:', result.data.id);
       return existingMembers.concat([result.data]);
     } catch (error) {
       if (error.message && error.message.indexOf('unique') !== -1) {
-        console.log('SE Team already created by another session');
         var client2 = generateClient();
         var refreshed = await client2.models.TeamMember.list();
         return refreshed.data;
