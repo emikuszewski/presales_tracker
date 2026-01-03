@@ -5,44 +5,8 @@ const schema = a.schema({
   // AI CONVERSATION ROUTE - SE Assistant
   // ===========================================
   chat: a.conversation({
-    aiModel: a.ai.model('Claude 3.5 Haiku'),systemPrompt: "You are a SE Assistant for PlainID Sales Engineering. Be concise and data-focused. You can query engagements, find stale ones, show competitor trends, and help draft emails. You are read-only and cannot modify data. Keep responses brief. Link engagements as [Company](/engagement/ID). Stale means no activity in 14+ days.",
-    tools: [
-      // Tool to list/search engagements
-      a.ai.dataTool({
-        name: 'listEngagements',
-        description: 'List all engagements. Use this to find engagements, check for stale ones, or get an overview. Returns company, phase, status, last activity date, and owner info. To get details about a specific engagement, filter the results by company name or use the engagement ID from context.',
-        model: a.ref('Engagement'),
-        modelOperation: 'list',
-      }),
-      // Tool to list activities
-      a.ai.dataTool({
-        name: 'listActivities',
-        description: 'List all activities across engagements. Activities include meetings, demos, calls, emails, etc. Each has a date, type, description, and engagementId to link back to the engagement.',
-        model: a.ref('Activity'),
-        modelOperation: 'list',
-      }),
-      // Tool to list phase notes
-      a.ai.dataTool({
-        name: 'listPhaseNotes',
-        description: 'List notes attached to engagement phases. Notes contain important context about what happened in each phase. Each note has engagementId and phaseType.',
-        model: a.ref('PhaseNote'),
-        modelOperation: 'list',
-      }),
-      // Tool to list team members
-      a.ai.dataTool({
-        name: 'listTeamMembers',
-        description: 'List all team members (Sales Engineers). Use to find who owns engagements or look up team info.',
-        model: a.ref('TeamMember'),
-        modelOperation: 'list',
-      }),
-      // Tool to list engagement owners (junction table)
-      a.ai.dataTool({
-        name: 'listEngagementOwners',
-        description: 'List engagement ownership records. Maps team members to engagements they own. Each record has engagementId and teamMemberId.',
-        model: a.ref('EngagementOwner'),
-        modelOperation: 'list',
-      }),
-    ],
+    aiModel: a.ai.model('Claude 3.5 Haiku'),
+    systemPrompt: "You are SE Assistant for PlainID Sales Engineering. Be concise and helpful.",
   })
   .authorization((allow) => allow.owner()),
 
@@ -53,17 +17,11 @@ const schema = a.schema({
     initials: a.string().required(),
     isAdmin: a.boolean().default(false),
     isActive: a.boolean().default(true),
-    // NEW: System user flag for SE Team and future system users
     isSystemUser: a.boolean().default(false),
-    // Phase 1 legacy relationship (kept for backwards compatibility)
     engagements: a.hasMany('Engagement', 'ownerId'),
-    // Phase 2: Co-ownership relationship
     engagementOwnerships: a.hasMany('EngagementOwner', 'teamMemberId'),
-    // Phase 2: Comments authored
     comments: a.hasMany('Comment', 'authorId'),
-    // Phase 3: Change logs authored
     changeLogs: a.hasMany('ChangeLog', 'userId'),
-    // Phase 4: Notes authored
     phaseNotes: a.hasMany('PhaseNote', 'authorId'),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -73,7 +31,6 @@ const schema = a.schema({
     email: a.email(),
     initials: a.string().required(),
     isActive: a.boolean().default(true),
-    // Relationship to engagements
     engagements: a.hasMany('Engagement', 'salesRepId'),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -83,7 +40,6 @@ const schema = a.schema({
     engagement: a.belongsTo('Engagement', 'engagementId'),
     teamMemberId: a.id().required(),
     teamMember: a.belongsTo('TeamMember', 'teamMemberId'),
-    // Role could be 'primary' or 'secondary' for future use
     role: a.string(),
     addedAt: a.datetime(),
   }).authorization(allow => [allow.authenticated()]),
@@ -138,22 +94,12 @@ const schema = a.schema({
     ]),
     startDate: a.date(),
     lastActivity: a.date(),
-    
-    // Phase 1 legacy field (kept for backwards compatibility)
     ownerId: a.id(),
     owner: a.belongsTo('TeamMember', 'ownerId'),
-    
-    // Phase 2: Co-ownership relationship
     owners: a.hasMany('EngagementOwner', 'engagementId'),
-    
-    // Sales Rep / Account Executive relationship
     salesRepId: a.id(),
     salesRep: a.belongsTo('SalesRep', 'salesRepId'),
-    
-    // Partner tracking - simple text field for partner company name
     partnerName: a.string(),
-    
-    // Integration fields
     salesforceId: a.string(),
     salesforceUrl: a.string(),
     jiraTicket: a.string(),
@@ -168,11 +114,7 @@ const schema = a.schema({
     slidesUrl: a.string(),
     sheetsName: a.string(),
     sheetsUrl: a.string(),
-    
-    // Archive support
     isArchived: a.boolean().default(false),
-    
-    // Engagement status - tracks deal health (separate from phase progress)
     engagementStatus: a.enum([
       'ACTIVE',
       'ON_HOLD',
@@ -182,20 +124,13 @@ const schema = a.schema({
       'DISQUALIFIED',
       'NO_DECISION'
     ]),
-    // Optional notes when engagement is closed
     closedReason: a.string(),
-    
-    // Competitor tracking fields
-    competitors: a.string(), // JSON array of competitor enum values
-    competitorNotes: a.string(), // General notes about competition
-    otherCompetitorName: a.string(), // Required when OTHER is selected
-    
-    // Relationships
+    competitors: a.string(),
+    competitorNotes: a.string(),
+    otherCompetitorName: a.string(),
     phases: a.hasMany('Phase', 'engagementId'),
     activities: a.hasMany('Activity', 'engagementId'),
-    // Phase 3: Change history
     changeLogs: a.hasMany('ChangeLog', 'engagementId'),
-    // Phase 4: Running notes per phase
     phaseNotes: a.hasMany('PhaseNote', 'engagementId'),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -218,9 +153,7 @@ const schema = a.schema({
       'SKIPPED'
     ]),
     completedDate: a.date(),
-    // Legacy notes field - kept for backwards compatibility, migrated to PhaseNote
     notes: a.string(),
-    // Links stored as JSON array: [{title: string, url: string}]
     links: a.json(),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -255,7 +188,6 @@ const schema = a.schema({
       'CALL'
     ]),
     description: a.string().required(),
-    // Phase 2: Comments on activities
     comments: a.hasMany('Comment', 'activityId'),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -308,25 +240,17 @@ const schema = a.schema({
     lastViewedAt: a.datetime().required(),
   }).authorization(allow => [allow.authenticated()]),
 
-  // Deletion Audit Log - standalone model for tracking deleted engagements
-  // Not linked to Engagement since the engagement is deleted
-  // Uses TTL for automatic 365-day cleanup
+  // Deletion Audit Log
   DeletionLog: a.model({
-    // Who deleted it
     deletedById: a.id().required(),
     deletedByName: a.string().required(),
-    // Snapshot of deleted engagement data
     companyName: a.string().required(),
     contactName: a.string().required(),
     industry: a.string(),
     currentPhase: a.string(),
     ownerNames: a.string(),
-    // Pre-formatted cascade summary: "5 activities, 8 comments, 3 notes"
     cascadeSummary: a.string(),
-    // Original engagement creation date
     engagementCreatedAt: a.date(),
-    // TTL field - Unix timestamp in seconds (deletedAt + 365 days)
-    // DynamoDB will auto-delete records after this time
     expiresAt: a.integer(),
   }).authorization(allow => [allow.authenticated()]),
 });
