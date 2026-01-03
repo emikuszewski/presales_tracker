@@ -87,10 +87,12 @@ export default function CommandPalette({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [conversation, setConversation] = useState(null);
   const [expandedMessages, setExpandedMessages] = useState({});
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const subscriptionRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -102,7 +104,7 @@ export default function CommandPalette({
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, streamingText]);
 
   useEffect(() => {
     function handleKeyDown(e) {
@@ -114,6 +116,15 @@ export default function CommandPalette({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Cleanup subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+      }
+    };
+  }, []);
 
   const buildContext = useCallback(() => {
     const contextParts = [];
@@ -139,38 +150,79 @@ export default function CommandPalette({
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
     setIsLoading(true);
+    setStreamingText('');
 
     try {
       let conv = conversation;
       
+      // Create conversation if we don't have one
       if (!conv) {
         const createResult = await client.conversations.chat.create();
-        console.log('createResult:', createResult);
-        console.log('createResult.data:', createResult.data);
-        console.log('createResult.data keys:', Object.keys(createResult.data || {}));
         conv = createResult.data;
         setConversation(conv);
       }
 
-      console.log('conversation object:', conv);
-      console.log('conversation keys:', Object.keys(conv || {}));
+      // Set up streaming subscription
+      let fullResponse = '';
+      
+      const subscription = conv.onStreamEvent({
+        next: (event) => {
+          console.log('Stream event:', event);
+          
+          // Handle different event types
+          if (event.contentBlockDelta) {
+            const delta = event.contentBlockDelta.delta?.text || '';
+            fullResponse += delta;
+            setStreamingText(fullResponse);
+          }
+          
+          // Alternative: might be nested differently
+          if (event.text) {
+            fullResponse += event.text;
+            setStreamingText(fullResponse);
+          }
 
-      // Try to find sendMessage - could be on conv directly
-      const response = await conv.sendMessage({
+          // Handle completion
+          if (event.stopReason || event.contentBlockStop) {
+            setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
+            setStreamingText('');
+            setIsLoading(false);
+          }
+        },
+        error: (error) => {
+          console.error('Stream error:', error);
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: 'Sorry, something went wrong. Please try again.' 
+          }]);
+          setStreamingText('');
+          setIsLoading(false);
+        },
+        complete: () => {
+          console.log('Stream complete');
+          // If we have accumulated text but didn't get a stop event
+          if (fullResponse && isLoading) {
+            setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
+            setStreamingText('');
+            setIsLoading(false);
+          }
+        }
+      });
+
+      subscriptionRef.current = subscription;
+
+      // Send the message (this triggers the AI response via stream)
+      await conv.sendMessage({
         content: [{ text: messageWithContext }],
       });
 
-      console.log('response:', response);
-
-      const assistantMessage = response.data?.content?.[0]?.text || 'No response';
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: 'Sorry, something went wrong. Please try again.' 
       }]);
-    } finally {
+      setStreamingText('');
       setIsLoading(false);
     }
   };
@@ -214,7 +266,7 @@ export default function CommandPalette({
           </div>
 
           <div className="max-h-[50vh] overflow-y-auto">
-            {messages.length > 0 ? (
+            {messages.length > 0 || streamingText ? (
               <div className="p-4 space-y-4">
                 {messages.map((message, index) => (
                   <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -233,7 +285,16 @@ export default function CommandPalette({
                     </div>
                   </div>
                 ))}
-                {isLoading && (
+                {/* Streaming response */}
+                {streamingText && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] rounded-lg px-3 py-2 bg-gray-100 text-gray-800">
+                      <p className="text-sm whitespace-pre-wrap">{streamingText}</p>
+                    </div>
+                  </div>
+                )}
+                {/* Loading indicator when waiting for stream to start */}
+                {isLoading && !streamingText && (
                   <div className="flex justify-start">
                     <div className="bg-gray-100 rounded-lg px-3 py-2">
                       <TypingIndicator />
