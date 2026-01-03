@@ -139,17 +139,30 @@
   transition-delay: 0.15s;
 }
 
-/* Assistant Panel - Push Layout */
+/* Gary Panel - Push Layout */
+.gary-panel-push {
+  transition: margin-right 0.3s ease-out;
+}
+
+.gary-panel-push.panel-open {
+  margin-right: 320px; /* w-80 = 20rem = 320px */
+}
+
+/* Legacy assistant class for backwards compatibility */
 .assistant-panel-push {
   transition: margin-right 0.3s ease-out;
 }
 
 .assistant-panel-push.panel-open {
-  margin-right: 320px; /* w-80 = 20rem = 320px */
+  margin-right: 320px;
 }
 
-/* Hide assistant button on smaller screens - handled via Tailwind lg:flex */
+/* Hide Gary button on smaller screens - handled via Tailwind lg:flex */
 /* But also ensure smooth transitions */
+.gary-fab {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
 .assistant-fab {
   transition: opacity 0.15s ease-out, transform 0.15s ease-out;
 }
