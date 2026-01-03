@@ -87,7 +87,7 @@ export default function CommandPalette({
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState(null);
+  const [conversation, setConversation] = useState(null);
   const [expandedMessages, setExpandedMessages] = useState({});
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -132,10 +132,6 @@ export default function CommandPalette({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    // Debug: see what methods are available
-    console.log('chat methods:', Object.keys(client.conversations.chat));
-    console.log('chat object:', client.conversations.chat);
-
     const userMessage = input.trim();
     const context = buildContext();
     const messageWithContext = userMessage + context;
@@ -145,18 +141,26 @@ export default function CommandPalette({
     setIsLoading(true);
 
     try {
-      let convId = conversationId;
+      let conv = conversation;
       
-      if (!convId) {
+      if (!conv) {
         const createResult = await client.conversations.chat.create();
-        convId = createResult.data.id;
-        setConversationId(convId);
+        console.log('createResult:', createResult);
+        console.log('createResult.data:', createResult.data);
+        console.log('createResult.data keys:', Object.keys(createResult.data || {}));
+        conv = createResult.data;
+        setConversation(conv);
       }
 
-      const response = await client.conversations.chat.sendMessage({
-        conversationId: convId,
+      console.log('conversation object:', conv);
+      console.log('conversation keys:', Object.keys(conv || {}));
+
+      // Try to find sendMessage - could be on conv directly
+      const response = await conv.sendMessage({
         content: [{ text: messageWithContext }],
       });
+
+      console.log('response:', response);
 
       const assistantMessage = response.data?.content?.[0]?.text || 'No response';
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
