@@ -139,7 +139,7 @@ function PresalesTracker() {
   // ============================================
   // AI COMMAND PALETTE
   // ============================================
-  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette();
 
   // ============================================
   // HOOKS - Data and Operations
@@ -424,7 +424,7 @@ function PresalesTracker() {
           <div className="flex items-center gap-3">
             {/* AI Assistant Trigger */}
             <button
-              onClick={() => {/* Handled by keyboard shortcut */}}
+              onClick={openCommandPalette}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
               title="Open SE Assistant (⌘K)"
             >
