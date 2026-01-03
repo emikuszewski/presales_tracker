@@ -507,8 +507,8 @@ export default function GaryPanel({
   const getOwnerNames = useCallback((engagement) => {
     if (!engagement) return 'unassigned';
     
-    // If we have getOwnerInfo function, use it
-    if (getOwnerInfo && engagement.owners && engagement.owners.length > 0) {
+    // If we have getOwnerInfo function and owners is an array, use it
+    if (getOwnerInfo && engagement.owners && Array.isArray(engagement.owners) && engagement.owners.length > 0) {
       const names = engagement.owners
         .map(o => {
           const info = getOwnerInfo(o.teamMemberId);
