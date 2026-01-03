@@ -26,8 +26,6 @@ var useEngagementDetail = function(params) {
     var dataClient = typeof client === 'function' ? client() : client;
     var result = await dataClient.models[modelName].get({ id: id });
     
-    console.log('[ConflictCheck]', modelName, { local: localUpdatedAt, server: result.data?.updatedAt, match: localUpdatedAt === result.data?.updatedAt });
-    
     if (result.errors) {
       throw new Error('Failed to check for conflicts: ' + JSON.stringify(result.errors));
     }
@@ -110,7 +108,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for engagement status update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -181,7 +178,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for engagement closed reason update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -216,7 +212,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for engagement competitors update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -304,7 +299,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for engagement sales rep update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -360,7 +354,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for engagement partner update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -422,7 +415,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for phase update');
         if (onConflict) {
           onConflict({ recordType: 'phase' });
         }
@@ -493,7 +485,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for phase add link');
         if (onConflict) {
           onConflict({ recordType: 'phase' });
         }
@@ -536,7 +527,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for phase remove link');
         if (onConflict) {
           onConflict({ recordType: 'phase' });
         }
@@ -631,7 +621,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for activity edit');
         if (onConflict) {
           onConflict({ recordType: 'activity' });
         }
@@ -716,7 +705,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before deleting
       var conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for activity delete');
         if (onConflict) {
           onConflict({ recordType: 'activity' });
         }
@@ -847,7 +835,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before deleting
       var conflictCheck = await checkForConflict('Comment', commentId, comment.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for comment delete');
         if (onConflict) {
           onConflict({ recordType: 'comment' });
         }
@@ -939,7 +926,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for note edit');
         if (onConflict) {
           onConflict({ recordType: 'note' });
         }
@@ -1010,7 +996,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before deleting
       var conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for note delete');
         if (onConflict) {
           onConflict({ recordType: 'note' });
         }
@@ -1062,7 +1047,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for integrations update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -1092,7 +1076,6 @@ var useEngagementDetail = function(params) {
       // Check for conflicts before updating
       var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
-        console.warn('[OptimisticLock] Conflict detected for details update');
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
         }
@@ -1156,7 +1139,6 @@ var useEngagementDetail = function(params) {
         // Check for conflicts before deleting
         var conflictCheck = await checkForConflict('EngagementOwner', ownershipRecord.id, ownershipRecord.updatedAt);
         if (conflictCheck.conflict) {
-          console.warn('[OptimisticLock] Conflict detected for owner remove');
           if (onConflict) {
             onConflict({ recordType: 'owner' });
           }
