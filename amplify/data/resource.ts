@@ -5,7 +5,7 @@ const schema = a.schema({
   // AI CONVERSATION ROUTE - SE Assistant
   // ===========================================
   chat: a.conversation({
-    aiModel: a.ai.model('Claude 3.5 Haiku'),
+    aiModel: a.ai.model('Claude 3 Haiku'),
     systemPrompt: "You are SE Assistant for PlainID Sales Engineering. Be concise and helpful.",
   })
   .authorization((allow) => allow.owner()),
