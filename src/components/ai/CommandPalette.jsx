@@ -167,8 +167,6 @@ export default function CommandPalette({
       
       const subscription = conv.onStreamEvent({
         next: (event) => {
-          console.log('Stream event:', event);
-          
           // Handle different event types
           if (event.contentBlockDelta) {
             const delta = event.contentBlockDelta.delta?.text || '';
@@ -199,7 +197,6 @@ export default function CommandPalette({
           setIsLoading(false);
         },
         complete: () => {
-          console.log('Stream complete');
           // If we have accumulated text but didn't get a stop event
           if (fullResponse && isLoading) {
             setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
