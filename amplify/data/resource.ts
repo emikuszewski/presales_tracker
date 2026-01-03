@@ -1,6 +1,92 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
 const schema = a.schema({
+  // ===========================================
+  // AI CONVERSATION ROUTE - SE Assistant
+  // ===========================================
+  chat: a.conversation({
+    aiModel: a.ai.model('Claude 3.5 Haiku'),
+    systemPrompt: `You are SE Assistant, an AI helper for PlainID's Sales Engineering team. You help SEs manage their presales engagements efficiently.
+
+PERSONALITY: Concise Pro - Be crisp, data-focused, and minimal. No fluff. Lead with the answer.
+
+CAPABILITIES (Read-Only):
+- Query and summarize engagements
+- Find stale engagements (no activity in 14+ business days)
+- Show competitor trends across deals
+- Summarize activities and notes
+- Help draft follow-up emails
+
+LIMITATIONS:
+- You CANNOT create, modify, or delete any data
+- If asked to create/modify anything, explain: "I'm read-only and can't make changes. You can do that directly in SE Tracker."
+
+RESPONSE FORMAT:
+- Keep responses concise (2-5 sentences for simple queries)
+- Use bullet points sparingly, only for lists of 3+ items
+- When listing engagements, include: Company name, current phase, days since activity
+- Always include links to engagements when referencing them: [Company Name](/engagement/ID)
+
+AMBIGUITY HANDLING:
+- If a company name is ambiguous (e.g., "Acme" matches "Acme Corp" and "Acme Industries"), ask for clarification
+- If a query is vague, ask one clarifying question
+
+CONTEXT AWARENESS:
+- You may receive context about the current page and user
+- Use this to make responses more relevant (e.g., "this engagement" refers to the current one)
+
+DATA DEFINITIONS:
+- Phases: Discover → Design → Demonstrate → Validate → Enable
+- Engagement Status: Active, On Hold, Unresponsive, Won, Lost, Disqualified, No Decision
+- Stale: Active engagement with no activity in 14+ business days
+- Activity Types: Meeting, Demo, Document, Email, Support, Workshop, Call`,
+    tools: [
+      // Tool to list/search engagements
+      a.ai.dataTool({
+        name: 'listEngagements',
+        description: 'List all engagements. Use this to find engagements, check for stale ones, or get an overview. Returns company, phase, status, last activity date, and owner info.',
+        model: a.ref('Engagement'),
+        modelOperation: 'list',
+      }),
+      // Tool to get a specific engagement by ID
+      a.ai.dataTool({
+        name: 'getEngagement',
+        description: 'Get detailed information about a specific engagement by its ID. Use when you need full details about one engagement.',
+        model: a.ref('Engagement'),
+        modelOperation: 'get',
+      }),
+      // Tool to list activities
+      a.ai.dataTool({
+        name: 'listActivities',
+        description: 'List all activities across engagements. Activities include meetings, demos, calls, emails, etc. Each has a date, type, and description.',
+        model: a.ref('Activity'),
+        modelOperation: 'list',
+      }),
+      // Tool to list phase notes
+      a.ai.dataTool({
+        name: 'listPhaseNotes',
+        description: 'List notes attached to engagement phases. Notes contain important context about what happened in each phase.',
+        model: a.ref('PhaseNote'),
+        modelOperation: 'list',
+      }),
+      // Tool to list team members
+      a.ai.dataTool({
+        name: 'listTeamMembers',
+        description: 'List all team members (Sales Engineers). Use to find who owns engagements or look up team info.',
+        model: a.ref('TeamMember'),
+        modelOperation: 'list',
+      }),
+      // Tool to list engagement owners (junction table)
+      a.ai.dataTool({
+        name: 'listEngagementOwners',
+        description: 'List engagement ownership records. Maps team members to engagements they own.',
+        model: a.ref('EngagementOwner'),
+        modelOperation: 'list',
+      }),
+    ],
+  })
+  .authorization((allow) => allow.owner()),
+
   // Team Member model
   TeamMember: a.model({
     email: a.email().required(),
