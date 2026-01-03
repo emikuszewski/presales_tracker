@@ -28,4 +28,4 @@ export {
 // Layout components
 export { AvatarMenu, FilterPanel } from './layout';
 // AI components
-export { CommandPalette } from './ai';
+export { AssistantPanel, AssistantButton } from './ai';
