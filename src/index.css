@@ -138,3 +138,18 @@
   visibility: visible;
   transition-delay: 0.15s;
 }
+
+/* Assistant Panel - Push Layout */
+.assistant-panel-push {
+  transition: margin-right 0.3s ease-out;
+}
+
+.assistant-panel-push.panel-open {
+  margin-right: 320px; /* w-80 = 20rem = 320px */
+}
+
+/* Hide assistant button on smaller screens - handled via Tailwind lg:flex */
+/* But also ensure smooth transitions */
+.assistant-fab {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
