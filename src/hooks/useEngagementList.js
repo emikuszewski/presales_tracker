@@ -8,9 +8,7 @@ var useEngagementList = function(params) {
   var currentUser = params.currentUser;
   var newEngagement = params.newEngagement;
   var setNewEngagement = params.setNewEngagement;
-  var setView = params.setView;
-  var selectedEngagementId = params.selectedEngagementId;
-  var setSelectedEngagementId = params.setSelectedEngagementId;
+  var navigateTo = params.navigateTo;
   var updateEngagementInState = params.updateEngagementInState;
   var fetchAllData = params.fetchAllData;
   var logChangeAsync = params.logChangeAsync;
@@ -390,7 +388,7 @@ var useEngagementList = function(params) {
         logChangeAsync(createdEngagement.id, 'CREATED', 'Created engagement for ' + engagementData.company);
       }
 
-      // Reset form and navigate
+      // Reset form and navigate to new engagement detail
       setNewEngagement({
         company: '', contactName: '', contactEmail: '', contactPhone: '', 
         industry: 'TECHNOLOGY', dealSize: '', ownerIds: currentUser ? [currentUser.id] : [],
@@ -402,11 +400,11 @@ var useEngagementList = function(params) {
         sheetsName: '', sheetsUrl: '',
         slackChannel: '', slackUrl: ''
       });
-      setView('list');
+      navigateTo('detail', createdEngagement.id);
     } catch (error) {
       console.error('Error creating engagement:', error);
     }
-  }, [currentUser, newEngagement, setNewEngagement, setView, setEngagements, logChangeAsync, client]);
+  }, [currentUser, newEngagement, setNewEngagement, navigateTo, setEngagements, logChangeAsync, client]);
 
   // Toggle archive status
   // GROUP B: Updated to add changeLog to state immediately + recalculate isStale when restoring
