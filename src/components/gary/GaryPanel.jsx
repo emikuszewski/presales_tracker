@@ -7,6 +7,7 @@
  * Features:
  * - Push layout (content shrinks when open)
  * - Context-aware (knows current engagement, filters, etc.)
+ * - Engagement index for accurate answers
  * - Streaming responses with stop button
  * - Proactive insights on open
  * - Gary's personality throughout
@@ -104,12 +105,107 @@ const getRandomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 // Max messages to keep in conversation
 const MAX_MESSAGES = 50;
 
+// Max engagements to include in index
+const MAX_ENGAGEMENTS_IN_INDEX = 50;
+
 // Rate limiting: messages per hour
 const RATE_LIMIT_PER_HOUR = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 // Input character limit
 const INPUT_CHAR_LIMIT = 2000;
+
+/**
+ * Format deal size for display
+ */
+function formatDealSize(dealSize) {
+  if (!dealSize) return 'not set';
+  const num = parseFloat(dealSize);
+  if (isNaN(num)) return dealSize;
+  if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `$${(num / 1000).toFixed(0)}k`;
+  return `$${num}`;
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateStr) {
+  if (!dateStr) return 'never';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'unknown';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * Format status for display
+ */
+function formatStatus(status) {
+  if (!status) return 'Active';
+  const statusMap = {
+    'ACTIVE': 'Active',
+    'ON_HOLD': 'On Hold',
+    'UNRESPONSIVE': 'Unresponsive',
+    'WON': 'Won',
+    'LOST': 'Lost',
+    'DISQUALIFIED': 'Disqualified',
+    'NO_DECISION': 'No Decision'
+  };
+  return statusMap[status] || status;
+}
+
+/**
+ * Format industry for display
+ */
+function formatIndustry(industry) {
+  if (!industry) return 'Unknown';
+  const industryMap = {
+    'FINANCIAL_SERVICES': 'Financial Services',
+    'HEALTHCARE': 'Healthcare',
+    'TECHNOLOGY': 'Technology',
+    'RETAIL': 'Retail',
+    'MANUFACTURING': 'Manufacturing',
+    'GOVERNMENT': 'Government'
+  };
+  return industryMap[industry] || industry;
+}
+
+/**
+ * Format phase for display
+ */
+function formatPhase(phase) {
+  if (!phase) return 'Unknown';
+  const phaseMap = {
+    'DISCOVER': 'Discover',
+    'DESIGN': 'Design',
+    'DEMONSTRATE': 'Demonstrate',
+    'VALIDATE': 'Validate',
+    'ENABLE': 'Enable'
+  };
+  return phaseMap[phase] || phase;
+}
+
+/**
+ * Parse competitors string into array
+ */
+function parseCompetitors(competitors, otherCompetitorName) {
+  if (!competitors) return [];
+  try {
+    const parsed = JSON.parse(competitors);
+    if (Array.isArray(parsed)) {
+      return parsed.map(c => {
+        if (c === 'OTHER' && otherCompetitorName) return otherCompetitorName;
+        // Format competitor names nicely
+        return c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      });
+    }
+  } catch {
+    // If not JSON, treat as single value
+    if (competitors === 'OTHER' && otherCompetitorName) return [otherCompetitorName];
+    return [competitors];
+  }
+  return [];
+}
 
 /**
  * Parse response text for engagement links
@@ -269,7 +365,8 @@ export default function GaryPanel({
   currentEngagement = null,
   currentUser = null,
   engagements = [],
-  filters = {}
+  filters = {},
+  getOwnerInfo = null
 }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -405,6 +502,139 @@ export default function GaryPanel({
   }
 
   /**
+   * Get owner names for an engagement
+   */
+  const getOwnerNames = useCallback((engagement) => {
+    if (!engagement) return 'unassigned';
+    
+    // If we have getOwnerInfo function, use it
+    if (getOwnerInfo && engagement.owners && engagement.owners.length > 0) {
+      const names = engagement.owners
+        .map(o => {
+          const info = getOwnerInfo(o.teamMemberId);
+          return info?.name || info?.initials || 'Unknown';
+        })
+        .filter(Boolean);
+      if (names.length > 0) return names.join(', ');
+    }
+    
+    // Fallback to owner relationship if available
+    if (engagement.owner?.name) {
+      return engagement.owner.name;
+    }
+    
+    return 'unassigned';
+  }, [getOwnerInfo]);
+
+  /**
+   * Build engagement index for Gary
+   * One line per engagement, capped at MAX_ENGAGEMENTS_IN_INDEX
+   */
+  const buildEngagementIndex = useCallback(() => {
+    if (!engagements || engagements.length === 0) {
+      return "\n\n[Engagements Index]\nPipeline is empty. Nothing to see here.";
+    }
+    
+    const total = engagements.length;
+    const capped = engagements.slice(0, MAX_ENGAGEMENTS_IN_INDEX);
+    const lines = capped.map(e => {
+      const company = e.company || 'Unknown Company';
+      const industry = formatIndustry(e.industry);
+      const phase = formatPhase(e.currentPhase);
+      const dealSize = formatDealSize(e.dealSize);
+      const status = formatStatus(e.engagementStatus);
+      const lastActivity = formatDate(e.lastActivity || e.updatedAt);
+      const owners = getOwnerNames(e);
+      const competitors = parseCompetitors(e.competitors, e.otherCompetitorName);
+      const competitorStr = competitors.length > 0 ? competitors.join(', ') : 'none';
+      const archived = e.isArchived ? ' [ARCHIVED]' : '';
+      
+      return `- ${company} | ${industry} | ${phase} | ${dealSize} | ${status} | Last: ${lastActivity} | Owners: ${owners} | Competitors: ${competitorStr} | ID: ${e.id}${archived}`;
+    });
+    
+    const header = total > MAX_ENGAGEMENTS_IN_INDEX 
+      ? `[Engagements Index - ${capped.length} of ${total} shown]`
+      : `[Engagements Index - ${total} total]`;
+    
+    return `\n\n${header}\n${lines.join('\n')}`;
+  }, [engagements, getOwnerNames]);
+
+  /**
+   * Build detailed context for current engagement
+   */
+  const buildCurrentEngagementDetail = useCallback(() => {
+    if (!currentEngagement) return '';
+    
+    const e = currentEngagement;
+    const parts = [];
+    
+    parts.push(`[Current Engagement Detail: ${e.company}]`);
+    parts.push(`Company: ${e.company}`);
+    parts.push(`Phase: ${formatPhase(e.currentPhase)}`);
+    parts.push(`Status: ${formatStatus(e.engagementStatus)}`);
+    parts.push(`Deal Size: ${formatDealSize(e.dealSize)}`);
+    parts.push(`Industry: ${formatIndustry(e.industry)}`);
+    parts.push(`Owners: ${getOwnerNames(e)}`);
+    
+    if (e.salesRep?.name) {
+      parts.push(`Sales Rep: ${e.salesRep.name}`);
+    }
+    
+    const competitors = parseCompetitors(e.competitors, e.otherCompetitorName);
+    parts.push(`Competitors: ${competitors.length > 0 ? competitors.join(', ') : 'none'}`);
+    
+    if (e.competitorNotes) {
+      parts.push(`Competitor Notes: "${e.competitorNotes}"`);
+    }
+    
+    if (e.partnerName) {
+      parts.push(`Partner: ${e.partnerName}`);
+    }
+    
+    parts.push(`Last Activity: ${formatDate(e.lastActivity || e.updatedAt)}`);
+    
+    if (e.isArchived) {
+      parts.push(`Status: ARCHIVED`);
+    }
+    
+    // Add recent activities if available
+    if (e.activities && e.activities.length > 0) {
+      const recentActivities = [...e.activities]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5);
+      
+      if (recentActivities.length > 0) {
+        parts.push('');
+        parts.push('Recent Activities (last 5):');
+        recentActivities.forEach(act => {
+          const actDate = formatDate(act.date);
+          const actType = act.type || 'Activity';
+          const desc = act.description || 'No description';
+          parts.push(`- ${actDate}: ${actType} - ${desc}`);
+        });
+      }
+    }
+    
+    // Add phase notes if available
+    if (e.phaseNotes && e.phaseNotes.length > 0) {
+      parts.push('');
+      parts.push('Phase Notes:');
+      const notesByPhase = {};
+      e.phaseNotes.forEach(note => {
+        if (!notesByPhase[note.phaseType]) {
+          notesByPhase[note.phaseType] = [];
+        }
+        notesByPhase[note.phaseType].push(note.text);
+      });
+      Object.entries(notesByPhase).forEach(([phase, notes]) => {
+        parts.push(`- ${formatPhase(phase)}: "${notes.join('; ')}"`);
+      });
+    }
+    
+    return '\n\n' + parts.join('\n');
+  }, [currentEngagement, getOwnerNames]);
+
+  /**
    * Build context string for AI
    */
   const buildContext = useCallback(() => {
@@ -413,19 +643,6 @@ export default function GaryPanel({
     // User context
     if (currentUser) {
       contextParts.push(`Current user: ${currentUser.name} (${currentUser.email})`);
-    }
-    
-    // Current engagement context
-    if (currentEngagement) {
-      contextParts.push(`Currently viewing engagement: ${currentEngagement.company} (ID: ${currentEngagement.id})`);
-      contextParts.push(`Phase: ${currentEngagement.currentPhase || 'Unknown'}`);
-      contextParts.push(`Status: ${currentEngagement.engagementStatus || 'Active'}`);
-      if (currentEngagement.dealSize) {
-        contextParts.push(`Deal size: $${currentEngagement.dealSize}`);
-      }
-      if (currentEngagement.competitors && currentEngagement.competitors.length > 0) {
-        contextParts.push(`Competitors: ${currentEngagement.competitors.join(', ')}`);
-      }
     }
     
     // Filter context
@@ -448,8 +665,21 @@ export default function GaryPanel({
       }
     }
     
-    return contextParts.length > 0 ? `\n\n[Context]\n${contextParts.join('\n')}` : '';
-  }, [currentEngagement, currentUser, filters]);
+    // Build the full context
+    let fullContext = '';
+    
+    if (contextParts.length > 0) {
+      fullContext += `\n\n[Context]\n${contextParts.join('\n')}`;
+    }
+    
+    // Add current engagement detail (richer info for the one being viewed)
+    fullContext += buildCurrentEngagementDetail();
+    
+    // Add engagement index
+    fullContext += buildEngagementIndex();
+    
+    return fullContext;
+  }, [currentUser, filters, buildCurrentEngagementDetail, buildEngagementIndex]);
 
   /**
    * Handle message submission
