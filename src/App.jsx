@@ -570,7 +570,7 @@ function PresalesTracker() {
         onClose={closeGary}
         currentEngagement={selectedEngagement}
         currentUser={currentUser}
-        engagements={engagements}
+        engagements={filteredEngagements}
         filters={{
           filterPhase,
           filterOwner,
@@ -579,6 +579,7 @@ function PresalesTracker() {
           showEverything,
           searchQuery
         }}
+        getOwnerInfo={getOwnerInfo}
       />
     </div>
   );
