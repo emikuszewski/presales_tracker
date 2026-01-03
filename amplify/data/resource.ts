@@ -44,28 +44,21 @@ DATA DEFINITIONS:
       // Tool to list/search engagements
       a.ai.dataTool({
         name: 'listEngagements',
-        description: 'List all engagements. Use this to find engagements, check for stale ones, or get an overview. Returns company, phase, status, last activity date, and owner info.',
+        description: 'List all engagements. Use this to find engagements, check for stale ones, or get an overview. Returns company, phase, status, last activity date, and owner info. To get details about a specific engagement, filter the results by company name or use the engagement ID from context.',
         model: a.ref('Engagement'),
         modelOperation: 'list',
-      }),
-      // Tool to get a specific engagement by ID
-      a.ai.dataTool({
-        name: 'getEngagement',
-        description: 'Get detailed information about a specific engagement by its ID. Use when you need full details about one engagement.',
-        model: a.ref('Engagement'),
-        modelOperation: 'get',
       }),
       // Tool to list activities
       a.ai.dataTool({
         name: 'listActivities',
-        description: 'List all activities across engagements. Activities include meetings, demos, calls, emails, etc. Each has a date, type, and description.',
+        description: 'List all activities across engagements. Activities include meetings, demos, calls, emails, etc. Each has a date, type, description, and engagementId to link back to the engagement.',
         model: a.ref('Activity'),
         modelOperation: 'list',
       }),
       // Tool to list phase notes
       a.ai.dataTool({
         name: 'listPhaseNotes',
-        description: 'List notes attached to engagement phases. Notes contain important context about what happened in each phase.',
+        description: 'List notes attached to engagement phases. Notes contain important context about what happened in each phase. Each note has engagementId and phaseType.',
         model: a.ref('PhaseNote'),
         modelOperation: 'list',
       }),
@@ -79,7 +72,7 @@ DATA DEFINITIONS:
       // Tool to list engagement owners (junction table)
       a.ai.dataTool({
         name: 'listEngagementOwners',
-        description: 'List engagement ownership records. Maps team members to engagements they own.',
+        description: 'List engagement ownership records. Maps team members to engagements they own. Each record has engagementId and teamMemberId.',
         model: a.ref('EngagementOwner'),
         modelOperation: 'list',
       }),
