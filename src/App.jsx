@@ -246,7 +246,6 @@ function PresalesTracker() {
    * @param {Object} info - { recordType: string }
    */
   const handleConflict = useCallback((info) => {
-    console.log('[App] Conflict detected:', info);
     setConflictInfo(info);
   }, []);
 
@@ -318,7 +317,6 @@ function PresalesTracker() {
    */
   const handleVisibilityRefresh = useCallback(() => {
     if (currentUser?.id) {
-      console.log('[App] Visibility refresh triggered');
       fetchAllData(currentUser.id);
     }
   }, [fetchAllData, currentUser?.id]);
