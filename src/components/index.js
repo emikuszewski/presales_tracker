@@ -27,3 +27,5 @@ export {
 } from './modals';
 // Layout components
 export { AvatarMenu, FilterPanel } from './layout';
+// AI components
+export { CommandPalette } from './ai';
