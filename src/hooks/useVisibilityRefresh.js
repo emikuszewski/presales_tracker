@@ -38,23 +38,19 @@ const useVisibilityRefresh = ({
         if (hiddenDuration >= thresholdMs) {
           // Skip refresh if modal is open (user might have unsaved changes)
           if (hasOpenModal) {
-            console.log('[VisibilityRefresh] Skipping refresh: modal is open');
             return;
           }
           
           // Skip refresh if on NewEngagementView (user is filling out form)
           if (currentView === 'new') {
-            console.log('[VisibilityRefresh] Skipping refresh: on new engagement form');
             return;
           }
           
           // Skip refresh if on DetailView (handled locally with different threshold)
           if (currentView === 'detail') {
-            console.log('[VisibilityRefresh] Skipping refresh: on detail view (handled locally)');
             return;
           }
           
-          console.log(`[VisibilityRefresh] Tab was hidden for ${Math.round(hiddenDuration / 1000)}s, triggering refresh`);
           onRefresh();
         }
       }
