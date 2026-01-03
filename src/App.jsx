@@ -6,7 +6,7 @@ import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { ALLOWED_DOMAIN } from './constants';
 
 // Import components
-import { AvatarMenu, ConflictModal, AssistantPanel, AssistantButton } from './components';
+import { AvatarMenu, ConflictModal, GaryPanel, GaryButton } from './components';
 
 // Import views
 import {
@@ -27,7 +27,7 @@ import {
   useEngagementDetail,
   useVisibilityRefresh,
   useSalesRepsOperations,
-  useAssistantPanel
+  useGary
 } from './hooks';
 
 // Main App Component (inside Authenticator)
@@ -137,9 +137,9 @@ function PresalesTracker() {
   const [hasOpenModal, setHasOpenModal] = useState(false);
 
   // ============================================
-  // AI ASSISTANT PANEL
+  // GARY - AI ASSISTANT
   // ============================================
-  const { isOpen: isAssistantOpen, open: openAssistant, close: closeAssistant } = useAssistantPanel();
+  const { isOpen: isGaryOpen, open: openGary, close: closeGary, hasNotification: garyHasNotification } = useGary(engagements, currentUser);
 
   // ============================================
   // HOOKS - Data and Operations
@@ -411,7 +411,7 @@ function PresalesTracker() {
   // ============================================
 
   return (
-    <div className={`min-h-screen bg-white assistant-panel-push ${isAssistantOpen ? 'panel-open' : ''}`}>
+    <div className={`min-h-screen bg-white gary-panel-push ${isGaryOpen ? 'panel-open' : ''}`}>
       {/* Top Navigation */}
       <header className="border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -557,18 +557,28 @@ function PresalesTracker() {
         onDismiss={handleConflictDismiss}
       />
 
-      {/* AI Assistant - Floating Button */}
-      <AssistantButton
-        onClick={openAssistant}
-        isVisible={!isAssistantOpen}
+      {/* Gary - Floating Button */}
+      <GaryButton
+        onClick={openGary}
+        isVisible={!isGaryOpen}
+        hasNotification={garyHasNotification}
       />
 
-      {/* AI Assistant - Sidebar Panel */}
-      <AssistantPanel
-        isOpen={isAssistantOpen}
-        onClose={closeAssistant}
+      {/* Gary - Sidebar Panel */}
+      <GaryPanel
+        isOpen={isGaryOpen}
+        onClose={closeGary}
         currentEngagement={selectedEngagement}
         currentUser={currentUser}
+        engagements={engagements}
+        filters={{
+          filterPhase,
+          filterOwner,
+          filterStale,
+          showArchived,
+          showEverything,
+          searchQuery
+        }}
       />
     </div>
   );
