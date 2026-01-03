@@ -6,7 +6,7 @@ import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { ALLOWED_DOMAIN } from './constants';
 
 // Import components
-import { AvatarMenu, ConflictModal, CommandPalette } from './components';
+import { AvatarMenu, ConflictModal, AssistantPanel, AssistantButton } from './components';
 
 // Import views
 import {
@@ -27,7 +27,7 @@ import {
   useEngagementDetail,
   useVisibilityRefresh,
   useSalesRepsOperations,
-  useCommandPalette
+  useAssistantPanel
 } from './hooks';
 
 // Main App Component (inside Authenticator)
@@ -137,9 +137,9 @@ function PresalesTracker() {
   const [hasOpenModal, setHasOpenModal] = useState(false);
 
   // ============================================
-  // AI COMMAND PALETTE
+  // AI ASSISTANT PANEL
   // ============================================
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette();
+  const { isOpen: isAssistantOpen, open: openAssistant, close: closeAssistant } = useAssistantPanel();
 
   // ============================================
   // HOOKS - Data and Operations
@@ -246,6 +246,7 @@ function PresalesTracker() {
    * @param {Object} info - { recordType: string }
    */
   const handleConflict = useCallback((info) => {
+    console.log('[App] Conflict detected:', info);
     setConflictInfo(info);
   }, []);
 
@@ -317,6 +318,7 @@ function PresalesTracker() {
    */
   const handleVisibilityRefresh = useCallback(() => {
     if (currentUser?.id) {
+      console.log('[App] Visibility refresh triggered');
       fetchAllData(currentUser.id);
     }
   }, [fetchAllData, currentUser?.id]);
@@ -409,7 +411,7 @@ function PresalesTracker() {
   // ============================================
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen bg-white assistant-panel-push ${isAssistantOpen ? 'panel-open' : ''}`}>
       {/* Top Navigation */}
       <header className="border-b border-gray-100">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -420,21 +422,6 @@ function PresalesTracker() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* AI Assistant Trigger */}
-            <button
-              onClick={openCommandPalette}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
-              title="Open SE Assistant (⌘K)"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span className="hidden sm:inline">Ask AI</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium text-gray-400 bg-gray-100 rounded">
-                ⌘K
-              </kbd>
-            </button>
-            
             <AvatarMenu 
               currentUser={currentUser}
               onTeamClick={() => navigateTo('admin')}
@@ -570,10 +557,16 @@ function PresalesTracker() {
         onDismiss={handleConflictDismiss}
       />
 
-      {/* AI Command Palette */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={closeCommandPalette}
+      {/* AI Assistant - Floating Button */}
+      <AssistantButton
+        onClick={openAssistant}
+        isVisible={!isAssistantOpen}
+      />
+
+      {/* AI Assistant - Sidebar Panel */}
+      <AssistantPanel
+        isOpen={isAssistantOpen}
+        onClose={closeAssistant}
         currentEngagement={selectedEngagement}
         currentUser={currentUser}
       />
