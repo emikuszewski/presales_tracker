@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { client } from '../../client';
+import { CloseIcon } from '../ui';
 
 // Gary's loading phrases - world-weary but competent
 const LOADING_PHRASES = [
@@ -347,9 +348,7 @@ function ProactiveInsight({ insight, onDismiss }) {
           className="text-gray-400 hover:text-gray-600 transition-colors"
           title="Dismiss"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <CloseIcon className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -957,9 +956,7 @@ export default function GaryPanel({
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Close Gary"
           >
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <CloseIcon className="w-4 h-4 text-gray-500" />
           </button>
         </div>
         
