@@ -8,6 +8,7 @@ export { default as IntegrationLinksIndicator } from './IntegrationLinksIndicato
 export { default as CompetitorLogo } from './CompetitorLogo';
 export { default as CompetitorChips } from './CompetitorChips';
 export { default as EngagementStatusIcon } from './EngagementStatusIcon';
+export { default as EngagementCard } from './EngagementCard';
 
 // Icons - re-export from icons folder for backward compatibility
 export { 
