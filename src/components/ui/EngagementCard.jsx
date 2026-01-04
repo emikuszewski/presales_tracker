@@ -1,10 +1,10 @@
 import React from 'react';
-import { OwnersDisplay } from './OwnersDisplay';
-import { StaleBadge } from './StaleBadge';
-import { NotificationBadge } from './NotificationBadge';
-import { IntegrationLinksIndicator } from './IntegrationLinksIndicator';
-import { CompetitorChips } from './CompetitorChips';
-import { EngagementStatusIcon } from './EngagementStatusIcon';
+import OwnersDisplay from './OwnersDisplay';
+import StaleBadge from './StaleBadge';
+import NotificationBadge from './NotificationBadge';
+import IntegrationLinksIndicator from './IntegrationLinksIndicator';
+import CompetitorChips from './CompetitorChips';
+import EngagementStatusIcon from './EngagementStatusIcon';
 import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels, phaseStatusLabels } from '../../constants';
 import { 
   getEngagementStatusBorderClasses, 
@@ -124,7 +124,7 @@ const EngagementCard = React.memo(({
         </div>
       </div>
       
-      {/* Simplified Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Competitors + Links Indicator */}
+      {/* Bottom Row: Compact Phase Dots + Phase Badge + Status Badge + Archived Badge + Stale Badge + Competitors + Links Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* Compact Phase Dots */}
