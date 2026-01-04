@@ -18,26 +18,26 @@ import { phaseConfig, SYSTEM_SE_TEAM } from '../constants';
  * @returns {Object} Enriched engagement
  */
 function enrichSingleEngagement(eng, context) {
-  var phasesByEngagement = context.phasesByEngagement;
-  var activitiesByEngagement = context.activitiesByEngagement;
-  var ownershipByEngagement = context.ownershipByEngagement;
-  var commentsByActivity = context.commentsByActivity;
-  var changeLogsByEngagement = context.changeLogsByEngagement;
-  var phaseNotesByEngagement = context.phaseNotesByEngagement;
-  var viewsMap = context.viewsMap;
-  var salesRepsMap = context.salesRepsMap;
-  var systemUserIds = context.systemUserIds;
-  var userId = context.userId;
+  const phasesByEngagement = context.phasesByEngagement;
+  const activitiesByEngagement = context.activitiesByEngagement;
+  const ownershipByEngagement = context.ownershipByEngagement;
+  const commentsByActivity = context.commentsByActivity;
+  const changeLogsByEngagement = context.changeLogsByEngagement;
+  const phaseNotesByEngagement = context.phaseNotesByEngagement;
+  const viewsMap = context.viewsMap;
+  const salesRepsMap = context.salesRepsMap;
+  const systemUserIds = context.systemUserIds;
+  const userId = context.userId;
 
-  var phases = phasesByEngagement[eng.id] || [];
-  var activities = activitiesByEngagement[eng.id] || [];
-  var ownershipRecords = ownershipByEngagement[eng.id] || [];
-  var changeLogs = (changeLogsByEngagement[eng.id] || [])
+  const phases = phasesByEngagement[eng.id] || [];
+  const activities = activitiesByEngagement[eng.id] || [];
+  const ownershipRecords = ownershipByEngagement[eng.id] || [];
+  const changeLogs = (changeLogsByEngagement[eng.id] || [])
     .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
-  var phaseNotes = (phaseNotesByEngagement[eng.id] || [])
+  const phaseNotes = (phaseNotesByEngagement[eng.id] || [])
     .sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
 
-  var activitiesWithComments = activities
+  const activitiesWithComments = activities
     .map(function(activity) {
       return Object.assign({}, activity, {
         comments: (commentsByActivity[activity.id] || [])
@@ -46,11 +46,11 @@ function enrichSingleEngagement(eng, context) {
     })
     .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
-  var phasesObj = {};
+  const phasesObj = {};
   phaseConfig.forEach(function(p) {
-    var existingPhase = phases.find(function(ph) { return ph.phaseType === p.id; });
+    const existingPhase = phases.find(function(ph) { return ph.phaseType === p.id; });
     if (existingPhase) {
-      var parsedLinks = parseLinks(existingPhase.links);
+      const parsedLinks = parseLinks(existingPhase.links);
       phasesObj[p.id] = Object.assign({}, existingPhase, { links: parsedLinks });
     } else {
       phasesObj[p.id] = {
@@ -63,15 +63,15 @@ function enrichSingleEngagement(eng, context) {
     }
   });
 
-  var ownerIds = ownershipRecords.map(function(o) { return o.teamMemberId; });
+  const ownerIds = ownershipRecords.map(function(o) { return o.teamMemberId; });
   if (ownerIds.length === 0 && eng.ownerId) {
     ownerIds.push(eng.ownerId);
   }
 
-  var userView = viewsMap[eng.id];
-  var unreadChanges = 0;
+  const userView = viewsMap[eng.id];
+  let unreadChanges = 0;
   if (userView && userId) {
-    var lastViewed = new Date(userView.lastViewedAt);
+    const lastViewed = new Date(userView.lastViewedAt);
     unreadChanges = changeLogs.filter(function(log) {
       return new Date(log.createdAt) > lastViewed && log.userId !== userId;
     }).length;
@@ -79,29 +79,29 @@ function enrichSingleEngagement(eng, context) {
     unreadChanges = changeLogs.filter(function(log) { return log.userId !== userId; }).length;
   }
 
-  var hasSystemOwner = ownerIds.some(function(id) { return systemUserIds.indexOf(id) !== -1; });
+  const hasSystemOwner = ownerIds.some(function(id) { return systemUserIds.indexOf(id) !== -1; });
 
-  var notesByPhase = {};
+  const notesByPhase = {};
   phaseConfig.forEach(function(p) {
     notesByPhase[p.id] = phaseNotes.filter(function(n) { return n.phaseType === p.id; });
   });
 
-  var totalNotesCount = phaseNotes.length;
+  const totalNotesCount = phaseNotes.length;
 
   // Default engagementStatus to 'ACTIVE' if not set (backwards compatibility)
-  var engagementStatus = eng.engagementStatus || 'ACTIVE';
+  const engagementStatus = eng.engagementStatus || 'ACTIVE';
 
   // Parse competitors from JSON string
-  var competitors = safeJsonParse(eng.competitors, []);
+  const competitors = safeJsonParse(eng.competitors, []);
 
   // Get sales rep name if assigned
-  var salesRepName = null;
+  let salesRepName = null;
   if (eng.salesRepId && salesRepsMap[eng.salesRepId]) {
     salesRepName = salesRepsMap[eng.salesRepId].name;
   }
 
   // Build enriched engagement with new status and competitor fields
-  var enrichedEng = Object.assign({}, eng, {
+  const enrichedEng = Object.assign({}, eng, {
     phases: phasesObj,
     activities: activitiesWithComments,
     ownerIds: ownerIds,
@@ -155,7 +155,7 @@ const usePresalesData = (selectedEngagementId) => {
   }, []);
 
   const getOwnerInfo = useCallback(function(ownerId) {
-    var member = allTeamMembers.find(function(m) { return m.id === ownerId; });
+    const member = allTeamMembers.find(function(m) { return m.id === ownerId; });
     return member || { name: 'Unknown', initials: '?' };
   }, [allTeamMembers]);
 
@@ -174,8 +174,8 @@ const usePresalesData = (selectedEngagementId) => {
     if (!currentUser) return null;
     
     try {
-      var client = generateClient();
-      var result = await client.models.ChangeLog.create({
+      const client = generateClient();
+      const result = await client.models.ChangeLog.create({
         engagementId: engagementId,
         userId: currentUser.id,
         changeType: changeType,
@@ -191,7 +191,7 @@ const usePresalesData = (selectedEngagementId) => {
   }, [currentUser]);
 
   const ensureSystemUser = useCallback(async function(existingMembers) {
-    var seTeamExists = existingMembers.some(function(m) {
+    const seTeamExists = existingMembers.some(function(m) {
       return m.email === SYSTEM_SE_TEAM.EMAIL || m.isSystemUser === true;
     });
 
@@ -200,8 +200,8 @@ const usePresalesData = (selectedEngagementId) => {
     }
 
     try {
-      var client = generateClient();
-      var result = await client.models.TeamMember.create({
+      const client = generateClient();
+      const result = await client.models.TeamMember.create({
         email: SYSTEM_SE_TEAM.EMAIL,
         name: SYSTEM_SE_TEAM.NAME,
         initials: SYSTEM_SE_TEAM.INITIALS,
@@ -213,8 +213,8 @@ const usePresalesData = (selectedEngagementId) => {
       return existingMembers.concat([result.data]);
     } catch (error) {
       if (error.message && error.message.indexOf('unique') !== -1) {
-        var client2 = generateClient();
-        var refreshed = await client2.models.TeamMember.list();
+        const client2 = generateClient();
+        const refreshed = await client2.models.TeamMember.list();
         return refreshed.data;
       }
       console.error('Error creating SE Team system user:', error);
@@ -236,12 +236,12 @@ const usePresalesData = (selectedEngagementId) => {
     if (!engagementId) return;
     
     try {
-      var client = generateClient();
-      var userId = currentUser ? currentUser.id : null;
+      const client = generateClient();
+      const userId = currentUser ? currentUser.id : null;
       
       // Fetch engagement and related data in parallel
       // Note: We skip comments - they will be preserved from current state
-      var results = await Promise.all([
+      const results = await Promise.all([
         client.models.Engagement.get({ id: engagementId }),
         client.models.Phase.list({ filter: { engagementId: { eq: engagementId } } }),
         client.models.Activity.list({ filter: { engagementId: { eq: engagementId } } }),
@@ -253,13 +253,13 @@ const usePresalesData = (selectedEngagementId) => {
           : Promise.resolve({ data: [] })
       ]);
       
-      var engagementResult = results[0];
-      var phasesData = results[1].data || [];
-      var activitiesData = results[2].data || [];
-      var ownersData = results[3].data || [];
-      var changeLogsData = results[4].data || [];
-      var phaseNotesData = results[5].data || [];
-      var viewsData = results[6].data || [];
+      const engagementResult = results[0];
+      const phasesData = results[1].data || [];
+      const activitiesData = results[2].data || [];
+      const ownersData = results[3].data || [];
+      const changeLogsData = results[4].data || [];
+      const phaseNotesData = results[5].data || [];
+      const viewsData = results[6].data || [];
       
       // If engagement not found (deleted), remove from state
       if (!engagementResult.data) {
@@ -269,17 +269,17 @@ const usePresalesData = (selectedEngagementId) => {
         return;
       }
       
-      var freshEngagement = engagementResult.data;
+      const freshEngagement = engagementResult.data;
       
       // Get existing engagement from state to preserve comments
-      var existingEngagement = null;
+      let existingEngagement = null;
       setEngagements(function(prev) {
         existingEngagement = prev.find(function(e) { return e.id === engagementId; });
         return prev; // No change yet, just reading
       });
       
       // Build comments lookup from existing state (we don't refetch comments)
-      var commentsByActivity = {};
+      const commentsByActivity = {};
       if (existingEngagement && existingEngagement.activities) {
         existingEngagement.activities.forEach(function(activity) {
           if (activity.comments) {
@@ -289,24 +289,24 @@ const usePresalesData = (selectedEngagementId) => {
       }
       
       // Build salesRepsMap from current salesReps state
-      var salesRepsMap = {};
+      const salesRepsMap = {};
       salesReps.forEach(function(rep) {
         salesRepsMap[rep.id] = rep;
       });
       
       // Get systemUserIds from allTeamMembers
-      var systemUserIds = allTeamMembers
+      const systemUserIds = allTeamMembers
         .filter(function(m) { return m.isSystemUser === true; })
         .map(function(m) { return m.id; });
       
       // Build viewsMap
-      var viewsMap = {};
+      const viewsMap = {};
       viewsData.forEach(function(v) {
         viewsMap[v.engagementId] = v;
       });
       
       // Build enrichment context
-      var enrichmentContext = {
+      const enrichmentContext = {
         phasesByEngagement: { [engagementId]: phasesData },
         activitiesByEngagement: { [engagementId]: activitiesData },
         ownershipByEngagement: { [engagementId]: ownersData },
@@ -320,12 +320,12 @@ const usePresalesData = (selectedEngagementId) => {
       };
       
       // Enrich the engagement
-      var enrichedEngagement = enrichSingleEngagement(freshEngagement, enrichmentContext);
+      const enrichedEngagement = enrichSingleEngagement(freshEngagement, enrichmentContext);
       
       // Merge into state
       setEngagements(function(prev) {
-        var found = false;
-        var updated = prev.map(function(e) {
+        let found = false;
+        const updated = prev.map(function(e) {
           if (e.id === engagementId) {
             found = true;
             // Shallow comparison - only update if something changed
@@ -355,9 +355,9 @@ const usePresalesData = (selectedEngagementId) => {
 
   const fetchAllData = useCallback(async function(userId) {
     try {
-      var client = generateClient();
+      const client = generateClient();
       
-      var results = await Promise.all([
+      const results = await Promise.all([
         client.models.TeamMember.list(),
         client.models.Engagement.list(),
         client.models.Phase.list(),
@@ -372,54 +372,54 @@ const usePresalesData = (selectedEngagementId) => {
         client.models.SalesRep.list().catch(function() { return { data: [] }; })
       ]);
 
-      var allMembersData = results[0].data;
-      var engagementData = results[1].data;
-      var allPhases = results[2].data;
-      var allActivities = results[3].data;
-      var allOwnershipRecords = results[4].data;
-      var allComments = results[5].data;
-      var allChangeLogs = results[6].data;
-      var allViews = results[7].data;
-      var allPhaseNotes = results[8].data;
-      var allSalesReps = results[9].data;
+      let allMembersData = results[0].data;
+      const engagementData = results[1].data;
+      const allPhases = results[2].data;
+      const allActivities = results[3].data;
+      const allOwnershipRecords = results[4].data;
+      const allComments = results[5].data;
+      const allChangeLogs = results[6].data;
+      const allViews = results[7].data;
+      const allPhaseNotes = results[8].data;
+      const allSalesReps = results[9].data;
 
       // Sort and store sales reps
-      var sortedSalesReps = allSalesReps.sort(function(a, b) {
+      const sortedSalesReps = allSalesReps.sort(function(a, b) {
         return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
       });
       setSalesReps(sortedSalesReps);
 
       // Create salesReps lookup map
-      var salesRepsMap = {};
+      const salesRepsMap = {};
       allSalesReps.forEach(function(rep) {
         salesRepsMap[rep.id] = rep;
       });
 
       allMembersData = await ensureSystemUser(allMembersData);
 
-      var phasesByEngagement = groupBy(allPhases, 'engagementId');
-      var activitiesByEngagement = groupBy(allActivities, 'engagementId');
-      var ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
-      var commentsByActivity = groupBy(allComments, 'activityId');
-      var changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
-      var phaseNotesByEngagement = groupBy(allPhaseNotes, 'engagementId');
+      const phasesByEngagement = groupBy(allPhases, 'engagementId');
+      const activitiesByEngagement = groupBy(allActivities, 'engagementId');
+      const ownershipByEngagement = groupBy(allOwnershipRecords, 'engagementId');
+      const commentsByActivity = groupBy(allComments, 'activityId');
+      const changeLogsByEngagement = groupBy(allChangeLogs, 'engagementId');
+      const phaseNotesByEngagement = groupBy(allPhaseNotes, 'engagementId');
       
-      var viewsMap = {};
+      const viewsMap = {};
       allViews.forEach(function(v) {
         viewsMap[v.engagementId] = v;
       });
       setEngagementViews(viewsMap);
 
       setAllTeamMembers(allMembersData);
-      var activeMembers = allMembersData.filter(function(m) { return m.isActive !== false; });
+      const activeMembers = allMembersData.filter(function(m) { return m.isActive !== false; });
       setTeamMembers(activeMembers);
 
-      var systemUserIds = allMembersData
+      const systemUserIds = allMembersData
         .filter(function(m) { return m.isSystemUser === true; })
         .map(function(m) { return m.id; });
 
       // Build context object for enrichment function
-      var enrichmentContext = {
+      const enrichmentContext = {
         phasesByEngagement: phasesByEngagement,
         activitiesByEngagement: activitiesByEngagement,
         ownershipByEngagement: ownershipByEngagement,
@@ -433,7 +433,7 @@ const usePresalesData = (selectedEngagementId) => {
       };
 
       // Use extracted enrichment function
-      var enrichedEngagements = engagementData.map(function(eng) {
+      const enrichedEngagements = engagementData.map(function(eng) {
         return enrichSingleEngagement(eng, enrichmentContext);
       });
 
@@ -445,7 +445,7 @@ const usePresalesData = (selectedEngagementId) => {
   }, [ensureSystemUser]);
 
   // Return a client getter (not a static client) so it's created when needed
-  var getClient = useCallback(function() {
+  const getClient = useCallback(function() {
     return generateClient();
   }, []);
 

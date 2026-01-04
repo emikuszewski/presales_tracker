@@ -4,20 +4,20 @@ import { useCallback } from 'react';
  * Hook for Sales Rep CRUD operations
  * Handles create, delete (with cleanup), and state management
  */
-var useSalesRepsOperations = function(params) {
-  var salesReps = params.salesReps;
-  var setSalesReps = params.setSalesReps;
-  var engagements = params.engagements;
-  var setEngagements = params.setEngagements;
-  var client = params.client;
+const useSalesRepsOperations = function(params) {
+  const salesReps = params.salesReps;
+  const setSalesReps = params.setSalesReps;
+  const engagements = params.engagements;
+  const setEngagements = params.setEngagements;
+  const client = params.client;
 
   /**
    * Generate initials from a name
    * "Greg Berg" → "GB", "Madonna" → "M"
    */
-  var generateInitials = function(name) {
+  const generateInitials = function(name) {
     if (!name) return '?';
-    var parts = name.trim().split(/\s+/);
+    const parts = name.trim().split(/\s+/);
     if (parts.length === 1) {
       return parts[0].charAt(0).toUpperCase();
     }
@@ -29,28 +29,28 @@ var useSalesRepsOperations = function(params) {
    * @param {string} name - The sales rep's name
    * @returns {Promise<Object|null>} The created sales rep or null on error
    */
-  var createSalesRep = useCallback(async function(name) {
+  const createSalesRep = useCallback(async function(name) {
     if (!name || !name.trim()) {
       return null;
     }
 
-    var trimmedName = name.trim();
-    var initials = generateInitials(trimmedName);
+    const trimmedName = name.trim();
+    const initials = generateInitials(trimmedName);
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       if (!dataClient || !dataClient.models || !dataClient.models.SalesRep) {
         alert('Error: SalesRep model not available. Please deploy your Amplify schema first.');
         return null;
       }
       
-      var inputData = { 
+      const inputData = { 
         name: trimmedName,
         initials: initials
       };
       
-      var result = await dataClient.models.SalesRep.create(inputData);
+      const result = await dataClient.models.SalesRep.create(inputData);
 
       if (result.data) {
         setSalesReps(function(prev) {
@@ -79,13 +79,13 @@ var useSalesRepsOperations = function(params) {
    * @param {Object} updates - { name?, email? }
    * @returns {Promise<Object|null>} The updated sales rep or null on error
    */
-  var updateSalesRep = useCallback(async function(salesRepId, updates) {
+  const updateSalesRep = useCallback(async function(salesRepId, updates) {
     if (!salesRepId) return null;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
-      var updateData = { id: salesRepId };
+      const updateData = { id: salesRepId };
       
       if (updates.name !== undefined) {
         updateData.name = updates.name.trim();
@@ -95,7 +95,7 @@ var useSalesRepsOperations = function(params) {
         updateData.email = updates.email.trim() || null;
       }
       
-      var result = await dataClient.models.SalesRep.update(updateData);
+      const result = await dataClient.models.SalesRep.update(updateData);
 
       if (result.data) {
         setSalesReps(function(prev) {
@@ -124,19 +124,19 @@ var useSalesRepsOperations = function(params) {
    * @param {string} salesRepId - The ID of the sales rep to delete
    * @returns {Promise<boolean>} True if successful
    */
-  var deleteSalesRep = useCallback(async function(salesRepId) {
+  const deleteSalesRep = useCallback(async function(salesRepId) {
     if (!salesRepId) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find all engagements with this sales rep
-      var affectedEngagements = engagements.filter(function(e) {
+      const affectedEngagements = engagements.filter(function(e) {
         return e.salesRepId === salesRepId;
       });
 
       // Update each affected engagement to remove the sales rep reference
-      for (var i = 0; i < affectedEngagements.length; i++) {
+      for (let i = 0; i < affectedEngagements.length; i++) {
         await dataClient.models.Engagement.update({
           id: affectedEngagements[i].id,
           salesRepId: null
@@ -175,7 +175,7 @@ var useSalesRepsOperations = function(params) {
    * @param {string} salesRepId - The sales rep ID
    * @returns {number} Count of engagements assigned to this rep
    */
-  var getEngagementCount = useCallback(function(salesRepId) {
+  const getEngagementCount = useCallback(function(salesRepId) {
     if (!salesRepId || !engagements) return 0;
     return engagements.filter(function(e) {
       return e.salesRepId === salesRepId;

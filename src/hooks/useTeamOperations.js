@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
 
-var useTeamOperations = function(params) {
-  var currentUser = params.currentUser;
-  var allTeamMembers = params.allTeamMembers;
-  var setAllTeamMembers = params.setAllTeamMembers;
-  var setTeamMembers = params.setTeamMembers;
-  var fetchAllData = params.fetchAllData;
-  var client = params.client;
+const useTeamOperations = function(params) {
+  const currentUser = params.currentUser;
+  const allTeamMembers = params.allTeamMembers;
+  const setAllTeamMembers = params.setAllTeamMembers;
+  const setTeamMembers = params.setTeamMembers;
+  const fetchAllData = params.fetchAllData;
+  const client = params.client;
 
-  var handleToggleUserActive = useCallback(async function(memberId, isCurrentlyActive) {
+  const handleToggleUserActive = useCallback(async function(memberId, isCurrentlyActive) {
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       await dataClient.models.TeamMember.update({
         id: memberId,
@@ -18,7 +18,7 @@ var useTeamOperations = function(params) {
       });
 
       // Update local state
-      var updateMember = function(member) {
+      const updateMember = function(member) {
         if (member.id === memberId) {
           return Object.assign({}, member, { isActive: !isCurrentlyActive });
         }
@@ -37,9 +37,9 @@ var useTeamOperations = function(params) {
         });
       } else {
         // User is being reactivated - add back to active list
-        var member = allTeamMembers.find(function(m) { return m.id === memberId; });
+        const member = allTeamMembers.find(function(m) { return m.id === memberId; });
         if (member) {
-          var updatedMember = Object.assign({}, member, { isActive: true });
+          const updatedMember = Object.assign({}, member, { isActive: true });
           setTeamMembers(function(prev) {
             return prev.concat([updatedMember]);
           });
@@ -50,9 +50,9 @@ var useTeamOperations = function(params) {
     }
   }, [client, allTeamMembers, setAllTeamMembers, setTeamMembers]);
 
-  var handleToggleUserAdmin = useCallback(async function(memberId, isCurrentlyAdmin) {
+  const handleToggleUserAdmin = useCallback(async function(memberId, isCurrentlyAdmin) {
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       await dataClient.models.TeamMember.update({
         id: memberId,
@@ -60,7 +60,7 @@ var useTeamOperations = function(params) {
       });
 
       // Update local state
-      var updateMember = function(member) {
+      const updateMember = function(member) {
         if (member.id === memberId) {
           return Object.assign({}, member, { isAdmin: !isCurrentlyAdmin });
         }

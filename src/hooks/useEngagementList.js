@@ -2,39 +2,39 @@ import { useMemo, useCallback } from 'react';
 import { phaseConfig, phaseLabels } from '../constants';
 import { computePipelineTotal, formatPipelineTotal, recalculateIsStale } from '../utils';
 
-var useEngagementList = function(params) {
-  var engagements = params.engagements;
-  var setEngagements = params.setEngagements;
-  var currentUser = params.currentUser;
-  var newEngagement = params.newEngagement;
-  var setNewEngagement = params.setNewEngagement;
-  var navigateTo = params.navigateTo;
-  var updateEngagementInState = params.updateEngagementInState;
-  var fetchAllData = params.fetchAllData;
-  var logChangeAsync = params.logChangeAsync;
-  var client = params.client;
-  var filters = params.filters || {};
-  var getOwnerInfo = params.getOwnerInfo;
+const useEngagementList = function(params) {
+  const engagements = params.engagements;
+  const setEngagements = params.setEngagements;
+  const currentUser = params.currentUser;
+  const newEngagement = params.newEngagement;
+  const setNewEngagement = params.setNewEngagement;
+  const navigateTo = params.navigateTo;
+  const updateEngagementInState = params.updateEngagementInState;
+  const fetchAllData = params.fetchAllData;
+  const logChangeAsync = params.logChangeAsync;
+  const client = params.client;
+  const filters = params.filters || {};
+  const getOwnerInfo = params.getOwnerInfo;
 
-  var filterPhase = filters.filterPhase;
-  var filterOwner = filters.filterOwner;
-  var filterStale = filters.filterStale;
-  var showArchived = filters.showArchived;
-  var showEverything = filters.showEverything;
-  var searchQuery = filters.searchQuery;
+  const filterPhase = filters.filterPhase;
+  const filterOwner = filters.filterOwner;
+  const filterStale = filters.filterStale;
+  const showArchived = filters.showArchived;
+  const showEverything = filters.showEverything;
+  const searchQuery = filters.searchQuery;
 
   // Total count of all engagements (for Everything button)
-  var totalEverythingCount = useMemo(function() {
+  const totalEverythingCount = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
     return engagements.length;
   }, [engagements]);
 
   // Compute pipeline total for all non-archived engagements (ignores filters)
-  var pipelineStats = useMemo(function() {
+  const pipelineStats = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) {
       return { total: 0, count: 0, formatted: '$0' };
     }
-    var stats = computePipelineTotal(engagements, true); // activeOnly = true
+    const stats = computePipelineTotal(engagements, true); // activeOnly = true
     return {
       total: stats.total,
       count: stats.count,
@@ -43,10 +43,10 @@ var useEngagementList = function(params) {
   }, [engagements]);
 
   // Compute filtered engagements for list view
-  var filteredEngagements = useMemo(function() {
+  const filteredEngagements = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return [];
     
-    var result = engagements.slice();
+    let result = engagements.slice();
 
     // When showEverything is active, bypass owner and archived filters
     if (!showEverything) {
@@ -84,18 +84,18 @@ var useEngagementList = function(params) {
 
     // Filter by search query (always applies, even in Everything mode)
     if (searchQuery && searchQuery.trim()) {
-      var query = searchQuery.toLowerCase().trim();
+      const query = searchQuery.toLowerCase().trim();
       result = result.filter(function(e) {
-        var companyMatch = e.company && e.company.toLowerCase().indexOf(query) !== -1;
-        var contactMatch = e.contactName && e.contactName.toLowerCase().indexOf(query) !== -1;
+        const companyMatch = e.company && e.company.toLowerCase().indexOf(query) !== -1;
+        const contactMatch = e.contactName && e.contactName.toLowerCase().indexOf(query) !== -1;
         return companyMatch || contactMatch;
       });
     }
 
     // Sort alphabetically by company name (A-Z, case-insensitive)
     result.sort(function(a, b) {
-      var companyA = (a.company || '').toLowerCase();
-      var companyB = (b.company || '').toLowerCase();
+      const companyA = (a.company || '').toLowerCase();
+      const companyB = (b.company || '').toLowerCase();
       return companyA.localeCompare(companyB);
     });
 
@@ -103,7 +103,7 @@ var useEngagementList = function(params) {
   }, [engagements, showArchived, showEverything, filterOwner, filterPhase, filterStale, searchQuery, currentUser]);
 
   // Compute stale count (in current view mode)
-  var staleCount = useMemo(function() {
+  const staleCount = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
     
     // When Everything is active, count stale across ALL engagements
@@ -111,7 +111,7 @@ var useEngagementList = function(params) {
       return engagements.filter(function(e) { return e.isStale === true; }).length;
     }
     
-    var relevantEngagements = engagements.filter(function(e) {
+    let relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
       return e.isArchived !== true;
     });
@@ -130,7 +130,7 @@ var useEngagementList = function(params) {
   }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // Total in view mode (before phase/stale/search filters)
-  var totalInViewMode = useMemo(function() {
+  const totalInViewMode = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
     
     // When Everything is active, total is all engagements
@@ -138,7 +138,7 @@ var useEngagementList = function(params) {
       return engagements.length;
     }
     
-    var relevantEngagements = engagements.filter(function(e) {
+    let relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
       return e.isArchived !== true;
     });
@@ -157,18 +157,18 @@ var useEngagementList = function(params) {
   }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // In progress count in view mode
-  var inProgressInViewMode = useMemo(function() {
+  const inProgressInViewMode = useMemo(function() {
     if (!engagements || !Array.isArray(engagements)) return 0;
     
     // When Everything is active, count in-progress across ALL engagements
     if (showEverything) {
       return engagements.filter(function(e) {
-        var currentPhaseData = e.phases && e.phases[e.currentPhase];
+        const currentPhaseData = e.phases && e.phases[e.currentPhase];
         return currentPhaseData && currentPhaseData.status === 'IN_PROGRESS';
       }).length;
     }
     
-    var relevantEngagements = engagements.filter(function(e) {
+    let relevantEngagements = engagements.filter(function(e) {
       if (showArchived) return e.isArchived === true;
       return e.isArchived !== true;
     });
@@ -184,28 +184,28 @@ var useEngagementList = function(params) {
     }
 
     return relevantEngagements.filter(function(e) {
-      var currentPhaseData = e.phases && e.phases[e.currentPhase];
+      const currentPhaseData = e.phases && e.phases[e.currentPhase];
       return currentPhaseData && currentPhaseData.status === 'IN_PROGRESS';
     }).length;
   }, [engagements, showArchived, showEverything, filterOwner, currentUser]);
 
   // Get cascade info for delete modal
-  var getCascadeInfo = useCallback(function(engagement) {
+  const getCascadeInfo = useCallback(function(engagement) {
     if (!engagement) {
       return { phases: 0, activities: 0, comments: 0, changeLogs: 0, owners: 0, notes: 0 };
     }
 
-    var phases = engagement.phases ? Object.keys(engagement.phases).length : 0;
-    var activities = engagement.activities ? engagement.activities.length : 0;
-    var comments = 0;
+    const phases = engagement.phases ? Object.keys(engagement.phases).length : 0;
+    const activities = engagement.activities ? engagement.activities.length : 0;
+    const comments = 0;
     if (engagement.activities) {
       engagement.activities.forEach(function(a) {
         if (a.comments) comments += a.comments.length;
       });
     }
-    var changeLogs = engagement.changeLogs ? engagement.changeLogs.length : 0;
-    var owners = engagement.ownerIds ? engagement.ownerIds.length : 0;
-    var notes = engagement.phaseNotes ? engagement.phaseNotes.length : 0;
+    const changeLogs = engagement.changeLogs ? engagement.changeLogs.length : 0;
+    const owners = engagement.ownerIds ? engagement.ownerIds.length : 0;
+    const notes = engagement.phaseNotes ? engagement.phaseNotes.length : 0;
 
     return {
       phases: phases,
@@ -221,8 +221,8 @@ var useEngagementList = function(params) {
    * Build cascade summary string for deletion log
    * e.g., "5 activities, 8 comments, 3 notes"
    */
-  var buildCascadeSummary = useCallback(function(cascadeInfo) {
-    var parts = [];
+  const buildCascadeSummary = useCallback(function(cascadeInfo) {
+    const parts = [];
     
     if (cascadeInfo.activities > 0) {
       parts.push(cascadeInfo.activities + ' activit' + (cascadeInfo.activities === 1 ? 'y' : 'ies'));
@@ -244,13 +244,13 @@ var useEngagementList = function(params) {
   /**
    * Get owner names as comma-separated string
    */
-  var getOwnerNamesString = useCallback(function(engagement, getOwnerInfoFn) {
+  const getOwnerNamesString = useCallback(function(engagement, getOwnerInfoFn) {
     if (!engagement.ownerIds || engagement.ownerIds.length === 0) {
       return '';
     }
     
-    var names = engagement.ownerIds.map(function(ownerId) {
-      var owner = getOwnerInfoFn(ownerId);
+    const names = engagement.ownerIds.map(function(ownerId) {
+      const owner = getOwnerInfoFn(ownerId);
       return owner.name || 'Unknown';
     });
     
@@ -262,7 +262,7 @@ var useEngagementList = function(params) {
    * @param {string} engagementId - The engagement ID
    * @param {Object} changeLog - The created change log record
    */
-  var addChangeLogToState = function(engagementId, changeLog) {
+  const addChangeLogToState = function(engagementId, changeLog) {
     if (!changeLog) return;
     updateEngagementInState(engagementId, function(eng) {
       return Object.assign({}, eng, {
@@ -275,20 +275,20 @@ var useEngagementList = function(params) {
    * Create new engagement
    * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
    */
-  var handleCreateEngagement = useCallback(async function(overrides) {
+  const handleCreateEngagement = useCallback(async function(overrides) {
     if (!currentUser || !newEngagement.company || !newEngagement.contactName) {
       return;
     }
 
     // Merge overrides with newEngagement
-    var engagementData = Object.assign({}, newEngagement, overrides || {});
+    const engagementData = Object.assign({}, newEngagement, overrides || {});
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var today = new Date().toISOString().split('T')[0];
+      const dataClient = typeof client === 'function' ? client() : client;
+      const today = new Date().toISOString().split('T')[0];
 
       // Build the create payload - IMPORTANT: omit salesRepId if empty (GSI constraint)
-      var createPayload = {
+      const createPayload = {
         company: engagementData.company,
         contactName: engagementData.contactName,
         contactEmail: engagementData.contactEmail || null,
@@ -326,9 +326,9 @@ var useEngagementList = function(params) {
         createPayload.partnerName = engagementData.partnerName.trim();
       }
 
-      var result = await dataClient.models.Engagement.create(createPayload);
+      const result = await dataClient.models.Engagement.create(createPayload);
 
-      var createdEngagement = result.data;
+      const createdEngagement = result.data;
 
       if (!createdEngagement) {
         console.error('Failed to create engagement:', result.errors);
@@ -336,10 +336,10 @@ var useEngagementList = function(params) {
       }
 
       // Create phases
-      var phases = {};
-      for (var i = 0; i < phaseConfig.length; i++) {
-        var phase = phaseConfig[i];
-        var phaseResult = await dataClient.models.Phase.create({
+      const phases = {};
+      for (let i = 0; i < phaseConfig.length; i++) {
+        const phase = phaseConfig[i];
+        const phaseResult = await dataClient.models.Phase.create({
           engagementId: createdEngagement.id,
           phaseType: phase.id,
           status: phase.id === 'DISCOVER' ? 'IN_PROGRESS' : 'PENDING',
@@ -351,11 +351,11 @@ var useEngagementList = function(params) {
       }
 
       // Create ownership records for selected owners
-      var ownerIds = engagementData.ownerIds && engagementData.ownerIds.length > 0 
+      const ownerIds = engagementData.ownerIds && engagementData.ownerIds.length > 0 
         ? engagementData.ownerIds 
         : [currentUser.id];
 
-      for (var j = 0; j < ownerIds.length; j++) {
+      for (let j = 0; j < ownerIds.length; j++) {
         await dataClient.models.EngagementOwner.create({
           engagementId: createdEngagement.id,
           teamMemberId: ownerIds[j],
@@ -365,7 +365,7 @@ var useEngagementList = function(params) {
       }
 
       // Build enriched engagement
-      var enrichedEngagement = Object.assign({}, createdEngagement, {
+      const enrichedEngagement = Object.assign({}, createdEngagement, {
         phases: phases,
         activities: [],
         ownerIds: ownerIds,
@@ -408,9 +408,9 @@ var useEngagementList = function(params) {
 
   // Toggle archive status
   // GROUP B: Updated to add changeLog to state immediately + recalculate isStale when restoring
-  var handleToggleArchive = useCallback(async function(engagementId, shouldArchive) {
+  const handleToggleArchive = useCallback(async function(engagementId, shouldArchive) {
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       await dataClient.models.Engagement.update({
         id: engagementId,
@@ -420,14 +420,14 @@ var useEngagementList = function(params) {
       // When restoring (unarchiving), we need to recalculate isStale
       // When archiving, isStale should be false (archived engagements are never stale)
       updateEngagementInState(engagementId, function(eng) {
-        var stateUpdate = { isArchived: shouldArchive };
+        const stateUpdate = { isArchived: shouldArchive };
         
         if (shouldArchive) {
           // Archiving - set isStale to false
           stateUpdate.isStale = false;
         } else {
           // Restoring - recalculate isStale based on current engagement state
-          var restoredEngagement = Object.assign({}, eng, { isArchived: false });
+          const restoredEngagement = Object.assign({}, eng, { isArchived: false });
           stateUpdate.isStale = recalculateIsStale(restoredEngagement);
         }
         
@@ -435,7 +435,7 @@ var useEngagementList = function(params) {
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(
+        const changeLog = await logChangeAsync(
           engagementId, 
           shouldArchive ? 'ARCHIVED' : 'RESTORED', 
           shouldArchive ? 'Archived engagement' : 'Restored engagement'
@@ -448,63 +448,63 @@ var useEngagementList = function(params) {
   }, [client, updateEngagementInState, logChangeAsync]);
 
   // Delete engagement
-  var handleDeleteEngagement = useCallback(async function(engagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfoFn) {
+  const handleDeleteEngagement = useCallback(async function(engagement, setDeleteModalEngagement, setIsDeleting, getOwnerInfoFn) {
     if (!engagement || !currentUser) return;
 
     setIsDeleting(true);
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Gather cascade info BEFORE deletion for the audit log
-      var cascadeInfo = getCascadeInfo(engagement);
-      var cascadeSummary = buildCascadeSummary(cascadeInfo);
-      var ownerNames = getOwnerNamesString(engagement, getOwnerInfoFn || function() { return { name: 'Unknown' }; });
+      const cascadeInfo = getCascadeInfo(engagement);
+      const cascadeSummary = buildCascadeSummary(cascadeInfo);
+      const ownerNames = getOwnerNamesString(engagement, getOwnerInfoFn || function() { return { name: 'Unknown' }; });
 
       // Delete all related records first
       // Delete phases
-      var phases = await dataClient.models.Phase.list({
+      const phases = await dataClient.models.Phase.list({
         filter: { engagementId: { eq: engagement.id } }
       });
-      for (var i = 0; i < phases.data.length; i++) {
+      for (let i = 0; i < phases.data.length; i++) {
         await dataClient.models.Phase.delete({ id: phases.data[i].id });
       }
 
       // Delete activities and comments
-      var activities = await dataClient.models.Activity.list({
+      const activities = await dataClient.models.Activity.list({
         filter: { engagementId: { eq: engagement.id } }
       });
-      for (var j = 0; j < activities.data.length; j++) {
-        var comments = await dataClient.models.Comment.list({
+      for (let j = 0; j < activities.data.length; j++) {
+        const comments = await dataClient.models.Comment.list({
           filter: { activityId: { eq: activities.data[j].id } }
         });
-        for (var k = 0; k < comments.data.length; k++) {
+        for (let k = 0; k < comments.data.length; k++) {
           await dataClient.models.Comment.delete({ id: comments.data[k].id });
         }
         await dataClient.models.Activity.delete({ id: activities.data[j].id });
       }
 
       // Delete change logs
-      var changeLogs = await dataClient.models.ChangeLog.list({
+      const changeLogs = await dataClient.models.ChangeLog.list({
         filter: { engagementId: { eq: engagement.id } }
       });
-      for (var l = 0; l < changeLogs.data.length; l++) {
+      for (let l = 0; l < changeLogs.data.length; l++) {
         await dataClient.models.ChangeLog.delete({ id: changeLogs.data[l].id });
       }
 
       // Delete ownership records
-      var owners = await dataClient.models.EngagementOwner.list({
+      const owners = await dataClient.models.EngagementOwner.list({
         filter: { engagementId: { eq: engagement.id } }
       });
-      for (var m = 0; m < owners.data.length; m++) {
+      for (let m = 0; m < owners.data.length; m++) {
         await dataClient.models.EngagementOwner.delete({ id: owners.data[m].id });
       }
 
       // Delete phase notes
-      var notes = await dataClient.models.PhaseNote.list({
+      const notes = await dataClient.models.PhaseNote.list({
         filter: { engagementId: { eq: engagement.id } }
       });
-      for (var n = 0; n < notes.data.length; n++) {
+      for (let n = 0; n < notes.data.length; n++) {
         await dataClient.models.PhaseNote.delete({ id: notes.data[n].id });
       }
 
@@ -513,8 +513,8 @@ var useEngagementList = function(params) {
 
       // Create DeletionLog entry AFTER successful deletion
       // Calculate expiresAt: current time + 365 days, as Unix timestamp in seconds
-      var now = new Date();
-      var expiresAt = Math.floor(now.getTime() / 1000) + (365 * 24 * 60 * 60);
+      const now = new Date();
+      const expiresAt = Math.floor(now.getTime() / 1000) + (365 * 24 * 60 * 60);
 
       await dataClient.models.DeletionLog.create({
         deletedById: currentUser.id,

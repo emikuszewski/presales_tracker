@@ -2,17 +2,17 @@ import { useCallback } from 'react';
 import { isClosedStatus, recalculateIsStale, recalculateDaysSinceActivity } from '../utils';
 import { engagementStatusLabels, competitorLabels } from '../constants';
 
-var useEngagementDetail = function(params) {
-  var selectedEngagement = params.selectedEngagement;
-  var updateEngagementInState = params.updateEngagementInState;
-  var currentUser = params.currentUser;
-  var engagementViews = params.engagementViews;
-  var setEngagementViews = params.setEngagementViews;
-  var logChangeAsync = params.logChangeAsync;
-  var getOwnerInfo = params.getOwnerInfo;
-  var client = params.client;
-  var onConflict = params.onConflict; // Callback for conflict handling
-  var refreshSingleEngagement = params.refreshSingleEngagement; // For targeted refresh after mutations
+const useEngagementDetail = function(params) {
+  const selectedEngagement = params.selectedEngagement;
+  const updateEngagementInState = params.updateEngagementInState;
+  const currentUser = params.currentUser;
+  const engagementViews = params.engagementViews;
+  const setEngagementViews = params.setEngagementViews;
+  const logChangeAsync = params.logChangeAsync;
+  const getOwnerInfo = params.getOwnerInfo;
+  const client = params.client;
+  const onConflict = params.onConflict; // Callback for conflict handling
+  const refreshSingleEngagement = params.refreshSingleEngagement; // For targeted refresh after mutations
 
   /**
    * Helper to check for conflicts before update/delete operations.
@@ -22,9 +22,9 @@ var useEngagementDetail = function(params) {
    * @param {string} localUpdatedAt - The updatedAt from local state
    * @returns {Promise<{conflict: boolean, fresh: object|null, wasDeleted: boolean}>}
    */
-  var checkForConflict = async function(modelName, id, localUpdatedAt) {
-    var dataClient = typeof client === 'function' ? client() : client;
-    var result = await dataClient.models[modelName].get({ id: id });
+  const checkForConflict = async function(modelName, id, localUpdatedAt) {
+    const dataClient = typeof client === 'function' ? client() : client;
+    const result = await dataClient.models[modelName].get({ id: id });
     
     if (result.errors) {
       throw new Error('Failed to check for conflicts: ' + JSON.stringify(result.errors));
@@ -49,7 +49,7 @@ var useEngagementDetail = function(params) {
    * @param {string} engagementId - The engagement ID
    * @param {Object} changeLog - The created change log record
    */
-  var addChangeLogToState = function(engagementId, changeLog) {
+  const addChangeLogToState = function(engagementId, changeLog) {
     if (!changeLog) return;
     updateEngagementInState(engagementId, function(eng) {
       return Object.assign({}, eng, {
@@ -59,13 +59,13 @@ var useEngagementDetail = function(params) {
   };
 
   // View operations
-  var viewUpdate = useCallback(async function(engagementId) {
+  const viewUpdate = useCallback(async function(engagementId) {
     if (!currentUser || !engagementId) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var now = new Date().toISOString();
-      var existingView = engagementViews[engagementId];
+      const dataClient = typeof client === 'function' ? client() : client;
+      const now = new Date().toISOString();
+      const existingView = engagementViews[engagementId];
 
       if (existingView) {
         await dataClient.models.EngagementView.update({
@@ -73,18 +73,18 @@ var useEngagementDetail = function(params) {
           lastViewedAt: now
         });
         setEngagementViews(function(prev) {
-          var updated = Object.assign({}, prev);
+          const updated = Object.assign({}, prev);
           updated[engagementId] = Object.assign({}, existingView, { lastViewedAt: now });
           return updated;
         });
       } else {
-        var result = await dataClient.models.EngagementView.create({
+        const result = await dataClient.models.EngagementView.create({
           engagementId: engagementId,
           visitorId: currentUser.id,
           lastViewedAt: now
         });
         setEngagementViews(function(prev) {
-          var updated = Object.assign({}, prev);
+          const updated = Object.assign({}, prev);
           updated[engagementId] = result.data;
           return updated;
         });
@@ -98,15 +98,15 @@ var useEngagementDetail = function(params) {
 
   // Engagement status operations - WITH OPTIMISTIC LOCKING
   // GROUP B: Updated to add changeLog to state immediately
-  var statusUpdate = useCallback(async function(newStatus, closedReason) {
+  const statusUpdate = useCallback(async function(newStatus, closedReason) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var oldStatus = selectedEngagement.engagementStatus || 'ACTIVE';
+      const dataClient = typeof client === 'function' ? client() : client;
+      const oldStatus = selectedEngagement.engagementStatus || 'ACTIVE';
       
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -115,7 +115,7 @@ var useEngagementDetail = function(params) {
       }
       
       // Prepare update data
-      var updateData = {
+      const updateData = {
         id: selectedEngagement.id,
         engagementStatus: newStatus
       };
@@ -130,10 +130,10 @@ var useEngagementDetail = function(params) {
         updateData.closedReason = closedReason || null;
       }
 
-      var result = await dataClient.models.Engagement.update(updateData);
+      const result = await dataClient.models.Engagement.update(updateData);
 
       // Update local state with new updatedAt from server
-      var stateUpdate = {
+      const stateUpdate = {
         engagementStatus: newStatus,
         updatedAt: result.data.updatedAt
       };
@@ -151,13 +151,13 @@ var useEngagementDetail = function(params) {
 
       // Log the change and update state immediately
       if (logChangeAsync) {
-        var oldLabel = engagementStatusLabels[oldStatus] || oldStatus;
-        var newLabel = engagementStatusLabels[newStatus] || newStatus;
-        var description = 'Changed status from ' + oldLabel + ' to ' + newLabel;
+        const oldLabel = engagementStatusLabels[oldStatus] || oldStatus;
+        const newLabel = engagementStatusLabels[newStatus] || newStatus;
+        const description = 'Changed status from ' + oldLabel + ' to ' + newLabel;
         if (closedReason) {
           description += ': "' + (closedReason.length > 50 ? closedReason.substring(0, 50) + '...' : closedReason) + '"';
         }
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'STATUS_CHANGED', description, oldStatus, newStatus);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'STATUS_CHANGED', description, oldStatus, newStatus);
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -169,14 +169,14 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Update closed reason only - WITH OPTIMISTIC LOCKING
-  var closedReasonUpdate = useCallback(async function(closedReason) {
+  const closedReasonUpdate = useCallback(async function(closedReason) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -184,7 +184,7 @@ var useEngagementDetail = function(params) {
         return false;
       }
 
-      var result = await dataClient.models.Engagement.update({
+      const result = await dataClient.models.Engagement.update({
         id: selectedEngagement.id,
         closedReason: closedReason || null
       });
@@ -203,14 +203,14 @@ var useEngagementDetail = function(params) {
 
   // Competitors update operation - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var competitorsUpdate = useCallback(async function(competitorData) {
+  const competitorsUpdate = useCallback(async function(competitorData) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -218,13 +218,13 @@ var useEngagementDetail = function(params) {
         return false;
       }
       
-      var oldCompetitors = selectedEngagement.competitors || [];
-      var newCompetitors = competitorData.competitors || [];
+      const oldCompetitors = selectedEngagement.competitors || [];
+      const newCompetitors = competitorData.competitors || [];
       
       // Store competitors as JSON string in DB
-      var competitorsJson = newCompetitors.length > 0 ? JSON.stringify(newCompetitors) : null;
+      const competitorsJson = newCompetitors.length > 0 ? JSON.stringify(newCompetitors) : null;
 
-      var result = await dataClient.models.Engagement.update({
+      const result = await dataClient.models.Engagement.update({
         id: selectedEngagement.id,
         competitors: competitorsJson,
         competitorNotes: competitorData.competitorNotes || null,
@@ -241,13 +241,13 @@ var useEngagementDetail = function(params) {
 
       // Build change log description and update state immediately
       if (logChangeAsync) {
-        var addedCompetitors = newCompetitors.filter(function(c) { return oldCompetitors.indexOf(c) === -1; });
-        var removedCompetitors = oldCompetitors.filter(function(c) { return newCompetitors.indexOf(c) === -1; });
+        const addedCompetitors = newCompetitors.filter(function(c) { return oldCompetitors.indexOf(c) === -1; });
+        const removedCompetitors = oldCompetitors.filter(function(c) { return newCompetitors.indexOf(c) === -1; });
         
-        var descParts = [];
+        const descParts = [];
         
         if (addedCompetitors.length > 0) {
-          var addedLabels = addedCompetitors.map(function(c) {
+          const addedLabels = addedCompetitors.map(function(c) {
             if (c === 'OTHER' && competitorData.otherCompetitorName) {
               return 'Other (' + competitorData.otherCompetitorName + ')';
             }
@@ -257,15 +257,15 @@ var useEngagementDetail = function(params) {
         }
         
         if (removedCompetitors.length > 0) {
-          var removedLabels = removedCompetitors.map(function(c) {
+          const removedLabels = removedCompetitors.map(function(c) {
             return competitorLabels[c] || c;
           });
           descParts.push('Removed ' + removedLabels.join(', '));
         }
         
         // Check if notes changed
-        var oldNotes = selectedEngagement.competitorNotes || '';
-        var newNotes = competitorData.competitorNotes || '';
+        const oldNotes = selectedEngagement.competitorNotes || '';
+        const newNotes = competitorData.competitorNotes || '';
         if (oldNotes !== newNotes) {
           if (descParts.length > 0) {
             descParts.push('updated notes');
@@ -275,8 +275,8 @@ var useEngagementDetail = function(params) {
         }
         
         if (descParts.length > 0) {
-          var description = descParts.join('; ');
-          var changeLog = await logChangeAsync(selectedEngagement.id, 'COMPETITORS_UPDATED', description);
+          const description = descParts.join('; ');
+          const changeLog = await logChangeAsync(selectedEngagement.id, 'COMPETITORS_UPDATED', description);
           addChangeLogToState(selectedEngagement.id, changeLog);
         }
       }
@@ -290,14 +290,14 @@ var useEngagementDetail = function(params) {
 
   // Sales Rep update operation - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var salesRepUpdate = useCallback(async function(salesRepId, salesRepName) {
+  const salesRepUpdate = useCallback(async function(salesRepId, salesRepName) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -305,10 +305,10 @@ var useEngagementDetail = function(params) {
         return false;
       }
       
-      var oldRepId = selectedEngagement.salesRepId;
-      var oldRepName = selectedEngagement.salesRepName;
+      const oldRepId = selectedEngagement.salesRepId;
+      const oldRepName = selectedEngagement.salesRepName;
 
-      var result = await dataClient.models.Engagement.update({
+      const result = await dataClient.models.Engagement.update({
         id: selectedEngagement.id,
         salesRepId: salesRepId || null
       });
@@ -322,7 +322,7 @@ var useEngagementDetail = function(params) {
 
       // Build change log description and update state immediately
       if (logChangeAsync) {
-        var description;
+        let description;
         if (!oldRepId && salesRepId) {
           description = 'Assigned ' + salesRepName;
         } else if (oldRepId && !salesRepId) {
@@ -332,7 +332,7 @@ var useEngagementDetail = function(params) {
         }
         
         if (description) {
-          var changeLog = await logChangeAsync(selectedEngagement.id, 'SALES_REP_CHANGED', description, oldRepName || null, salesRepName || null);
+          const changeLog = await logChangeAsync(selectedEngagement.id, 'SALES_REP_CHANGED', description, oldRepName || null, salesRepName || null);
           addChangeLogToState(selectedEngagement.id, changeLog);
         }
       }
@@ -345,14 +345,14 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Partner update operation - WITH OPTIMISTIC LOCKING
-  var partnerUpdate = useCallback(async function(partnerName) {
+  const partnerUpdate = useCallback(async function(partnerName) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
       
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -360,10 +360,10 @@ var useEngagementDetail = function(params) {
         return false;
       }
       
-      var oldPartnerName = selectedEngagement.partnerName;
-      var newPartnerName = partnerName && partnerName.trim() ? partnerName.trim() : null;
+      const oldPartnerName = selectedEngagement.partnerName;
+      const newPartnerName = partnerName && partnerName.trim() ? partnerName.trim() : null;
 
-      var result = await dataClient.models.Engagement.update({
+      const result = await dataClient.models.Engagement.update({
         id: selectedEngagement.id,
         partnerName: newPartnerName
       });
@@ -376,7 +376,7 @@ var useEngagementDetail = function(params) {
 
       // Build change log description and update state immediately
       if (logChangeAsync) {
-        var description;
+        let description;
         if (!oldPartnerName && newPartnerName) {
           description = 'Added partner: ' + newPartnerName;
         } else if (oldPartnerName && !newPartnerName) {
@@ -386,7 +386,7 @@ var useEngagementDetail = function(params) {
         }
         
         if (description) {
-          var changeLog = await logChangeAsync(selectedEngagement.id, 'PARTNER_UPDATED', description, oldPartnerName || null, newPartnerName || null);
+          const changeLog = await logChangeAsync(selectedEngagement.id, 'PARTNER_UPDATED', description, oldPartnerName || null, newPartnerName || null);
           addChangeLogToState(selectedEngagement.id, changeLog);
         }
       }
@@ -400,12 +400,12 @@ var useEngagementDetail = function(params) {
 
   // Phase operations - WITH OPTIMISTIC LOCKING
   // GROUP B: Updated to add changeLog to state immediately
-  var phaseSave = useCallback(async function(phaseType, phaseData) {
+  const phaseSave = useCallback(async function(phaseType, phaseData) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var phaseRecord = selectedEngagement.phases[phaseType];
+      const dataClient = typeof client === 'function' ? client() : client;
+      const phaseRecord = selectedEngagement.phases[phaseType];
       
       if (!phaseRecord || !phaseRecord.id) {
         console.error('Phase record not found for', phaseType);
@@ -413,7 +413,7 @@ var useEngagementDetail = function(params) {
       }
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
+      const conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'phase' });
@@ -421,7 +421,7 @@ var useEngagementDetail = function(params) {
         return;
       }
 
-      var updateData = {
+      const updateData = {
         status: phaseData.status,
         notes: phaseData.notes || ''
       };
@@ -432,7 +432,7 @@ var useEngagementDetail = function(params) {
         updateData.completedDate = null;
       }
 
-      var result = await dataClient.models.Phase.update({
+      const result = await dataClient.models.Phase.update({
         id: phaseRecord.id,
         status: updateData.status,
         notes: updateData.notes,
@@ -440,7 +440,7 @@ var useEngagementDetail = function(params) {
       });
 
       // Update currentPhase on the engagement when a phase is set to IN_PROGRESS
-      var shouldUpdateCurrentPhase = phaseData.status === 'IN_PROGRESS';
+      const shouldUpdateCurrentPhase = phaseData.status === 'IN_PROGRESS';
       if (shouldUpdateCurrentPhase) {
         await dataClient.models.Engagement.update({
           id: selectedEngagement.id,
@@ -449,10 +449,10 @@ var useEngagementDetail = function(params) {
       }
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newPhases = Object.assign({}, eng.phases);
+        const newPhases = Object.assign({}, eng.phases);
         newPhases[phaseType] = Object.assign({}, eng.phases[phaseType], updateData, { updatedAt: result.data.updatedAt });
         
-        var updates = { phases: newPhases };
+        const updates = { phases: newPhases };
         if (shouldUpdateCurrentPhase) {
           updates.currentPhase = phaseType;
         }
@@ -461,7 +461,7 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'PHASE_UPDATE', 'Updated ' + phaseType + ' phase to ' + phaseData.status);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'PHASE_UPDATE', 'Updated ' + phaseType + ' phase to ' + phaseData.status);
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
@@ -470,12 +470,12 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // GROUP A: Updated to add changeLog to state immediately
-  var phaseAddLink = useCallback(async function(phaseType, linkData) {
+  const phaseAddLink = useCallback(async function(phaseType, linkData) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var phaseRecord = selectedEngagement.phases[phaseType];
+      const dataClient = typeof client === 'function' ? client() : client;
+      const phaseRecord = selectedEngagement.phases[phaseType];
       
       if (!phaseRecord || !phaseRecord.id) {
         console.error('Phase record not found for', phaseType);
@@ -483,7 +483,7 @@ var useEngagementDetail = function(params) {
       }
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
+      const conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'phase' });
@@ -491,22 +491,22 @@ var useEngagementDetail = function(params) {
         return;
       }
 
-      var currentLinks = phaseRecord.links || [];
-      var updatedLinks = currentLinks.concat([linkData]);
+      const currentLinks = phaseRecord.links || [];
+      const updatedLinks = currentLinks.concat([linkData]);
 
-      var result = await dataClient.models.Phase.update({
+      const result = await dataClient.models.Phase.update({
         id: phaseRecord.id,
         links: JSON.stringify(updatedLinks)
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newPhases = Object.assign({}, eng.phases);
+        const newPhases = Object.assign({}, eng.phases);
         newPhases[phaseType] = Object.assign({}, eng.phases[phaseType], { links: updatedLinks, updatedAt: result.data.updatedAt });
         return Object.assign({}, eng, { phases: newPhases });
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'LINK_ADDED', 'Added link "' + linkData.title + '" to ' + phaseType);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'LINK_ADDED', 'Added link "' + linkData.title + '" to ' + phaseType);
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
@@ -515,17 +515,17 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // phaseRemoveLink - no change logging, so not in Group A
-  var phaseRemoveLink = useCallback(async function(phaseType, linkIndex) {
+  const phaseRemoveLink = useCallback(async function(phaseType, linkIndex) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
-      var phaseRecord = selectedEngagement.phases[phaseType];
+      const dataClient = typeof client === 'function' ? client() : client;
+      const phaseRecord = selectedEngagement.phases[phaseType];
       
       if (!phaseRecord || !phaseRecord.id) return;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
+      const conflictCheck = await checkForConflict('Phase', phaseRecord.id, phaseRecord.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'phase' });
@@ -533,16 +533,16 @@ var useEngagementDetail = function(params) {
         return;
       }
 
-      var currentLinks = phaseRecord.links || [];
-      var updatedLinks = currentLinks.filter(function(_, i) { return i !== linkIndex; });
+      const currentLinks = phaseRecord.links || [];
+      const updatedLinks = currentLinks.filter(function(_, i) { return i !== linkIndex; });
 
-      var result = await dataClient.models.Phase.update({
+      const result = await dataClient.models.Phase.update({
         id: phaseRecord.id,
         links: JSON.stringify(updatedLinks)
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newPhases = Object.assign({}, eng.phases);
+        const newPhases = Object.assign({}, eng.phases);
         newPhases[phaseType] = Object.assign({}, eng.phases[phaseType], { links: updatedLinks, updatedAt: result.data.updatedAt });
         return Object.assign({}, eng, { phases: newPhases });
       });
@@ -553,13 +553,13 @@ var useEngagementDetail = function(params) {
 
   // Activity operations - activityAdd does NOT need locking (it's a create)
   // GROUP B: Updated to add changeLog to state immediately + recalculate derived fields
-  var activityAdd = useCallback(async function(activityData) {
+  const activityAdd = useCallback(async function(activityData) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
-      var result = await dataClient.models.Activity.create({
+      const result = await dataClient.models.Activity.create({
         engagementId: selectedEngagement.id,
         date: activityData.date,
         type: activityData.type,
@@ -571,17 +571,17 @@ var useEngagementDetail = function(params) {
         lastActivity: activityData.date
       });
 
-      var newActivity = Object.assign({}, result.data, { comments: [] });
+      const newActivity = Object.assign({}, result.data, { comments: [] });
 
       // Build the updated engagement to recalculate derived fields
-      var updatedEngagement = Object.assign({}, selectedEngagement, {
+      const updatedEngagement = Object.assign({}, selectedEngagement, {
         lastActivity: activityData.date,
         activities: [newActivity].concat(selectedEngagement.activities)
       });
 
       // Recalculate derived fields
-      var newIsStale = recalculateIsStale(updatedEngagement);
-      var newDaysSinceActivity = recalculateDaysSinceActivity(activityData.date);
+      const newIsStale = recalculateIsStale(updatedEngagement);
+      const newDaysSinceActivity = recalculateDaysSinceActivity(activityData.date);
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         return Object.assign({}, eng, {
@@ -593,9 +593,9 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var desc = activityData.description;
-        var truncated = desc.length > 50 ? desc.substring(0, 50) + '...' : desc;
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_ADDED', 'Added ' + activityData.type + ': ' + truncated);
+        const desc = activityData.description;
+        const truncated = desc.length > 50 ? desc.substring(0, 50) + '...' : desc;
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_ADDED', 'Added ' + activityData.type + ': ' + truncated);
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -608,18 +608,18 @@ var useEngagementDetail = function(params) {
 
   // activityEdit - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var activityEdit = useCallback(async function(activityId, updates) {
+  const activityEdit = useCallback(async function(activityId, updates) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the activity to get its updatedAt
-      var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
+      const activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
       if (!activity) return false;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
+      const conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'activity' });
@@ -628,7 +628,7 @@ var useEngagementDetail = function(params) {
       }
 
       // Update activity in DB
-      var result = await dataClient.models.Activity.update({
+      const result = await dataClient.models.Activity.update({
         id: activityId,
         type: updates.type,
         date: updates.date,
@@ -636,8 +636,8 @@ var useEngagementDetail = function(params) {
       });
 
       // Check if we need to update engagement.lastActivity
-      var activities = selectedEngagement.activities;
-      var updatedActivities = activities.map(function(a) {
+      const activities = selectedEngagement.activities;
+      const updatedActivities = activities.map(function(a) {
         if (a.id === activityId) {
           return Object.assign({}, a, updates);
         }
@@ -645,7 +645,7 @@ var useEngagementDetail = function(params) {
       });
 
       // Recalculate lastActivity from all activities
-      var newLastActivity = updatedActivities.reduce(function(latest, a) {
+      const newLastActivity = updatedActivities.reduce(function(latest, a) {
         return a.date > latest ? a.date : latest;
       }, updatedActivities[0]?.date || selectedEngagement.startDate);
 
@@ -659,7 +659,7 @@ var useEngagementDetail = function(params) {
 
       // Update local state with new updatedAt
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newActivities = eng.activities.map(function(a) {
+        const newActivities = eng.activities.map(function(a) {
           if (a.id === activityId) {
             return Object.assign({}, a, updates, { updatedAt: result.data.updatedAt });
           }
@@ -676,10 +676,10 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var truncated = updates.description.length > 40 
+        const truncated = updates.description.length > 40 
           ? updates.description.substring(0, 40) + '...' 
           : updates.description;
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_EDITED', 'Edited activity: "' + truncated + '"');
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'ACTIVITY_EDITED', 'Edited activity: "' + truncated + '"');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -692,18 +692,18 @@ var useEngagementDetail = function(params) {
 
   // activityDelete - WITH OPTIMISTIC LOCKING
   // GROUP C: Updated to add changeLog to state immediately + recalculate all derived fields
-  var activityDelete = useCallback(async function(activityId) {
+  const activityDelete = useCallback(async function(activityId) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the activity to get its info for logging and updatedAt
-      var activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
+      const activity = selectedEngagement.activities.find(function(a) { return a.id === activityId; });
       if (!activity) return false;
 
       // Check for conflicts before deleting
-      var conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
+      const conflictCheck = await checkForConflict('Activity', activityId, activity.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'activity' });
@@ -712,8 +712,8 @@ var useEngagementDetail = function(params) {
       }
 
       // Delete all comments for this activity first
-      var comments = activity.comments || [];
-      for (var i = 0; i < comments.length; i++) {
+      const comments = activity.comments || [];
+      for (let i = 0; i < comments.length; i++) {
         await dataClient.models.Comment.delete({ id: comments[i].id });
       }
 
@@ -721,10 +721,10 @@ var useEngagementDetail = function(params) {
       await dataClient.models.Activity.delete({ id: activityId });
 
       // Recalculate lastActivity from remaining activities
-      var remainingActivities = selectedEngagement.activities.filter(function(a) { 
+      const remainingActivities = selectedEngagement.activities.filter(function(a) { 
         return a.id !== activityId; 
       });
-      var newLastActivity = remainingActivities.length > 0
+      const newLastActivity = remainingActivities.length > 0
         ? remainingActivities.reduce(function(latest, a) {
             return a.date > latest ? a.date : latest;
           }, remainingActivities[0].date)
@@ -737,14 +737,14 @@ var useEngagementDetail = function(params) {
       });
 
       // Build the updated engagement to recalculate derived fields
-      var updatedEngagement = Object.assign({}, selectedEngagement, {
+      const updatedEngagement = Object.assign({}, selectedEngagement, {
         lastActivity: newLastActivity,
         activities: remainingActivities
       });
 
       // Recalculate derived fields
-      var newIsStale = recalculateIsStale(updatedEngagement);
-      var newDaysSinceActivity = recalculateDaysSinceActivity(newLastActivity);
+      const newIsStale = recalculateIsStale(updatedEngagement);
+      const newDaysSinceActivity = recalculateDaysSinceActivity(newLastActivity);
 
       // Update local state with all derived fields
       updateEngagementInState(selectedEngagement.id, function(eng) {
@@ -757,7 +757,7 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(
+        const changeLog = await logChangeAsync(
           selectedEngagement.id, 
           'ACTIVITY_DELETED', 
           'Deleted ' + activity.type + ' activity from ' + activity.date
@@ -774,22 +774,22 @@ var useEngagementDetail = function(params) {
 
   // activityAddComment - NO locking (it's a create)
   // GROUP A: Updated to add changeLog to state immediately
-  var activityAddComment = useCallback(async function(activityId, commentText) {
+  const activityAddComment = useCallback(async function(activityId, commentText) {
     if (!selectedEngagement || !currentUser || !commentText) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
-      var result = await dataClient.models.Comment.create({
+      const result = await dataClient.models.Comment.create({
         activityId: activityId,
         authorId: currentUser.id,
         text: commentText
       });
 
-      var newComment = result.data;
+      const newComment = result.data;
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newActivities = eng.activities.map(function(a) {
+        const newActivities = eng.activities.map(function(a) {
           if (a.id === activityId) {
             return Object.assign({}, a, { comments: a.comments.concat([newComment]) });
           }
@@ -799,8 +799,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var truncated = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_ADDED', 'Commented: "' + truncated + '"');
+        const truncated = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_ADDED', 'Commented: "' + truncated + '"');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -813,17 +813,17 @@ var useEngagementDetail = function(params) {
 
   // activityDeleteComment - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var activityDeleteComment = useCallback(async function(commentId) {
+  const activityDeleteComment = useCallback(async function(commentId) {
     if (!selectedEngagement) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the comment to get its updatedAt
-      var comment = null;
-      for (var i = 0; i < selectedEngagement.activities.length; i++) {
-        var activity = selectedEngagement.activities[i];
-        var found = activity.comments.find(function(c) { return c.id === commentId; });
+      const comment = null;
+      for (let i = 0; i < selectedEngagement.activities.length; i++) {
+        const activity = selectedEngagement.activities[i];
+        const found = activity.comments.find(function(c) { return c.id === commentId; });
         if (found) {
           comment = found;
           break;
@@ -833,7 +833,7 @@ var useEngagementDetail = function(params) {
       if (!comment) return false;
 
       // Check for conflicts before deleting
-      var conflictCheck = await checkForConflict('Comment', commentId, comment.updatedAt);
+      const conflictCheck = await checkForConflict('Comment', commentId, comment.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'comment' });
@@ -844,7 +844,7 @@ var useEngagementDetail = function(params) {
       await dataClient.models.Comment.delete({ id: commentId });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
-        var newActivities = eng.activities.map(function(a) {
+        const newActivities = eng.activities.map(function(a) {
           return Object.assign({}, a, {
             comments: a.comments.filter(function(c) { return c.id !== commentId; })
           });
@@ -853,7 +853,7 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_DELETED', 'Deleted a comment');
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'COMMENT_DELETED', 'Deleted a comment');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -866,30 +866,30 @@ var useEngagementDetail = function(params) {
 
   // noteAdd - NO locking (it's a create)
   // GROUP A: Updated to add changeLog to state immediately
-  var noteAdd = useCallback(async function(phaseType, text) {
+  const noteAdd = useCallback(async function(phaseType, text) {
     if (!selectedEngagement || !currentUser || !text) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
-      var result = await dataClient.models.PhaseNote.create({
+      const result = await dataClient.models.PhaseNote.create({
         engagementId: selectedEngagement.id,
         phaseType: phaseType,
         text: text,
         authorId: currentUser.id
       });
 
-      var newNote = result.data;
+      const newNote = result.data;
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         // Update notesByPhase
-        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
-        var phaseNotes = newNotesByPhase[phaseType] || [];
+        const newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        const phaseNotes = newNotesByPhase[phaseType] || [];
         // Add new note at the beginning (newest first)
         newNotesByPhase[phaseType] = [newNote].concat(phaseNotes);
 
         // Update flat phaseNotes array
-        var newPhaseNotes = [newNote].concat(eng.phaseNotes || []);
+        const newPhaseNotes = [newNote].concat(eng.phaseNotes || []);
 
         return Object.assign({}, eng, {
           notesByPhase: newNotesByPhase,
@@ -899,8 +899,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_ADDED', 'Added note to ' + phaseType + ': "' + truncated + '"');
+        const truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_ADDED', 'Added note to ' + phaseType + ': "' + truncated + '"');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -913,18 +913,18 @@ var useEngagementDetail = function(params) {
 
   // noteEdit - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var noteEdit = useCallback(async function(noteId, phaseType, text) {
+  const noteEdit = useCallback(async function(noteId, phaseType, text) {
     if (!selectedEngagement || !noteId || !text) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the note to get its updatedAt
-      var note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
+      const note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
       if (!note) return false;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
+      const conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'note' });
@@ -932,15 +932,15 @@ var useEngagementDetail = function(params) {
         return false;
       }
 
-      var result = await dataClient.models.PhaseNote.update({
+      const result = await dataClient.models.PhaseNote.update({
         id: noteId,
         text: text
       });
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         // Update notesByPhase
-        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
-        var phaseNotes = newNotesByPhase[phaseType] || [];
+        const newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        const phaseNotes = newNotesByPhase[phaseType] || [];
         newNotesByPhase[phaseType] = phaseNotes.map(function(n) {
           if (n.id === noteId) {
             return Object.assign({}, n, { 
@@ -952,7 +952,7 @@ var useEngagementDetail = function(params) {
         });
 
         // Update flat phaseNotes array
-        var newPhaseNotes = (eng.phaseNotes || []).map(function(n) {
+        const newPhaseNotes = (eng.phaseNotes || []).map(function(n) {
           if (n.id === noteId) {
             return Object.assign({}, n, { 
               text: text, 
@@ -969,8 +969,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_EDITED', 'Edited note in ' + phaseType + ': "' + truncated + '"');
+        const truncated = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_EDITED', 'Edited note in ' + phaseType + ': "' + truncated + '"');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -983,18 +983,18 @@ var useEngagementDetail = function(params) {
 
   // noteDelete - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var noteDelete = useCallback(async function(noteId, phaseType) {
+  const noteDelete = useCallback(async function(noteId, phaseType) {
     if (!selectedEngagement || !noteId) return false;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the note to get its updatedAt
-      var note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
+      const note = (selectedEngagement.phaseNotes || []).find(function(n) { return n.id === noteId; });
       if (!note) return false;
 
       // Check for conflicts before deleting
-      var conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
+      const conflictCheck = await checkForConflict('PhaseNote', noteId, note.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'note' });
@@ -1006,14 +1006,14 @@ var useEngagementDetail = function(params) {
 
       updateEngagementInState(selectedEngagement.id, function(eng) {
         // Update notesByPhase
-        var newNotesByPhase = Object.assign({}, eng.notesByPhase);
-        var phaseNotes = newNotesByPhase[phaseType] || [];
+        const newNotesByPhase = Object.assign({}, eng.notesByPhase);
+        const phaseNotes = newNotesByPhase[phaseType] || [];
         newNotesByPhase[phaseType] = phaseNotes.filter(function(n) {
           return n.id !== noteId;
         });
 
         // Update flat phaseNotes array
-        var newPhaseNotes = (eng.phaseNotes || []).filter(function(n) {
+        const newPhaseNotes = (eng.phaseNotes || []).filter(function(n) {
           return n.id !== noteId;
         });
 
@@ -1025,7 +1025,7 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_DELETED', 'Deleted note from ' + phaseType);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'NOTE_DELETED', 'Deleted note from ' + phaseType);
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
 
@@ -1038,14 +1038,14 @@ var useEngagementDetail = function(params) {
 
   // Integrations operations - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var integrationsUpdate = useCallback(async function(updates) {
+  const integrationsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -1053,12 +1053,12 @@ var useEngagementDetail = function(params) {
         return;
       }
 
-      var result = await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
+      const result = await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
 
       updateEngagementInState(selectedEngagement.id, Object.assign({}, updates, { updatedAt: result.data.updatedAt }));
 
       if (logChangeAsync) {
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integrations');
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'INTEGRATION_UPDATE', 'Updated integrations');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
@@ -1067,14 +1067,14 @@ var useEngagementDetail = function(params) {
   }, [selectedEngagement, updateEngagementInState, logChangeAsync, client, onConflict]);
 
   // Details operations - WITH OPTIMISTIC LOCKING
-  var detailsUpdate = useCallback(async function(updates) {
+  const detailsUpdate = useCallback(async function(updates) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Check for conflicts before updating
-      var conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
+      const conflictCheck = await checkForConflict('Engagement', selectedEngagement.id, selectedEngagement.updatedAt);
       if (conflictCheck.conflict) {
         if (onConflict) {
           onConflict({ recordType: 'engagement' });
@@ -1082,7 +1082,7 @@ var useEngagementDetail = function(params) {
         return;
       }
 
-      var result = await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
+      const result = await dataClient.models.Engagement.update(Object.assign({ id: selectedEngagement.id }, updates));
 
       updateEngagementInState(selectedEngagement.id, Object.assign({}, updates, { updatedAt: result.data.updatedAt }));
     } catch (error) {
@@ -1092,13 +1092,13 @@ var useEngagementDetail = function(params) {
 
   // ownerAdd - NO locking (it's a create)
   // GROUP A: Updated to add changeLog to state immediately
-  var ownerAdd = useCallback(async function(memberId) {
+  const ownerAdd = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
-      var result = await dataClient.models.EngagementOwner.create({
+      const result = await dataClient.models.EngagementOwner.create({
         engagementId: selectedEngagement.id,
         teamMemberId: memberId,
         role: 'secondary',
@@ -1113,8 +1113,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var member = getOwnerInfo(memberId);
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', 'Added ' + member.name + ' as owner');
+        const member = getOwnerInfo(memberId);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_ADDED', 'Added ' + member.name + ' as owner');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {
@@ -1124,20 +1124,20 @@ var useEngagementDetail = function(params) {
 
   // ownerRemove - WITH OPTIMISTIC LOCKING
   // GROUP A: Updated to add changeLog to state immediately
-  var ownerRemove = useCallback(async function(memberId) {
+  const ownerRemove = useCallback(async function(memberId) {
     if (!selectedEngagement) return;
 
     try {
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Find the ownership record
-      var ownershipRecord = (selectedEngagement.ownershipRecords || []).find(function(o) {
+      const ownershipRecord = (selectedEngagement.ownershipRecords || []).find(function(o) {
         return o.teamMemberId === memberId;
       });
 
       if (ownershipRecord) {
         // Check for conflicts before deleting
-        var conflictCheck = await checkForConflict('EngagementOwner', ownershipRecord.id, ownershipRecord.updatedAt);
+        const conflictCheck = await checkForConflict('EngagementOwner', ownershipRecord.id, ownershipRecord.updatedAt);
         if (conflictCheck.conflict) {
           if (onConflict) {
             onConflict({ recordType: 'owner' });
@@ -1156,8 +1156,8 @@ var useEngagementDetail = function(params) {
       });
 
       if (logChangeAsync) {
-        var member = getOwnerInfo(memberId);
-        var changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', 'Removed ' + member.name + ' as owner');
+        const member = getOwnerInfo(memberId);
+        const changeLog = await logChangeAsync(selectedEngagement.id, 'OWNER_REMOVED', 'Removed ' + member.name + ' as owner');
         addChangeLogToState(selectedEngagement.id, changeLog);
       }
     } catch (error) {

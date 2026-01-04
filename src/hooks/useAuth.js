@@ -2,15 +2,15 @@ import { useCallback } from 'react';
 import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 import { ADMIN_EMAIL } from '../constants';
 
-var useAuth = function(params) {
-  var user = params.user;
-  var setCurrentUser = params.setCurrentUser;
-  var setLoading = params.setLoading;
-  var setNewEngagement = params.setNewEngagement;
-  var fetchAllData = params.fetchAllData;
-  var client = params.client;
+const useAuth = function(params) {
+  const user = params.user;
+  const setCurrentUser = params.setCurrentUser;
+  const setLoading = params.setLoading;
+  const setNewEngagement = params.setNewEngagement;
+  const fetchAllData = params.fetchAllData;
+  const client = params.client;
 
-  var initializeUser = useCallback(async function() {
+  const initializeUser = useCallback(async function() {
     if (!user) {
       setLoading(false);
       return;
@@ -18,33 +18,33 @@ var useAuth = function(params) {
 
     try {
       setLoading(true);
-      var attributes = await fetchUserAttributes();
-      var email = attributes.email;
-      var givenName = attributes.given_name || '';
-      var familyName = attributes.family_name || '';
-      var fullName = (givenName + ' ' + familyName).trim() || email.split('@')[0];
+      const attributes = await fetchUserAttributes();
+      const email = attributes.email;
+      const givenName = attributes.given_name || '';
+      const familyName = attributes.family_name || '';
+      const fullName = (givenName + ' ' + familyName).trim() || email.split('@')[0];
 
       // Get the client
-      var dataClient = typeof client === 'function' ? client() : client;
+      const dataClient = typeof client === 'function' ? client() : client;
 
       // Check if user exists in TeamMember table
-      var existingResult = await dataClient.models.TeamMember.list({
+      const existingResult = await dataClient.models.TeamMember.list({
         filter: { email: { eq: email } }
       });
 
-      var teamMember;
+      let teamMember;
       if (existingResult.data && existingResult.data.length > 0) {
         teamMember = existingResult.data[0];
       } else {
         // Create new team member
-        var initials = '';
+        let initials = '';
         if (givenName && familyName) {
           initials = (givenName[0] + familyName[0]).toUpperCase();
         } else {
           initials = email.substring(0, 2).toUpperCase();
         }
 
-        var createResult = await dataClient.models.TeamMember.create({
+        const createResult = await dataClient.models.TeamMember.create({
           email: email,
           name: fullName,
           initials: initials,
@@ -74,7 +74,7 @@ var useAuth = function(params) {
     }
   }, [user, setCurrentUser, setLoading, setNewEngagement, fetchAllData, client]);
 
-  var handleSignOut = useCallback(async function() {
+  const handleSignOut = useCallback(async function() {
     try {
       await signOut();
     } catch (error) {
