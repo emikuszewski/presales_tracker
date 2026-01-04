@@ -7,5 +7,3 @@ export { default as useEngagementList } from './useEngagementList';
 export { default as useVisibilityRefresh } from './useVisibilityRefresh';
 export { default as useSalesRepsOperations } from './useSalesRepsOperations';
 export { default as useGary } from './useGary';
-// Legacy export for backwards compatibility
-export { default as useAssistantPanel } from './useAssistantPanel';
