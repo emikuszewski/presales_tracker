@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { phaseConfig } from '../../constants';
 import { getAvatarColorClasses } from '../../utils';
-import { GlobeIcon } from '../ui';
+import { GlobeIcon, ClockIcon } from '../ui';
 
 /**
  * Collapsible filter panel component
@@ -219,9 +219,7 @@ const FilterPanel = ({
                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <svg className={`w-4 h-4 ${filterStale ? 'text-white' : 'text-amber-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <ClockIcon className={`w-4 h-4 ${filterStale ? 'text-white' : 'text-amber-500'}`} />
             Needs Attention
             <span className={filterStale ? 'text-amber-100' : 'text-amber-600 font-semibold'}>{staleCount}</span>
           </button>
