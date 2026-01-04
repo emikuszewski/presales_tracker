@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator, CompetitorChips, EngagementStatusIcon } from '../components';
+import { OwnersDisplay, StaleBadge, NotificationBadge, FilterPanel, IntegrationLinksIndicator, CompetitorChips, EngagementStatusIcon, SearchIcon, FilterIcon, ChevronUpIcon, ClockIcon, GlobeIcon } from '../components';
 import { industryLabels, phaseConfig, phaseLabels, engagementStatusLabels } from '../constants';
 import { 
   getEngagementStatusBorderClasses, 
@@ -351,9 +351,7 @@ const ListView = ({
       <div className="flex items-center gap-3 mb-3">
         {/* Search */}
         <div className="flex-1 relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Search engagements..."
@@ -373,9 +371,7 @@ const ListView = ({
               : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
           }`}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
+          <FilterIcon className="w-4 h-4" />
           Filters
           {hasActiveFilters && (
             <span className="w-5 h-5 bg-gray-900 text-white text-xs font-bold rounded-full flex items-center justify-center">
@@ -383,9 +379,7 @@ const ListView = ({
             </span>
           )}
           {isFilterPanelOpen && (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
+            <ChevronUpIcon className="w-4 h-4" />
           )}
         </button>
       </div>
@@ -428,14 +422,10 @@ const ListView = ({
               }`}
             >
               {filter.isAmber && (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <ClockIcon className="w-3.5 h-3.5" />
               )}
               {filter.isBlue && (
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <GlobeIcon className="w-3.5 h-3.5" />
               )}
               {filter.label}
               <button
