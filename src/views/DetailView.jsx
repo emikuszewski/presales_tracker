@@ -32,20 +32,17 @@ import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTa
 
 /**
  * Refresh button with loading/success states
- * States: idle (refresh icon) -> loading (spinner) -> success (checkmark) -> idle
  */
 const RefreshButton = ({ onClick, disabled, refreshState }) => {
   const isLoading = refreshState === 'loading';
   const isSuccess = refreshState === 'success';
   
-  // Determine button styling based on state
   const buttonClasses = `p-1.5 rounded-lg transition-colors ${
     disabled || isLoading || isSuccess
       ? 'cursor-not-allowed opacity-50'
       : 'hover:bg-gray-100'
   }`;
   
-  // Determine which icon to show
   const renderIcon = () => {
     if (isLoading) {
       return (
@@ -58,7 +55,6 @@ const RefreshButton = ({ onClick, disabled, refreshState }) => {
     return <RefreshIcon className="w-5 h-5 text-gray-600" />;
   };
   
-  // Determine tooltip based on state
   const getTitle = () => {
     if (isLoading) return 'Refreshing...';
     if (isSuccess) return 'Refreshed!';
@@ -80,8 +76,6 @@ const RefreshButton = ({ onClick, disabled, refreshState }) => {
 
 /**
  * Closed Engagement Banner
- * Shown above tabs for WON/LOST/DISQUALIFIED/NO_DECISION statuses
- * Uses SVG icons instead of emojis
  */
 const ClosedBanner = ({ status, closedReason, onEditReason }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -154,7 +148,7 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
 };
 
 /**
- * Competition indicator for header - shows competitor chips
+ * Competition indicator for header
  */
 const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => {
   const hasCompetitors = competitors && competitors.length > 0;
@@ -200,17 +194,10 @@ const DetailView = ({
   onTabChange,
   onRefresh
 }) => {
-  // URL query params for activity scroll
   const [searchParams] = useSearchParams();
   const scrollToActivityFromUrl = searchParams.get('scrollToActivity');
-  
-  // Local alias for convenience
   const setActiveTab = onTabChange;
-  
-  // Highlight state for activities
   const [highlightedActivityId, setHighlightedActivityId] = useState(null);
-  
-  // Scroll to phase state
   const [scrollToPhase, setScrollToPhase] = useState(null);
 
   // Modal states
@@ -220,11 +207,9 @@ const DetailView = ({
   const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
-  // Refresh button state: 'idle' | 'loading' | 'success'
   const [refreshState, setRefreshState] = useState('idle');
   const refreshTimeoutRef = useRef(null);
 
-  // Compute hasOpenModal for disabling refresh button
   const hasOpenModal = 
     showEditDetailsModal || 
     showOwnersModal || 
@@ -232,14 +217,12 @@ const DetailView = ({
     showCompetitionModal || 
     showArchiveConfirm;
 
-  // Report modal state to App
   useEffect(() => {
     if (onModalStateChange) {
       onModalStateChange(hasOpenModal);
     }
   }, [hasOpenModal, onModalStateChange]);
 
-  // Cleanup refresh timeout on unmount
   useEffect(() => {
     return () => {
       if (refreshTimeoutRef.current) {
@@ -248,18 +231,15 @@ const DetailView = ({
     };
   }, []);
 
-  // Get owners with full info
   const owners = useMemo(() => {
     if (!engagement || !engagement.ownerIds) return [];
     return engagement.ownerIds.map(ownerId => getOwnerInfo(ownerId));
   }, [engagement, getOwnerInfo]);
 
-  // Tab counts for badges
   const activityCount = engagement?.activities?.length || 0;
   const unreadCount = engagement?.unreadChanges || 0;
   const notesCount = engagement?.totalNotesCount || 0;
 
-  // Handle scroll to activity from URL query param
   useEffect(() => {
     if (scrollToActivityFromUrl && engagement) {
       setActiveTab('activity');
@@ -271,7 +251,6 @@ const DetailView = ({
     }
   }, [scrollToActivityFromUrl, engagement]);
 
-  // Handle scroll to phase
   useEffect(() => {
     if (scrollToPhase && activeTab === 'notes') {
       const timer = setTimeout(() => {
@@ -281,20 +260,17 @@ const DetailView = ({
     }
   }, [scrollToPhase, activeTab]);
 
-  // Phase status change handler
   const handlePhaseStatusChange = useCallback((phaseType, newStatus) => {
     if (detail?.phase?.save) {
       detail.phase.save(phaseType, { status: newStatus });
     }
   }, [detail]);
 
-  // Notes click handler from ProgressTab
   const handlePhaseNotesClick = useCallback((phaseType) => {
     setScrollToPhase(phaseType);
     setActiveTab('notes');
   }, []);
 
-  // Update handlers
   const handleUpdateDetails = useCallback((updatedData) => {
     const oldSalesRepId = engagement?.salesRepId;
     const newSalesRepId = updatedData.salesRepId;
@@ -378,7 +354,6 @@ const DetailView = ({
     }
   }, [onRefresh, refreshState, hasOpenModal]);
 
-  // Early return if no engagement
   if (!engagement) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -390,14 +365,12 @@ const DetailView = ({
   const engagementStatus = engagement.engagementStatus || 'ACTIVE';
   const isClosed = isClosedStatus(engagementStatus);
   
-  // Derive the current phase from actual phase data
   const derivedCurrentPhase = getDerivedCurrentPhase(engagement.phases);
   const derivedPhaseData = engagement.phases[derivedCurrentPhase];
   const derivedPhaseStatus = derivedPhaseData?.status || 'PENDING';
   const derivedPhaseLabel = phaseLabels[derivedCurrentPhase] || derivedCurrentPhase;
   const { badgeClasses, dotClasses } = getPhaseBadgeClasses(derivedPhaseStatus);
 
-  // Check for integration links
   const hasSlack = engagement.slackUrl;
   const hasDrive = engagement.driveFolderUrl;
   const hasDocs = engagement.docsUrl;
@@ -405,7 +378,6 @@ const DetailView = ({
   const hasSheets = engagement.sheetsUrl;
   const hasAnyIntegration = hasSlack || hasDrive || hasDocs || hasSlides || hasSheets;
 
-  // Partner indicator
   const hasPartner = engagement.partnerName && engagement.partnerName.trim();
   const partnerTooltip = hasPartner ? `Partner: ${engagement.partnerName}` : '';
 
@@ -414,7 +386,7 @@ const DetailView = ({
       {/* Header */}
       <div className={`border-b border-gray-200 bg-white px-4 py-3 ${hasPartner ? 'partner-indicator-detail' : ''}`}>
         <div className="flex items-center justify-between">
-          {/* Left: Back button + Company name + Phase + Status */}
+          {/* Left side */}
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -438,7 +410,6 @@ const DetailView = ({
               <p className="text-sm text-gray-500">{engagement.contactName}</p>
             </div>
 
-            {/* Phase badge */}
             <div 
               className="phase-badge-tooltip"
               data-tooltip={phaseStatusLabels[derivedPhaseStatus] || 'Pending'}
@@ -449,20 +420,17 @@ const DetailView = ({
               </span>
             </div>
 
-            {/* Status dropdown */}
             <EngagementStatusDropdown 
               currentStatus={engagementStatus}
               onStatusChange={handleStatusChange}
             />
 
-            {/* Competition indicator */}
             <CompetitionIndicator
               competitors={engagement.competitors}
               otherCompetitorName={engagement.otherCompetitorName}
               onClick={() => setShowCompetitionModal(true)}
             />
 
-            {/* Sales Rep badge */}
             {engagement.salesRepName && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
                 <UserIcon className="w-3.5 h-3.5" />
@@ -471,13 +439,12 @@ const DetailView = ({
             )}
           </div>
 
-          {/* Right: Integration links + Three-dot menu */}
+          {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* Integration links - visible when configured */}
             {hasAnyIntegration && (
               <div className="flex items-center gap-1 mr-1">
                 {hasSlack && (
-                  
+                  <a
                     href={engagement.slackUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -488,7 +455,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDrive && (
-                  
+                  <a
                     href={engagement.driveFolderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -499,7 +466,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasDocs && (
-                  
+                  <a
                     href={engagement.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -510,7 +477,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSlides && (
-                  
+                  <a
                     href={engagement.slidesUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -521,7 +488,7 @@ const DetailView = ({
                   </a>
                 )}
                 {hasSheets && (
-                  
+                  <a
                     href={engagement.sheetsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -534,14 +501,12 @@ const DetailView = ({
               </div>
             )}
 
-            {/* Refresh button */}
             <RefreshButton
               onClick={handleRefresh}
               disabled={hasOpenModal}
               refreshState={refreshState}
             />
 
-            {/* Three-dot overflow menu */}
             <OverflowMenu
               isArchived={engagement.isArchived}
               onEditDetails={() => setShowEditDetailsModal(true)}
@@ -553,7 +518,6 @@ const DetailView = ({
         </div>
       </div>
 
-      {/* Closed Banner (for closed statuses) */}
       {isClosed && (
         <ClosedBanner
           status={engagementStatus}
@@ -562,9 +526,7 @@ const DetailView = ({
         />
       )}
 
-      {/* Main content area with sidebar tabs */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Desktop: Sidebar tabs */}
         <div className="hidden md:block">
           <TabSidebar
             activeTab={activeTab}
@@ -575,7 +537,6 @@ const DetailView = ({
           />
         </div>
 
-        {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'progress' && (
             <ProgressTab
@@ -625,7 +586,6 @@ const DetailView = ({
         </div>
       </div>
 
-      {/* Mobile: Bottom tab bar */}
       <div className="md:hidden">
         <TabBottomBar
           activeTab={activeTab}
@@ -636,7 +596,6 @@ const DetailView = ({
         />
       </div>
 
-      {/* Modals */}
       <EditDetailsModal
         isOpen={showEditDetailsModal}
         onClose={() => setShowEditDetailsModal(false)}
@@ -672,7 +631,6 @@ const DetailView = ({
         onSave={handleUpdateCompetitors}
       />
 
-      {/* Archive Confirmation Modal */}
       <Modal
         isOpen={showArchiveConfirm}
         onClose={() => setShowArchiveConfirm(false)}
