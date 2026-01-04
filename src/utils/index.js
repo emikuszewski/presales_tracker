@@ -36,7 +36,6 @@ export {
 
 // Recalculation utilities
 export { 
-  recalculateLastActivity, 
   recalculateIsStale, 
   recalculateDaysSinceActivity 
 } from './recalculation';
