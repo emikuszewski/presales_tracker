@@ -18,6 +18,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { client } from '../../client';
 import { CloseIcon } from '../ui';
+import { engagementStatusLabels, industryLabels, phaseLabels } from '../../constants';
 
 // Gary's loading phrases - world-weary but competent
 const LOADING_PHRASES = [
@@ -143,16 +144,7 @@ function formatDate(dateStr) {
  */
 function formatStatus(status) {
   if (!status) return 'Active';
-  const statusMap = {
-    'ACTIVE': 'Active',
-    'ON_HOLD': 'On Hold',
-    'UNRESPONSIVE': 'Unresponsive',
-    'WON': 'Won',
-    'LOST': 'Lost',
-    'DISQUALIFIED': 'Disqualified',
-    'NO_DECISION': 'No Decision'
-  };
-  return statusMap[status] || status;
+  return engagementStatusLabels[status] || status;
 }
 
 /**
@@ -160,15 +152,7 @@ function formatStatus(status) {
  */
 function formatIndustry(industry) {
   if (!industry) return 'Unknown';
-  const industryMap = {
-    'FINANCIAL_SERVICES': 'Financial Services',
-    'HEALTHCARE': 'Healthcare',
-    'TECHNOLOGY': 'Technology',
-    'RETAIL': 'Retail',
-    'MANUFACTURING': 'Manufacturing',
-    'GOVERNMENT': 'Government'
-  };
-  return industryMap[industry] || industry;
+  return industryLabels[industry] || industry;
 }
 
 /**
@@ -176,14 +160,7 @@ function formatIndustry(industry) {
  */
 function formatPhase(phase) {
   if (!phase) return 'Unknown';
-  const phaseMap = {
-    'DISCOVER': 'Discover',
-    'DESIGN': 'Design',
-    'DEMONSTRATE': 'Demonstrate',
-    'VALIDATE': 'Validate',
-    'ENABLE': 'Enable'
-  };
-  return phaseMap[phase] || phase;
+  return phaseLabels[phase] || phase;
 }
 
 /**
