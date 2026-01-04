@@ -13,7 +13,6 @@ import {
   CompetitionModal,
   CompetitorChips,
   EngagementStatusIcon,
-  // Extracted icons
   RefreshIcon,
   CheckIcon,
   ChevronLeftIcon,
@@ -196,10 +195,10 @@ const DetailView = ({
   detail,
   onToggleArchive,
   onBack,
-  onModalStateChange,  // Layer 1 - Report modal state to App
-  activeTab,           // Lifted to App for conflict refresh persistence
-  onTabChange,         // Lifted to App for conflict refresh persistence
-  onRefresh            // Refresh engagement data
+  onModalStateChange,
+  activeTab,
+  onTabChange,
+  onRefresh
 }) => {
   // URL query params for activity scroll
   const [searchParams] = useSearchParams();
@@ -233,10 +232,7 @@ const DetailView = ({
     showCompetitionModal || 
     showArchiveConfirm;
 
-  // ============================================
-  // LAYER 1: Report modal state to App
-  // This allows App to skip visibility refresh when a modal is open
-  // ============================================
+  // Report modal state to App
   useEffect(() => {
     if (onModalStateChange) {
       onModalStateChange(hasOpenModal);
@@ -266,25 +262,18 @@ const DetailView = ({
   // Handle scroll to activity from URL query param
   useEffect(() => {
     if (scrollToActivityFromUrl && engagement) {
-      // Switch to activity tab
       setActiveTab('activity');
-      
-      // Set highlight
       setHighlightedActivityId(scrollToActivityFromUrl);
-      
-      // Clear highlight after animation (URL param stays for shareability)
       const timer = setTimeout(() => {
         setHighlightedActivityId(null);
       }, 2000);
-      
       return () => clearTimeout(timer);
     }
   }, [scrollToActivityFromUrl, engagement]);
 
-  // Handle scroll to phase (from activity links or notes click)
+  // Handle scroll to phase
   useEffect(() => {
     if (scrollToPhase && activeTab === 'notes') {
-      // Clear after a short delay to allow the NotesTab to pick it up
       const timer = setTimeout(() => {
         setScrollToPhase(null);
       }, 200);
@@ -292,35 +281,21 @@ const DetailView = ({
     }
   }, [scrollToPhase, activeTab]);
 
-  // ============================================
-  // PHASE HANDLERS - Adapts ProgressTab props to detail.phase methods
-  // ============================================
-
-  /**
-   * Phase status change handler
-   * Adapts ProgressTab signature (phaseType, newStatus) to detail.phase.save signature (phaseType, { status, notes })
-   */
+  // Phase status change handler
   const handlePhaseStatusChange = useCallback((phaseType, newStatus) => {
     if (detail?.phase?.save) {
       detail.phase.save(phaseType, { status: newStatus });
     }
   }, [detail]);
 
-  /**
-   * Notes click handler from ProgressTab
-   * Switches to notes tab and scrolls to the clicked phase
-   */
+  // Notes click handler from ProgressTab
   const handlePhaseNotesClick = useCallback((phaseType) => {
     setScrollToPhase(phaseType);
     setActiveTab('notes');
   }, []);
 
-  // ============================================
-  // UPDATE HANDLERS
-  // ============================================
-
+  // Update handlers
   const handleUpdateDetails = useCallback((updatedData) => {
-    // Check if sales rep changed
     const oldSalesRepId = engagement?.salesRepId;
     const newSalesRepId = updatedData.salesRepId;
     
@@ -328,7 +303,6 @@ const DetailView = ({
       detail.salesRep.update(newSalesRepId, updatedData.salesRepName);
     }
     
-    // Check if partner changed
     const oldPartnerName = engagement?.partnerName || null;
     const newPartnerName = updatedData.partnerName || null;
     
@@ -336,7 +310,6 @@ const DetailView = ({
       detail.partner.update(newPartnerName);
     }
     
-    // Update other details (excluding salesRep and partner fields - they have separate handlers)
     if (detail?.details?.update) {
       const { salesRepId, salesRepName, partnerName, ...otherData } = updatedData;
       detail.details.update(otherData);
@@ -372,10 +345,8 @@ const DetailView = ({
 
   const handleArchive = useCallback(() => {
     if (engagement.isArchived) {
-      // Restore immediately
       onToggleArchive(engagement.id);
     } else {
-      // Show confirmation modal for archive
       setShowArchiveConfirm(true);
     }
   }, [engagement, onToggleArchive]);
@@ -385,10 +356,6 @@ const DetailView = ({
     setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
 
-  /**
-   * Handle refresh button click
-   * Manages state transitions: idle -> loading -> success -> idle
-   */
   const handleRefresh = useCallback(async () => {
     if (!onRefresh || refreshState !== 'idle' || hasOpenModal) return;
     
@@ -398,12 +365,10 @@ const DetailView = ({
       await onRefresh();
       setRefreshState('success');
       
-      // Clear any existing timeout
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
       
-      // Return to idle after 1.5 seconds
       refreshTimeoutRef.current = setTimeout(() => {
         setRefreshState('idle');
       }, 1500);
@@ -425,7 +390,7 @@ const DetailView = ({
   const engagementStatus = engagement.engagementStatus || 'ACTIVE';
   const isClosed = isClosedStatus(engagementStatus);
   
-  // Derive the current phase from actual phase data (fixes stale currentPhase bug)
+  // Derive the current phase from actual phase data
   const derivedCurrentPhase = getDerivedCurrentPhase(engagement.phases);
   const derivedPhaseData = engagement.phases[derivedCurrentPhase];
   const derivedPhaseStatus = derivedPhaseData?.status || 'PENDING';
@@ -473,7 +438,7 @@ const DetailView = ({
               <p className="text-sm text-gray-500">{engagement.contactName}</p>
             </div>
 
-            {/* Phase badge - now uses derived phase with dynamic styling and status tooltip */}
+            {/* Phase badge */}
             <div 
               className="phase-badge-tooltip"
               data-tooltip={phaseStatusLabels[derivedPhaseStatus] || 'Pending'}
@@ -497,7 +462,7 @@ const DetailView = ({
               onClick={() => setShowCompetitionModal(true)}
             />
 
-            {/* Sales Rep badge - only shown if assigned */}
+            {/* Sales Rep badge */}
             {engagement.salesRepName && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
                 <UserIcon className="w-3.5 h-3.5" />
