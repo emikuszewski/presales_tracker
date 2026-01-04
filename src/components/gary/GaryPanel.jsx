@@ -688,6 +688,13 @@ export default function GaryPanel({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     
+    // Cleanup any existing subscription before starting new message
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
+    setStreamingText('');
+    
     // Check input length
     if (input.length > INPUT_CHAR_LIMIT) {
       setMessages(prev => [...prev, 
