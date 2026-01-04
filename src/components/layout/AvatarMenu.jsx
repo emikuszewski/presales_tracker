@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDownIcon, UsersIcon, TrashIcon, UserIcon, LogoutIcon } from '../ui';
 
 /**
  * Avatar dropdown menu for user actions
@@ -40,14 +41,7 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsC
         <div className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
           {currentUser?.initials}
         </div>
-        <svg 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown Menu */}
@@ -79,9 +73,7 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsC
                   className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
+                    <UsersIcon className="w-4 h-4 text-purple-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Team Management</p>
@@ -97,9 +89,7 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsC
                   className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <TrashIcon className="w-4 h-4 text-red-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Engagement Management</p>
@@ -118,9 +108,7 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsC
               className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
             >
               <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <UserIcon className="w-4 h-4 text-purple-600" />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">Sales Reps</p>
@@ -140,9 +128,7 @@ const AvatarMenu = ({ currentUser, onTeamClick, onEngagementsClick, onSalesRepsC
               className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-3 transition-colors"
             >
               <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
+                <LogoutIcon className="w-4 h-4 text-gray-600" />
               </div>
               <p className="text-sm font-medium text-gray-700">Sign Out</p>
             </button>
