@@ -21,7 +21,11 @@ import {
   ArchiveIcon,
   RestoreIcon,
   RefreshIcon,
-  CheckIcon
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  PlusIcon,
+  UserIcon
 } from '../components';
 import { phaseLabels, engagementStatusLabels } from '../constants';
 import { 
@@ -123,9 +127,7 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
       >
         <EngagementStatusIcon status={currentStatus} className="w-3.5 h-3.5" />
         {statusLabel}
-        <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDownIcon className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -243,9 +245,7 @@ const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => 
         onClick={onClick}
         className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
+        <PlusIcon className="w-3.5 h-3.5" />
         Competition
       </button>
     );
@@ -663,9 +663,7 @@ const DetailView = ({
               onClick={onBack}
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
             </button>
             
             <div>
@@ -710,9 +708,7 @@ const DetailView = ({
             {/* Sales Rep badge - only shown if assigned */}
             {engagement.salesRepName && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <UserIcon className="w-3.5 h-3.5" />
                 {engagement.salesRepName}
               </span>
             )}
