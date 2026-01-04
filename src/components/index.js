@@ -14,7 +14,22 @@ export {
   IntegrationLinksIndicator,
   CompetitorLogo,
   CompetitorChips,
-  EngagementStatusIcon
+  EngagementStatusIcon,
+  // Extracted icons
+  ArchiveIcon,
+  CheckIcon,
+  ChartIcon,
+  ChatIcon,
+  ClockIcon,
+  DocumentIcon,
+  EllipsisIcon,
+  GearIcon,
+  GlobeIcon,
+  PencilIcon,
+  RefreshIcon,
+  RestoreIcon,
+  UsersIcon,
+  TabIcons
 } from './ui';
 // Modal components
 export { 
