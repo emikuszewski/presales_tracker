@@ -5,18 +5,35 @@
 // Action icons
 export { default as ArchiveIcon } from './ArchiveIcon';
 export { default as CheckIcon } from './CheckIcon';
+export { default as CloseIcon } from './CloseIcon';
 export { default as EllipsisIcon } from './EllipsisIcon';
+export { default as FilterIcon } from './FilterIcon';
 export { default as GearIcon } from './GearIcon';
+export { default as LinkIcon } from './LinkIcon';
+export { default as LogoutIcon } from './LogoutIcon';
 export { default as PencilIcon } from './PencilIcon';
+export { default as PlusIcon } from './PlusIcon';
 export { default as RefreshIcon } from './RefreshIcon';
 export { default as RestoreIcon } from './RestoreIcon';
+export { default as SearchIcon } from './SearchIcon';
+export { default as TrashIcon } from './TrashIcon';
+export { default as WarningIcon } from './WarningIcon';
 
-// Navigation/Tab icons
+// Navigation icons
+export { default as ChevronDownIcon } from './ChevronDownIcon';
+export { default as ChevronLeftIcon } from './ChevronLeftIcon';
+export { default as ChevronRightIcon } from './ChevronRightIcon';
+export { default as ChevronUpIcon } from './ChevronUpIcon';
+
+// Tab/Navigation icons
 export { default as ChartIcon } from './ChartIcon';
 export { default as ChatIcon } from './ChatIcon';
 export { default as ClockIcon } from './ClockIcon';
 export { default as DocumentIcon } from './DocumentIcon';
 export { default as GlobeIcon } from './GlobeIcon';
+
+// User icons
+export { default as UserIcon } from './UserIcon';
 export { default as UsersIcon } from './UsersIcon';
 
 // Integration icons (brand colors)
