@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronLeftIcon } from '../components';
 import { getAvatarColorClasses } from '../utils';
 
 /**
@@ -33,9 +34,7 @@ const AdminView = ({
         onClick={onBack}
         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
+        <ChevronLeftIcon className="w-4 h-4" />
         Back to Engagements
       </button>
 
