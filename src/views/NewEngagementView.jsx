@@ -1,17 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeftIcon } from '../components';
 import { industries, industryLabels } from '../constants';
-import { getAvatarColorClasses } from '../utils';
-
-/**
- * Format deal size from amount and unit parts
- */
-const formatDealSizeFromParts = (amount, unit) => {
-  if (!amount || !unit) return '';
-  const numericAmount = parseFloat(amount);
-  if (isNaN(numericAmount)) return '';
-  return `$${numericAmount}${unit}`;
-};
+import { getAvatarColorClasses, formatDealSizeFromParts } from '../utils';
 
 /**
  * Helper component for owner selection
@@ -35,338 +25,328 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
               type="button"
               onClick={() => onToggle(member.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                isSelected 
-                  ? 'border-gray-900 bg-gray-900 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                isSelected
+                  ? 'border-gray-900 bg-gray-50'
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                isSelected 
-                  ? 'bg-white text-gray-900' 
-                  : colorClasses
-              }`}>
-                {member.initials}
+              {/* Avatar */}
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${colorClasses}`}>
+                {isSystemUser 
+                  ? member.name.split(' ').map(n => n[0]).join('').substring(0, 2)
+                  : member.name.split(' ').map(n => n[0]).join('').substring(0, 2)
+                }
               </div>
-              <span className="text-sm">{member.name}</span>
-              {isSystemUser && <span className="text-xs opacity-60">(Shared)</span>}
+              
+              {/* Name */}
+              <span className="text-sm font-medium text-gray-700">
+                {member.name}
+              </span>
+              
+              {/* Checkmark for selected */}
+              {isSelected && (
+                <svg className="w-4 h-4 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
             </button>
           );
         })}
       </div>
       {selectedOwnerIds.length === 0 && (
-        <p className="text-sm text-red-600 mt-1">At least one owner is required</p>
+        <p className="text-sm text-red-500 mt-1">Select at least one owner</p>
       )}
     </div>
   );
 };
 
 /**
- * Deal size input component with amount and unit selector
+ * Deal Size Input with amount and unit selector
+ * Stores formatted value like "$50k" or "$1.5M"
  */
-const DealSizeInput = ({ 
-  amount, 
-  unit, 
-  onAmountChange, 
-  onUnitChange, 
-  hasError,
-  attemptedSubmit 
-}) => {
-  const units = [
-    { value: '', label: 'Select...' },
-    { value: 'K', label: 'K (thousands)' },
-    { value: 'M', label: 'M (millions)' }
-  ];
+const DealSizeInput = ({ value, onChange }) => {
+  // Parse existing value back to parts
+  const parseValue = (val) => {
+    if (!val) return { amount: '', unit: 'k' };
+    const match = val.match(/^\$?([\d.]+)([kKmM])?$/);
+    if (match) {
+      return { 
+        amount: match[1], 
+        unit: match[2]?.toLowerCase() === 'm' ? 'M' : 'k' 
+      };
+    }
+    return { amount: '', unit: 'k' };
+  };
+
+  const { amount, unit } = parseValue(value);
+
+  const handleAmountChange = (e) => {
+    const newAmount = e.target.value;
+    // Allow only numbers and decimal point
+    if (newAmount === '' || /^\d*\.?\d*$/.test(newAmount)) {
+      onChange(formatDealSizeFromParts(newAmount, unit));
+    }
+  };
+
+  const handleUnitChange = (newUnit) => {
+    onChange(formatDealSizeFromParts(amount, newUnit));
+  };
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        Deal Size (ARR)
+        Deal Size
       </label>
-      <div className="flex gap-2">
+      <div className="flex">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={amount}
-            onChange={e => onAmountChange(e.target.value)}
-            placeholder="e.g., 150"
-            className={`w-full pl-7 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-              hasError && attemptedSubmit ? 'border-red-300' : 'border-gray-300'
-            }`}
+            onChange={handleAmountChange}
+            placeholder="50"
+            className="w-full pl-7 pr-3 py-2 border border-r-0 border-gray-300 rounded-l-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
           />
         </div>
-        <select
-          value={unit}
-          onChange={e => onUnitChange(e.target.value)}
-          className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-            hasError && attemptedSubmit ? 'border-red-300' : 'border-gray-300'
-          }`}
-        >
-          {units.map(u => (
-            <option key={u.value} value={u.value}>{u.label}</option>
-          ))}
-        </select>
+        <div className="flex border border-gray-300 rounded-r-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => handleUnitChange('k')}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              unit === 'k' 
+                ? 'bg-gray-900 text-white' 
+                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            K
+          </button>
+          <button
+            type="button"
+            onClick={() => handleUnitChange('M')}
+            className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
+              unit === 'M' 
+                ? 'bg-gray-900 text-white' 
+                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            M
+          </button>
+        </div>
       </div>
-      {hasError && attemptedSubmit && (
-        <p className="text-sm text-red-600 mt-1">Please select a unit (K or M)</p>
-      )}
+      <p className="text-xs text-gray-500 mt-1">
+        {value ? `Formatted: ${value}` : 'e.g., $50k or $1.5M'}
+      </p>
     </div>
   );
 };
 
 /**
- * New Engagement View - Form for creating a new engagement
+ * Form for creating a new engagement
+ * Fields: Company, Contact Name, Industry, Deal Size, Owners
+ * All other fields get defaults
  */
 const NewEngagementView = ({
-  newEngagement,
-  setNewEngagement,
   teamMembers,
-  salesReps = [],
-  onSubmit,
-  onBack
+  currentUser,
+  onBack,
+  onCreate
 }) => {
-  // Local state for deal size parts
-  const [dealSizeAmount, setDealSizeAmount] = useState('');
-  const [dealSizeUnit, setDealSizeUnit] = useState('');
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  // Form state
+  const [company, setCompany] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [dealSize, setDealSize] = useState('');
+  const [ownerIds, setOwnerIds] = useState(currentUser ? [currentUser.id] : []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Update a single field
-  const updateField = (field, value) => {
-    setNewEngagement(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Toggle owner selection
-  const handleToggleOwner = (memberId) => {
-    setNewEngagement(prev => {
-      const currentOwners = prev.ownerIds || [];
-      if (currentOwners.includes(memberId)) {
-        // Remove owner (but don't allow empty)
-        if (currentOwners.length > 1) {
-          return { ...prev, ownerIds: currentOwners.filter(id => id !== memberId) };
-        }
-        return prev; // Don't remove last owner
+  /**
+   * Toggle owner selection
+   */
+  const handleOwnerToggle = (memberId) => {
+    setOwnerIds(prev => {
+      if (prev.includes(memberId)) {
+        // Don't allow removing the last owner
+        if (prev.length === 1) return prev;
+        return prev.filter(id => id !== memberId);
       } else {
-        // Add owner
-        return { ...prev, ownerIds: [...currentOwners, memberId] };
+        return [...prev, memberId];
       }
     });
   };
 
-  // Validation
-  const hasDealSizeValidationError = dealSizeAmount && !dealSizeUnit;
-  const canSubmit = 
-    newEngagement.company?.trim() && 
-    newEngagement.contactName?.trim() && 
-    newEngagement.ownerIds?.length > 0 &&
-    !hasDealSizeValidationError;
-
-  // Handle form submit
-  const handleSubmit = (e) => {
+  /**
+   * Validate and submit the form
+   */
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setAttemptedSubmit(true);
+    setError(null);
 
-    if (!canSubmit) return;
+    // Validation
+    if (!company.trim()) {
+      setError('Company name is required');
+      return;
+    }
+    if (!contactName.trim()) {
+      setError('Contact name is required');
+      return;
+    }
+    if (!industry) {
+      setError('Industry is required');
+      return;
+    }
+    if (ownerIds.length === 0) {
+      setError('At least one owner is required');
+      return;
+    }
 
-    // Format deal size from parts
-    const formattedDealSize = dealSizeAmount && dealSizeUnit 
-      ? formatDealSizeFromParts(dealSizeAmount, dealSizeUnit)
-      : '';
+    setIsSubmitting(true);
 
-    // Pass deal size as override (salesRepId comes from newEngagement state directly)
-    onSubmit({ dealSize: formattedDealSize });
+    try {
+      // Create the engagement with defaults
+      const today = new Date().toISOString().split('T')[0];
+      
+      const newEngagement = {
+        company: company.trim(),
+        contactName: contactName.trim(),
+        industry,
+        dealSize: dealSize || null,
+        ownerIds,
+        startDate: today,
+        lastActivity: today,
+        currentPhase: 'DISCOVER',
+        engagementStatus: 'ACTIVE',
+        isArchived: false,
+        // Initialize all phases as PENDING
+        phases: {
+          DISCOVER: { status: 'PENDING', notes: '', links: [] },
+          DESIGN: { status: 'PENDING', notes: '', links: [] },
+          DEMONSTRATE: { status: 'PENDING', notes: '', links: [] },
+          VALIDATE: { status: 'PENDING', notes: '', links: [] },
+          ENABLE: { status: 'PENDING', notes: '', links: [] }
+        },
+        activities: [],
+        // Integration links - all empty by default
+        slackUrl: null,
+        slackChannel: null,
+        driveFolderUrl: null,
+        driveFolderName: null,
+        docsUrl: null,
+        docsName: null,
+        slidesUrl: null,
+        slidesName: null,
+        sheetsUrl: null,
+        sheetsName: null
+      };
+
+      await onCreate(newEngagement);
+      // onCreate will handle navigation back to list
+    } catch (err) {
+      console.error('Error creating engagement:', err);
+      setError('Failed to create engagement. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div>
-      {/* Back button */}
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <ChevronLeftIcon className="w-4 h-4" />
-        Back to Engagements
-      </button>
-
+    <div className="max-w-2xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-medium text-gray-900">New Engagement</h2>
-        <p className="text-gray-500 mt-1">Create a new presales engagement to track</p>
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={onBack}
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+        </button>
+        <h1 className="text-2xl font-medium text-gray-900">New Engagement</h1>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
-          
-          {/* ============================================
-              BASIC INFORMATION
-              ============================================ */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-              Basic Information
-            </h3>
-            
-            <div className="space-y-4">
-              {/* Company */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  value={newEngagement.company || ''}
-                  onChange={e => updateField('company', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-                    attemptedSubmit && !newEngagement.company?.trim() ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="e.g., Acme Corporation"
-                />
-                {attemptedSubmit && !newEngagement.company?.trim() && (
-                  <p className="text-sm text-red-600 mt-1">Company name is required</p>
-                )}
-              </div>
-
-              {/* Partner Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Partner Name
-                </label>
-                <input
-                  type="text"
-                  value={newEngagement.partnerName || ''}
-                  onChange={e => updateField('partnerName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="e.g., Mickey Martin"
-                />
-              </div>
-
-              {/* Contact Name & Email */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newEngagement.contactName || ''}
-                    onChange={e => updateField('contactName', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
-                      attemptedSubmit && !newEngagement.contactName?.trim() ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="e.g., John Smith"
-                  />
-                  {attemptedSubmit && !newEngagement.contactName?.trim() && (
-                    <p className="text-sm text-red-600 mt-1">Contact name is required</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Email
-                  </label>
-                  <input
-                    type="email"
-                    value={newEngagement.contactEmail || ''}
-                    onChange={e => updateField('contactEmail', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    placeholder="e.g., john@acme.com"
-                  />
-                </div>
-              </div>
-
-              {/* Contact Phone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Phone
-                </label>
-                <input
-                  type="tel"
-                  value={newEngagement.contactPhone || ''}
-                  onChange={e => updateField('contactPhone', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  placeholder="e.g., (555) 123-4567"
-                />
-              </div>
-
-              {/* Industry */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Industry
-                </label>
-                <select 
-                  value={newEngagement.industry || 'TECHNOLOGY'}
-                  onChange={e => updateField('industry', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                >
-                  {industries.map(ind => (
-                    <option key={ind} value={ind}>{industryLabels[ind]}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sales Rep Dropdown - only shown if sales reps exist */}
-              {salesReps.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sales Rep
-                  </label>
-                  <select 
-                    value={newEngagement.salesRepId || ''}
-                    onChange={e => updateField('salesRepId', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  >
-                    <option value="">Select a sales rep...</option>
-                    {salesReps.map(rep => (
-                      <option key={rep.id} value={rep.id}>{rep.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Deal Size */}
-              <DealSizeInput
-                amount={dealSizeAmount}
-                unit={dealSizeUnit}
-                onAmountChange={setDealSizeAmount}
-                onUnitChange={setDealSizeUnit}
-                hasError={hasDealSizeValidationError}
-                attemptedSubmit={attemptedSubmit}
-              />
-            </div>
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+        {/* Error message */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {error}
           </div>
+        )}
 
-          {/* ============================================
-              ASSIGNMENT
-              ============================================ */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-              Assignment
-            </h3>
-            <OwnerToggleGroup
-              teamMembers={teamMembers}
-              selectedOwnerIds={newEngagement.ownerIds || []}
-              onToggle={handleToggleOwner}
-            />
-          </div>
+        {/* Company */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Company *
+          </label>
+          <input
+            type="text"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Acme Corp"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            autoFocus
+          />
         </div>
 
-        {/* Submit Button */}
-        <div className="mt-6 flex justify-end gap-3">
+        {/* Contact Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Contact Name *
+          </label>
+          <input
+            type="text"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            placeholder="John Smith"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+        </div>
+
+        {/* Industry */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Industry *
+          </label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          >
+            <option value="">Select industry...</option>
+            {industries.map(ind => (
+              <option key={ind} value={ind}>
+                {industryLabels[ind]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Deal Size */}
+        <DealSizeInput 
+          value={dealSize}
+          onChange={setDealSize}
+        />
+
+        {/* Owners */}
+        <OwnerToggleGroup
+          teamMembers={teamMembers}
+          selectedOwnerIds={ownerIds}
+          onToggle={handleOwnerToggle}
+        />
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-4">
           <button
             type="button"
             onClick={onBack}
-            className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!canSubmit}
-            className={`px-6 py-2.5 rounded-lg font-medium transition-colors ${
-              canSubmit
-                ? 'bg-gray-900 text-white hover:bg-gray-800'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Engagement
+            {isSubmitting ? 'Creating...' : 'Create Engagement'}
           </button>
         </div>
       </form>
