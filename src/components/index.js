@@ -15,6 +15,7 @@ export {
   CompetitorLogo,
   CompetitorChips,
   EngagementStatusIcon,
+  EngagementCard,
   // Action icons
   ArchiveIcon,
   CheckIcon,
