@@ -11,24 +11,41 @@ export { default as EngagementStatusIcon } from './EngagementStatusIcon';
 
 // Icons - re-export from icons folder for backward compatibility
 export { 
+  // Integration icons (brand colors)
   SlackIcon, 
   DriveIcon, 
   DocsIcon, 
   SlidesIcon, 
   SheetsIcon,
-  // New extracted icons
+  // Action icons
   ArchiveIcon,
   CheckIcon,
+  CloseIcon,
+  EllipsisIcon,
+  FilterIcon,
+  GearIcon,
+  LinkIcon,
+  LogoutIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshIcon,
+  RestoreIcon,
+  SearchIcon,
+  TrashIcon,
+  WarningIcon,
+  // Navigation icons
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  // Tab/Navigation icons
   ChartIcon,
   ChatIcon,
   ClockIcon,
   DocumentIcon,
-  EllipsisIcon,
-  GearIcon,
   GlobeIcon,
-  PencilIcon,
-  RefreshIcon,
-  RestoreIcon,
+  // User icons
+  UserIcon,
   UsersIcon,
   // TabIcons map for TabSidebar/TabBottomBar
   TabIcons
