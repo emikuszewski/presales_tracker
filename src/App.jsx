@@ -395,10 +395,10 @@ function PresalesTracker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
+          <div className="w-8 h-8 border-2 border-gray-900 dark:border-gray-100 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -409,14 +409,14 @@ function PresalesTracker() {
   // ============================================
 
   return (
-    <div className={`min-h-screen bg-white gary-panel-push ${isGaryOpen ? 'panel-open' : ''}`}>
+    <div className={`min-h-screen bg-white dark:bg-gray-950 gary-panel-push ${isGaryOpen ? 'panel-open' : ''}`}>
       {/* Top Navigation */}
-      <header className="border-b border-gray-100">
+      <header className="border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <p className="text-sm font-medium text-gray-400 tracking-widest uppercase">PLAINID SALES ENGINEERING</p>
-            <span className="text-gray-300">|</span>
-            <p className="font-medium text-gray-900">SE Tracker</p>
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 tracking-widest uppercase">PLAINID SALES ENGINEERING</p>
+            <span className="text-gray-300 dark:text-gray-600">|</span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">SE Tracker</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -611,8 +611,8 @@ function App() {
         Header() {
           return (
             <div className="text-center py-8">
-              <h1 className="text-2xl font-medium text-gray-900">SE Tracker</h1>
-              <p className="text-gray-500 mt-2">Sign in with your PlainID email</p>
+              <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">SE Tracker</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in with your PlainID email</p>
             </div>
           );
         }
