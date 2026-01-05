@@ -36,6 +36,9 @@ export { default as GlobeIcon } from './GlobeIcon';
 export { default as UserIcon } from './UserIcon';
 export { default as UsersIcon } from './UsersIcon';
 
+// Theme icons
+export { SunIcon, MoonIcon } from './ThemeIcons';
+
 // Integration icons (brand colors)
 export { default as DocsIcon } from './DocsIcon';
 export { default as DriveIcon } from './DriveIcon';
