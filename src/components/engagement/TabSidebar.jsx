@@ -13,7 +13,7 @@ const TabSidebar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0
   };
 
   return (
-    <div className="hidden md:flex flex-col w-16 bg-gray-50 border-r border-gray-200 flex-shrink-0">
+    <div className="hidden md:flex flex-col w-16 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
       {detailTabs.map((tab) => {
         const IconComponent = TabIcons[tab.icon];
         const isActive = activeTab === tab.id;
@@ -27,8 +27,8 @@ const TabSidebar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0
               relative flex flex-col items-center justify-center py-4 px-2
               transition-colors duration-150
               ${isActive 
-                ? 'bg-white border-l-2 border-blue-600 text-blue-600' 
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-l-2 border-transparent'
+                ? 'bg-white dark:bg-gray-900 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400' 
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 border-l-2 border-transparent'
               }
             `}
             title={tab.label}
@@ -43,8 +43,8 @@ const TabSidebar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0
                   flex items-center justify-center
                   text-xs font-medium rounded-full px-1
                   ${tab.id === 'history' && badgeValue > 0
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                    ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                   }
                 `}
               >

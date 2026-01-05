@@ -32,7 +32,7 @@ const AdminView = ({
     <div>
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 transition-colors"
+        className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-6 transition-colors"
       >
         <ChevronLeftIcon className="w-4 h-4" />
         Back to Engagements
@@ -40,8 +40,8 @@ const AdminView = ({
 
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-medium text-gray-900">Team Management</h2>
-          <p className="text-gray-500 mt-1">
+          <h2 className="text-2xl font-medium text-gray-900 dark:text-gray-100">Team Management</h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
             {activeCount} active · {inactiveCount} inactive
           </p>
         </div>
@@ -52,7 +52,7 @@ const AdminView = ({
           <button
             onClick={() => setShowInactive(false)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              !showInactive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              !showInactive ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
           >
             Active Users
@@ -60,7 +60,7 @@ const AdminView = ({
           <button
             onClick={() => setShowInactive(true)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              showInactive ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              showInactive ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
           >
             All Users
@@ -82,8 +82,8 @@ const AdminView = ({
           return (
             <div
               key={member.id}
-              className={`bg-white border rounded-xl p-5 ${
-                isInactive ? 'border-gray-200 bg-gray-50' : 'border-gray-200'
+              className={`bg-white dark:bg-gray-900 border rounded-xl p-5 ${
+                isInactive ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50' : 'border-gray-200 dark:border-gray-700'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -93,21 +93,21 @@ const AdminView = ({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className={`text-lg font-medium ${isInactive ? 'text-gray-500' : 'text-gray-900'}`}>
+                      <h3 className={`text-lg font-medium ${isInactive ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
                         {member.name}
                       </h3>
                       {member.isAdmin && (
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">Admin</span>
+                        <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-medium rounded">Admin</span>
                       )}
                       {isInactive && (
-                        <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-medium rounded">Inactive</span>
+                        <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium rounded">Inactive</span>
                       )}
                       {isSelf && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">You</span>
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium rounded">You</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{member.email}</p>
-                    <p className="text-xs text-gray-400 mt-1">{ownedEngagements} engagement{ownedEngagements !== 1 ? 's' : ''}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{member.email}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{ownedEngagements} engagement{ownedEngagements !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
                 
@@ -117,8 +117,8 @@ const AdminView = ({
                       onClick={() => onToggleAdmin(member.id, member.isAdmin)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                         member.isAdmin 
-                          ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800' 
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                     >
                       {member.isAdmin ? 'Remove Admin' : 'Make Admin'}
@@ -127,8 +127,8 @@ const AdminView = ({
                       onClick={() => onToggleActive(member.id, member.isActive !== false)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                         isInactive
-                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                          : 'bg-red-50 text-red-600 hover:bg-red-100'
+                          ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800'
+                          : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
                       }`}
                     >
                       {isInactive ? 'Reactivate' : 'Deactivate'}
@@ -141,9 +141,9 @@ const AdminView = ({
         })}
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-xl">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">About User Management</h4>
-        <ul className="text-sm text-blue-700 space-y-1">
+      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">About User Management</h4>
+        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
           <li>• <strong>Deactivated users</strong> cannot be assigned as owners but their existing engagements remain.</li>
           <li>• <strong>Admins</strong> can manage team members and access this panel.</li>
           <li>• <strong>Users</strong> automatically join when they sign up with a @plainid.com email.</li>

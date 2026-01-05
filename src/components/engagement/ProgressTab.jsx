@@ -83,13 +83,13 @@ const InlineNoteInput = ({ phaseType, onAdd, onCancel }) => {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Add a note..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white dark:bg-gray-900"
         rows={3}
       />
       <div className="flex justify-end gap-2 mt-2">
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
         >
           Cancel
         </button>
@@ -243,7 +243,7 @@ const PhaseCard = ({
         </div>
         
         {phase.completedDate && (
-          <span className="text-xs text-gray-500">{formatDate(phase.completedDate)}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{formatDate(phase.completedDate)}</span>
         )}
       </div>
 
@@ -368,7 +368,7 @@ const PhaseCard = ({
               </button>
               <button
                 onClick={() => { setShowAddLink(false); setLinkTitle(''); setLinkUrl(''); }}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
               >
                 Cancel
               </button>

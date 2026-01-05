@@ -36,20 +36,20 @@ const DeleteEngagementModal = ({
   return (
     <Modal isOpen={isOpen} onClose={handleClose}>
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-          <WarningIcon className="w-5 h-5 text-red-600" />
+        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+          <WarningIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
         </div>
-        <h3 className="text-xl font-medium text-gray-900">Delete Engagement</h3>
+        <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">Delete Engagement</h3>
       </div>
 
-      <p className="text-gray-600 mb-4">
-        You are about to permanently delete <strong>{engagement.company}</strong>. This action cannot be undone.
+      <p className="text-gray-600 dark:text-gray-400 mb-4">
+        You are about to permanently delete <strong className="text-gray-900 dark:text-gray-100">{engagement.company}</strong>. This action cannot be undone.
       </p>
 
       {/* Cascade Impact */}
-      <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-4">
-        <p className="text-sm font-medium text-red-800 mb-2">The following will be permanently deleted:</p>
-        <ul className="text-sm text-red-700 space-y-1">
+      <div className="bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-lg p-4 mb-4">
+        <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">The following will be permanently deleted:</p>
+        <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
           <li>• {cascadeInfo.phases} phase record{cascadeInfo.phases !== 1 ? 's' : ''}</li>
           <li>• {cascadeInfo.activities} activit{cascadeInfo.activities !== 1 ? 'ies' : 'y'}</li>
           <li>• {cascadeInfo.comments} comment{cascadeInfo.comments !== 1 ? 's' : ''}</li>
@@ -61,15 +61,15 @@ const DeleteEngagementModal = ({
 
       {/* Confirmation Input */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Type <strong>{engagement.company}</strong> to confirm
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Type <strong className="text-gray-900 dark:text-gray-100">{engagement.company}</strong> to confirm
         </label>
         <input
           type="text"
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           disabled={isDeleting}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-700"
           placeholder="Type company name..."
         />
       </div>
@@ -78,14 +78,14 @@ const DeleteEngagementModal = ({
         <button 
           onClick={handleClose}
           disabled={isDeleting}
-          className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
         >
           Cancel
         </button>
         <button 
           onClick={onConfirm}
           disabled={!canDelete || isDeleting}
-          className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2 bg-red-600 dark:bg-red-500 text-white font-medium rounded-lg hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isDeleting ? (
             <>

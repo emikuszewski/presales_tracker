@@ -18,8 +18,9 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
   };
 
   const sizeClass = sizeClasses[size] || sizeClasses.sm;
-  const fillColor = '#6B7280';
-  const strokeColor = '#6B7280';
+  // Use currentColor to inherit from parent's text color for dark mode support
+  const fillColor = 'currentColor';
+  const strokeColor = 'currentColor';
 
   // SVG logos - all rendered in monochrome gray
   const renderLogo = () => {
@@ -427,7 +428,7 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
   if (logo) {
     return (
       <div 
-        className={`flex items-center justify-center ${className}`} 
+        className={`flex items-center justify-center text-gray-500 dark:text-gray-400 ${className}`} 
         title={config.label}
       >
         {logo}
@@ -438,7 +439,7 @@ const CompetitorLogo = React.memo(({ competitor, size = 'sm', className = '' }) 
   // Fallback to initials (should not happen with full implementation)
   return (
     <div 
-      className={`${sizeClass} ${className} rounded bg-gray-200 text-gray-600 flex items-center justify-center font-medium text-xs`}
+      className={`${sizeClass} ${className} rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center font-medium text-xs`}
       title={config.label}
     >
       {config.initials}

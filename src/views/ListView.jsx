@@ -139,7 +139,7 @@ const ListView = ({
     // Everything mode
     if (showEverything) {
       return (
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           Showing {currentCount} of {totalEverythingCount} total engagements
         </p>
       );
@@ -149,7 +149,7 @@ const ListView = ({
 
     if (hasActiveFilters) {
       return (
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           Showing {currentCount} of {totalInViewMode} {modeLabel}
         </p>
       );
@@ -158,7 +158,7 @@ const ListView = ({
     // Unfiltered state
     if (showArchived) {
       return (
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           {currentCount} engagement{currentCount !== 1 ? 's' : ''}
         </p>
       );
@@ -174,7 +174,7 @@ const ListView = ({
     // Pipeline total - only if there are deals with sizes
     if (pipelineDealsCount > 0) {
       parts.push(
-        <span key="pipeline" className="text-gray-700 font-medium">
+        <span key="pipeline" className="text-gray-700 dark:text-gray-300 font-medium">
           {pipelineTotalFormatted}
         </span>
       );
@@ -187,14 +187,14 @@ const ListView = ({
     // Stale count if any
     if (staleCount > 0) {
       parts.push(
-        <span key="stale" className="text-amber-600">
+        <span key="stale" className="text-amber-600 dark:text-amber-400">
           {staleCount} need attention
         </span>
       );
     }
 
     return (
-      <p className="text-gray-500 text-sm">
+      <p className="text-gray-500 dark:text-gray-400 text-sm">
         {parts.map((part, idx) => (
           <React.Fragment key={idx}>
             {idx > 0 && ' · '}
@@ -245,10 +245,10 @@ const ListView = ({
     if (hasActiveFilters) {
       return (
         <div>
-          <p className="text-gray-400 mb-3">No engagements match your filters</p>
+          <p className="text-gray-400 dark:text-gray-500 mb-3">No engagements match your filters</p>
           <button
             onClick={clearAllFilters}
-            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-medium"
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors font-medium"
           >
             Clear all filters
           </button>
@@ -258,29 +258,29 @@ const ListView = ({
 
     // Everything mode
     if (showEverything) {
-      return <p className="text-gray-400">No engagements yet</p>;
+      return <p className="text-gray-400 dark:text-gray-500">No engagements yet</p>;
     }
 
     // Personalized empty states based on ownership
     if (isViewingOwnEngagements) {
       // Viewing own engagements
       if (showArchived) {
-        return <p className="text-gray-400">You don't have any archived engagements</p>;
+        return <p className="text-gray-400 dark:text-gray-500">You don't have any archived engagements</p>;
       }
-      return <p className="text-gray-400">You don't have any engagements yet</p>;
+      return <p className="text-gray-400 dark:text-gray-500">You don't have any engagements yet</p>;
     } else if (filterOwner === 'all') {
       // Viewing all team engagements
       if (showArchived) {
-        return <p className="text-gray-400">No archived team engagements</p>;
+        return <p className="text-gray-400 dark:text-gray-500">No archived team engagements</p>;
       }
-      return <p className="text-gray-400">No team engagements yet</p>;
+      return <p className="text-gray-400 dark:text-gray-500">No team engagements yet</p>;
     } else {
       // Viewing specific team member's engagements
       const firstName = getFilteredOwnerFirstName();
       if (showArchived) {
-        return <p className="text-gray-400">{firstName} doesn't have any archived engagements</p>;
+        return <p className="text-gray-400 dark:text-gray-500">{firstName} doesn't have any archived engagements</p>;
       }
-      return <p className="text-gray-400">{firstName} doesn't have any engagements yet</p>;
+      return <p className="text-gray-400 dark:text-gray-500">{firstName} doesn't have any engagements yet</p>;
     }
   };
 
@@ -289,14 +289,14 @@ const ListView = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-medium text-gray-900">
+          <h2 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
             {renderTitle()}
           </h2>
           {renderSubtitle()}
         </div>
         <button 
           onClick={onNewEngagement}
-          className="px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
+          className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-white transition-colors"
         >
           + New Engagement
         </button>
@@ -312,7 +312,7 @@ const ListView = ({
             placeholder="Search engagements..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
         
@@ -322,14 +322,14 @@ const ListView = ({
           onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
           className={`px-4 py-2.5 border rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
             isFilterPanelOpen
-              ? 'border-gray-900 bg-gray-50 text-gray-900'
-              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              ? 'border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           <FilterIcon className="w-4 h-4" />
           Filters
           {hasActiveFilters && (
-            <span className="w-5 h-5 bg-gray-900 text-white text-xs font-bold rounded-full flex items-center justify-center">
+            <span className="w-5 h-5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-full flex items-center justify-center">
               {nonDefaultFilters.length}
             </span>
           )}
@@ -363,17 +363,17 @@ const ListView = ({
       {/* Filter Chips (only when non-default filters active) */}
       {hasActiveFilters && !isFilterPanelOpen && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-gray-400">Filtered by:</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">Filtered by:</span>
           
           {nonDefaultFilters.map((filter) => (
             <span
               key={filter.key}
               className={`inline-flex items-center gap-1 pl-3 pr-1 py-1 text-sm rounded-full ${
                 filter.isAmber
-                  ? 'bg-amber-100 text-amber-700'
+                  ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                   : filter.isBlue
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700'
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
               }`}
             >
               {filter.isAmber && (
@@ -387,10 +387,10 @@ const ListView = ({
                 onClick={filter.onRemove}
                 className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                   filter.isAmber
-                    ? 'hover:bg-amber-200 text-amber-500 hover:text-amber-700'
+                    ? 'hover:bg-amber-200 dark:hover:bg-amber-800 text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-200'
                     : filter.isBlue
-                    ? 'hover:bg-blue-200 text-blue-500 hover:text-blue-700'
-                    : 'hover:bg-gray-200 text-gray-400 hover:text-gray-600'
+                    ? 'hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200'
+                    : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                 }`}
               >
                 ×
@@ -400,7 +400,7 @@ const ListView = ({
 
           <button
             onClick={clearAllFilters}
-            className="text-xs text-blue-600 hover:text-blue-800 ml-2"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 ml-2"
           >
             Clear all
           </button>

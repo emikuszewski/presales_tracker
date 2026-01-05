@@ -27,7 +27,7 @@ const OwnersDisplay = React.memo(({
         return (
           <div
             key={ownerId}
-            className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white ${colorClasses} ${index > 0 ? overlapClass : ''}`}
+            className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white dark:border-gray-950 ${colorClasses} ${index > 0 ? overlapClass : ''}`}
             title={`${owner.name}${isInactive ? ' (Inactive)' : ''}${isSystemUser ? ' (Shared)' : ''}`}
             style={{ zIndex: 10 - index }}
           >
@@ -36,7 +36,7 @@ const OwnersDisplay = React.memo(({
         );
       })}
       {ownerIds?.length > 3 && (
-        <div className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white bg-gray-200 text-gray-600 ${overlapClass}`}>
+        <div className={`${sizeClasses} rounded-full flex items-center justify-center font-medium border-2 border-white dark:border-gray-950 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 ${overlapClass}`}>
           +{ownerIds.length - 3}
         </div>
       )}

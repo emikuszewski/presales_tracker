@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Amplify UI customizations */
+/* ============================================
+   AMPLIFY UI CUSTOMIZATIONS - Light Mode
+   ============================================ */
 [data-amplify-authenticator] {
   --amplify-components-button-primary-background-color: #111827;
   --amplify-components-button-primary-hover-background-color: #1f2937;
@@ -20,7 +22,38 @@
   padding: 2rem;
 }
 
-/* Phase badge tooltip styles */
+/* ============================================
+   AMPLIFY UI CUSTOMIZATIONS - Dark Mode
+   ============================================ */
+.dark [data-amplify-authenticator] {
+  --amplify-components-button-primary-background-color: #f3f4f6;
+  --amplify-components-button-primary-hover-background-color: #e5e7eb;
+  --amplify-components-button-primary-focus-background-color: #e5e7eb;
+  --amplify-components-button-primary-active-background-color: #d1d5db;
+  --amplify-components-button-primary-color: #111827;
+  --amplify-components-fieldcontrol-focus-border-color: #f3f4f6;
+  --amplify-components-fieldcontrol-border-color: #4b5563;
+  --amplify-components-fieldcontrol-color: #f3f4f6;
+  --amplify-components-fieldcontrol-background-color: #1f2937;
+  --amplify-components-tabs-item-active-color: #f3f4f6;
+  --amplify-components-tabs-item-active-border-color: #f3f4f6;
+  --amplify-components-tabs-item-color: #9ca3af;
+  --amplify-components-authenticator-router-background-color: #111827;
+  --amplify-components-authenticator-router-box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --amplify-colors-background-primary: #030712;
+  --amplify-colors-background-secondary: #111827;
+  --amplify-colors-font-primary: #f3f4f6;
+  --amplify-colors-font-secondary: #9ca3af;
+  --amplify-colors-border-primary: #374151;
+}
+
+.dark [data-amplify-authenticator] [data-amplify-router] {
+  background-color: #111827;
+}
+
+/* ============================================
+   PHASE BADGE TOOLTIP STYLES - Light Mode
+   ============================================ */
 .phase-badge-tooltip {
   position: relative;
 }
@@ -37,7 +70,7 @@
   z-index: 50;
 }
 
-/* Tooltip text box */
+/* Tooltip text box - Light Mode */
 .phase-badge-tooltip::before {
   content: attr(data-tooltip);
   bottom: calc(100% + 8px);
@@ -51,7 +84,7 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-/* Tooltip arrow */
+/* Tooltip arrow - Light Mode */
 .phase-badge-tooltip::after {
   content: '';
   bottom: calc(100% + 2px);
@@ -67,7 +100,21 @@
   transition-delay: 0.15s;
 }
 
-/* Partner indicator styles */
+/* ============================================
+   PHASE BADGE TOOLTIP STYLES - Dark Mode
+   ============================================ */
+.dark .phase-badge-tooltip::before {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.dark .phase-badge-tooltip::after {
+  border-top-color: #f3f4f6;
+}
+
+/* ============================================
+   PARTNER INDICATOR STYLES - Light Mode
+   ============================================ */
 .partner-indicator-card {
   border-left: 4px solid #008ca5;
 }
@@ -106,7 +153,7 @@
   z-index: 50;
 }
 
-/* Partner tooltip text box */
+/* Partner tooltip text box - Light Mode */
 .partner-dot-tooltip::before {
   content: attr(data-tooltip);
   bottom: calc(100% + 8px);
@@ -123,7 +170,7 @@
   text-overflow: ellipsis;
 }
 
-/* Partner tooltip arrow */
+/* Partner tooltip arrow - Light Mode */
 .partner-dot-tooltip::after {
   content: '';
   bottom: calc(100% + 2px);
@@ -139,7 +186,33 @@
   transition-delay: 0.15s;
 }
 
-/* Gary Panel - Push Layout */
+/* ============================================
+   PARTNER INDICATOR STYLES - Dark Mode
+   ============================================ */
+.dark .partner-indicator-card {
+  border-left-color: #00b4d8;
+}
+
+.dark .partner-indicator-detail {
+  border-left-color: #00b4d8;
+}
+
+.dark .partner-dot {
+  background-color: #00b4d8;
+}
+
+.dark .partner-dot-tooltip::before {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.dark .partner-dot-tooltip::after {
+  border-top-color: #f3f4f6;
+}
+
+/* ============================================
+   GARY PANEL - PUSH LAYOUT
+   ============================================ */
 .gary-panel-push {
   transition: margin-right 0.3s ease-out;
 }
@@ -152,4 +225,42 @@
 /* But also ensure smooth transitions */
 .gary-fab {
   transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+/* ============================================
+   CUSTOM SCROLLBARS - Dark Mode
+   ============================================ */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* ============================================
+   TEXT SELECTION - Dark Mode
+   ============================================ */
+.dark ::selection {
+  background: rgba(59, 130, 246, 0.4);
+  color: #f3f4f6;
+}
+
+/* ============================================
+   FORM INPUTS - Dark Mode Focus Rings
+   ============================================ */
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  --tw-ring-color: #f3f4f6;
 }

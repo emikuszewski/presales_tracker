@@ -87,14 +87,14 @@ const CompetitionModal = ({
       <button 
         type="button" 
         onClick={onClose}
-        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+        className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
       >
         Cancel
       </button>
       <button 
         type="button"
         onClick={handleSave}
-        className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+        className="flex-1 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-white"
       >
         Save
       </button>
@@ -112,7 +112,7 @@ const CompetitionModal = ({
       <div className="space-y-6">
         {/* Competitor Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Select Competitors
           </label>
           <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
@@ -124,17 +124,17 @@ const CompetitionModal = ({
                 <div key={competitor.id}>
                   <label 
                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                      isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                      isSelected ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleCompetitor(competitor.id)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                     />
                     <CompetitorLogo competitor={competitor.id} size="sm" />
-                    <span className="text-sm text-gray-900">{competitor.label}</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{competitor.label}</span>
                   </label>
                   
                   {/* Inline text input for OTHER */}
@@ -150,14 +150,14 @@ const CompetitionModal = ({
                           }
                         }}
                         placeholder="Enter competitor name"
-                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
                           showOtherError && otherValidationError
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300'
+                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/30'
+                            : 'border-gray-300 dark:border-gray-600'
                         }`}
                       />
                       {showOtherError && otherValidationError && (
-                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
                           <WarningIcon className="w-3 h-3" />
                           Please enter a competitor name
                         </p>
@@ -172,7 +172,7 @@ const CompetitionModal = ({
 
         {/* Competition Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Notes
           </label>
           <textarea
@@ -180,9 +180,9 @@ const CompetitionModal = ({
             onChange={(e) => setCompetitorNotes(e.target.value)}
             placeholder="Add notes about the competitive landscape..."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Notes can be added even without selecting competitors
           </p>
         </div>

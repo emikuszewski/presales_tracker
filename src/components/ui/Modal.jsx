@@ -48,7 +48,7 @@ const Modal = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -56,7 +56,7 @@ const Modal = ({
       }}
     >
       <div 
-        className={`bg-white rounded-2xl w-full ${sizeClasses[size]} mx-4 ${
+        className={`bg-white dark:bg-gray-900 rounded-2xl w-full ${sizeClasses[size]} mx-4 ${
           needsScrollLayout ? 'flex flex-col max-h-[65vh] sm:max-h-[70vh] md:max-h-[75vh]' : ''
         }`}
         onClick={e => e.stopPropagation()}
@@ -64,7 +64,7 @@ const Modal = ({
         {/* Header - fixed at top */}
         {title && (
           <div className={`px-6 pt-6 ${needsScrollLayout ? 'pb-4 flex-shrink-0' : 'pb-6'}`}>
-            <h3 className="text-xl font-medium text-gray-900">{title}</h3>
+            <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">{title}</h3>
           </div>
         )}
         
@@ -81,7 +81,7 @@ const Modal = ({
         
         {/* Footer - fixed at bottom */}
         {footer && (
-          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-gray-100 bg-white rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
             {footer}
           </div>
         )}

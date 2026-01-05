@@ -149,7 +149,7 @@ const ActivityCard = ({
               type="button" 
               onClick={handleCancelEdit} 
               disabled={isSaving}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
             >
               Cancel
             </button>
@@ -179,8 +179,8 @@ const ActivityCard = ({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-gray-900">{activityTypeLabels[activity.type] || activity.type}</span>
-            <span className="text-sm text-gray-500">{formatDate(activity.date)}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{activityTypeLabels[activity.type] || activity.type}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">{formatDate(activity.date)}</span>
           </div>
           <p className="text-gray-700 mt-1"><LinkifyText text={activity.description} /></p>
         </div>
@@ -214,7 +214,7 @@ const ActivityCard = ({
             <button 
               onClick={handleCancelDelete} 
               disabled={isDeleting}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
             >
               Cancel
             </button>
@@ -245,8 +245,8 @@ const ActivityCard = ({
                     {author.initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-700"><LinkifyText text={comment.text} /></p>
-                    <span className="text-xs text-gray-400">{formatDate(comment.createdAt)}</span>
+                    <p className="text-sm text-gray-700 dark:text-gray-300"><LinkifyText text={comment.text} /></p>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(comment.createdAt)}</span>
                   </div>
                   {/* Delete button - visible on hover */}
                   <button
@@ -320,7 +320,7 @@ const AddActivityForm = ({ onAdd, onCancel }) => {
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What happened?" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200">Cancel</button>
           <button type="submit" disabled={!description.trim() || isSubmitting} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {isSubmitting ? 'Adding...' : 'Add Activity'}
           </button>

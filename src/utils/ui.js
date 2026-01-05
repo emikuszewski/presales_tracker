@@ -13,29 +13,29 @@ export const getPhaseBadgeClasses = (status) => {
   switch (status) {
     case 'COMPLETE':
       return {
-        badgeClasses: 'bg-emerald-50 text-emerald-700',
+        badgeClasses: 'bg-emerald-50 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
         dotClasses: 'bg-emerald-500'
       };
     case 'IN_PROGRESS':
       return {
-        badgeClasses: 'bg-blue-50 text-blue-700',
+        badgeClasses: 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
         dotClasses: 'bg-blue-500'
       };
     case 'BLOCKED':
       return {
-        badgeClasses: 'bg-amber-50 text-amber-700',
-        dotClasses: 'bg-amber-500'
+        badgeClasses: 'bg-amber-50 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+        dotClasses: 'bg-amber-500 dark:bg-amber-400'
       };
     case 'SKIPPED':
       return {
-        badgeClasses: 'bg-gray-50 text-gray-400',
-        dotClasses: 'bg-gray-300'
+        badgeClasses: 'bg-gray-50 dark:bg-gray-800 text-gray-400',
+        dotClasses: 'bg-gray-300 dark:bg-gray-600'
       };
     case 'PENDING':
     default:
       return {
-        badgeClasses: 'bg-gray-100 text-gray-600',
-        dotClasses: 'bg-gray-400'
+        badgeClasses: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+        dotClasses: 'bg-gray-400 dark:bg-gray-500'
       };
   }
 };
@@ -48,7 +48,7 @@ export const getPhaseBadgeClasses = (status) => {
  */
 export const getAvatarColorClasses = (member) => {
   if (member?.isSystemUser) {
-    return 'bg-blue-100 text-blue-700';
+    return 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300';
   }
-  return 'bg-gray-200 text-gray-700';
+  return 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
 };

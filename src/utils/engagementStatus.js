@@ -36,13 +36,13 @@ export const shouldShowStale = (engagement) => {
  */
 export const getEngagementStatusBorderClasses = (status) => {
   const borderStyles = {
-    ACTIVE: 'border-gray-200 hover:border-gray-300',
-    ON_HOLD: 'border-purple-300',
-    UNRESPONSIVE: 'border-amber-300',
-    WON: 'border-green-300',
-    LOST: 'border-red-300',
-    DISQUALIFIED: 'border-red-300',
-    NO_DECISION: 'border-gray-300'
+    ACTIVE: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
+    ON_HOLD: 'border-purple-300 dark:border-purple-700',
+    UNRESPONSIVE: 'border-amber-300 dark:border-amber-700',
+    WON: 'border-green-300 dark:border-green-700',
+    LOST: 'border-red-300 dark:border-red-700',
+    DISQUALIFIED: 'border-red-300 dark:border-red-700',
+    NO_DECISION: 'border-gray-300 dark:border-gray-600'
   };
   return borderStyles[status] || borderStyles.ACTIVE;
 };
@@ -54,13 +54,13 @@ export const getEngagementStatusBorderClasses = (status) => {
  */
 export const getEngagementStatusBadgeClasses = (status) => {
   const badgeStyles = {
-    ACTIVE: 'bg-gray-100 text-gray-600',
-    ON_HOLD: 'bg-purple-100 text-purple-700',
-    UNRESPONSIVE: 'bg-amber-100 text-amber-700',
-    WON: 'bg-green-100 text-green-700',
-    LOST: 'bg-red-100 text-red-700',
-    DISQUALIFIED: 'bg-red-100 text-red-700',
-    NO_DECISION: 'bg-gray-100 text-gray-600'
+    ACTIVE: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
+    ON_HOLD: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300',
+    UNRESPONSIVE: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+    WON: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
+    LOST: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
+    DISQUALIFIED: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
+    NO_DECISION: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
   };
   return badgeStyles[status] || badgeStyles.ACTIVE;
 };
@@ -73,27 +73,27 @@ export const getEngagementStatusBadgeClasses = (status) => {
 export const getClosedBannerClasses = (status) => {
   const styles = {
     WON: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-800',
+      bg: 'bg-green-50 dark:bg-green-900/30',
+      border: 'border-green-200 dark:border-green-700',
+      text: 'text-green-800 dark:text-green-300',
       icon: '🎉'
     },
     LOST: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-800',
+      bg: 'bg-red-50 dark:bg-red-900/30',
+      border: 'border-red-200 dark:border-red-700',
+      text: 'text-red-800 dark:text-red-300',
       icon: '❌'
     },
     DISQUALIFIED: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-700',
+      bg: 'bg-red-50 dark:bg-red-900/30',
+      border: 'border-red-200 dark:border-red-700',
+      text: 'text-red-700 dark:text-red-300',
       icon: '🚫'
     },
     NO_DECISION: {
-      bg: 'bg-gray-50',
-      border: 'border-gray-200',
-      text: 'text-gray-700',
+      bg: 'bg-gray-50 dark:bg-gray-800',
+      border: 'border-gray-200 dark:border-gray-700',
+      text: 'text-gray-700 dark:text-gray-300',
       icon: '➖'
     }
   };

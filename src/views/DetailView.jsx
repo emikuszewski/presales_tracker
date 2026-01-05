@@ -40,19 +40,19 @@ const RefreshButton = ({ onClick, disabled, refreshState }) => {
   const buttonClasses = `p-1.5 rounded-lg transition-colors ${
     disabled || isLoading || isSuccess
       ? 'cursor-not-allowed opacity-50'
-      : 'hover:bg-gray-100'
+      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
   }`;
   
   const renderIcon = () => {
     if (isLoading) {
       return (
-        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full animate-spin" />
       );
     }
     if (isSuccess) {
-      return <CheckIcon className="w-5 h-5 text-green-600" />;
+      return <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />;
     }
-    return <RefreshIcon className="w-5 h-5 text-gray-600" />;
+    return <RefreshIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
   };
   
   const getTitle = () => {
@@ -119,20 +119,20 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             placeholder="Add notes about why this engagement closed..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm resize-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
             rows={3}
             autoFocus
           />
           <div className="flex gap-2 mt-2">
             <button
               onClick={handleCancel}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+              className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-white"
             >
               Save
             </button>
@@ -157,7 +157,7 @@ const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => 
     return (
       <button
         onClick={onClick}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       >
         <PlusIcon className="w-3.5 h-3.5" />
         Competition
@@ -357,7 +357,7 @@ const DetailView = ({
   if (!engagement) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-400">Loading engagement...</p>
+        <p className="text-gray-400 dark:text-gray-500">Loading engagement...</p>
       </div>
     );
   }
@@ -384,15 +384,15 @@ const DetailView = ({
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className={`border-b border-gray-200 bg-white px-4 py-3 ${hasPartner ? 'partner-indicator-detail' : ''}`}>
+      <div className={`border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 ${hasPartner ? 'partner-indicator-detail' : ''}`}>
         <div className="flex items-center justify-between">
           {/* Left side */}
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
-              <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+              <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
             
             <div>
@@ -405,9 +405,9 @@ const DetailView = ({
                     <span className="partner-dot"></span>
                   </div>
                 )}
-                <h1 className="text-xl font-medium text-gray-900">{engagement.company}</h1>
+                <h1 className="text-xl font-medium text-gray-900 dark:text-gray-100">{engagement.company}</h1>
               </div>
-              <p className="text-sm text-gray-500">{engagement.contactName}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{engagement.contactName}</p>
             </div>
 
             <div 
@@ -432,7 +432,7 @@ const DetailView = ({
             />
 
             {engagement.salesRepName && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
                 <UserIcon className="w-3.5 h-3.5" />
                 {engagement.salesRepName}
               </span>
@@ -448,7 +448,7 @@ const DetailView = ({
                     href={engagement.slackUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     title={engagement.slackChannel || 'Slack Channel'}
                   >
                     <SlackIcon className="w-5 h-5" />
@@ -459,7 +459,7 @@ const DetailView = ({
                     href={engagement.driveFolderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     title={engagement.driveFolderName || 'Google Drive'}
                   >
                     <DriveIcon className="w-5 h-5" />
@@ -470,7 +470,7 @@ const DetailView = ({
                     href={engagement.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     title={engagement.docsName || 'Google Docs'}
                   >
                     <DocsIcon className="w-5 h-5" />
@@ -481,7 +481,7 @@ const DetailView = ({
                     href={engagement.slidesUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     title={engagement.slidesName || 'Google Slides'}
                   >
                     <SlidesIcon className="w-5 h-5" />
@@ -492,7 +492,7 @@ const DetailView = ({
                     href={engagement.sheetsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     title={engagement.sheetsName || 'Google Sheets'}
                   >
                     <SheetsIcon className="w-5 h-5" />
@@ -636,20 +636,20 @@ const DetailView = ({
         onClose={() => setShowArchiveConfirm(false)}
         title="Archive Engagement"
       >
-        <p className="text-gray-600 mb-6">
-          Archive <strong>{engagement.company}</strong>? This engagement will move to your archived list. You can restore it anytime.
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Archive <strong className="text-gray-900 dark:text-gray-100">{engagement.company}</strong>? This engagement will move to your archived list. You can restore it anytime.
         </p>
         
         <div className="flex gap-3">
           <button 
             onClick={() => setShowArchiveConfirm(false)}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
           <button 
             onClick={handleConfirmArchive}
-            className="flex-1 px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+            className="flex-1 px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-white"
           >
             Archive
           </button>

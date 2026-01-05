@@ -23,9 +23,9 @@ const getStatusColor = (status) => {
   switch(status) {
     case 'COMPLETE': return 'bg-emerald-500';
     case 'IN_PROGRESS': return 'bg-blue-500';
-    case 'BLOCKED': return 'bg-amber-500';
-    case 'SKIPPED': return 'bg-gray-300';
-    default: return 'bg-gray-200';
+    case 'BLOCKED': return 'bg-amber-500 dark:bg-amber-400';
+    case 'SKIPPED': return 'bg-gray-300 dark:bg-gray-600';
+    default: return 'bg-gray-200 dark:bg-gray-700';
   }
 };
 
@@ -77,7 +77,7 @@ const EngagementCard = React.memo(({
   return (
     <div
       onClick={() => onSelect(engagement.id)}
-      className={`bg-white border rounded-xl p-5 hover:shadow-sm transition-all cursor-pointer ${statusBorderClasses} ${hasPartner ? 'partner-indicator-card' : ''}`}
+      className={`bg-white dark:bg-gray-900 border rounded-xl p-5 hover:shadow-sm dark:hover:shadow-gray-900/50 transition-all cursor-pointer ${statusBorderClasses} ${hasPartner ? 'partner-indicator-card' : ''}`}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-3">
@@ -92,31 +92,31 @@ const EngagementCard = React.memo(({
                   <span className="partner-dot"></span>
                 </div>
               )}
-              <h3 className="text-lg font-medium text-gray-900">{engagement.company}</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{engagement.company}</h3>
               {engagement.unreadChanges > 0 && (
                 <NotificationBadge count={engagement.unreadChanges} />
               )}
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {engagement.contactName} · {industryLabels[engagement.industry] || engagement.industry}
               {engagement.salesRepName && (
-                <span className="text-purple-600"> · {engagement.salesRepName}</span>
+                <span className="text-purple-600 dark:text-purple-400"> · {engagement.salesRepName}</span>
               )}
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-lg font-medium text-gray-900">{engagement.dealSize || '—'}</p>
+          <p className="text-lg font-medium text-gray-900 dark:text-gray-100">{engagement.dealSize || '—'}</p>
           <div className="flex items-center justify-end gap-2 mt-1">
             {hasActivities ? (
               <button
                 onClick={handleLastActivityClick}
-                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline"
               >
                 Last activity: {engagement.lastActivity || engagement.startDate}
               </button>
             ) : (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
                 Last activity: {engagement.lastActivity || engagement.startDate}
               </p>
             )}
@@ -163,7 +163,7 @@ const EngagementCard = React.memo(({
 
           {/* Archived Badge - only shown in Everything mode for archived items */}
           {isArchivedInEverything && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>

@@ -62,7 +62,7 @@ const CompetitorChips = React.memo(({
         return (
           <div 
             key={competitor} 
-            className={`${chipSizeClasses[size]} rounded-full bg-gray-100 flex items-center justify-center`}
+            className={`${chipSizeClasses[size]} rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center`}
             title={tooltipName}
           >
             <CompetitorLogo competitor={competitor} size={size} />
@@ -72,7 +72,7 @@ const CompetitorChips = React.memo(({
       
       {overflowCount > 0 && (
         <div 
-          className={`${overflowSizeClasses[size]} rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-medium`}
+          className={`${overflowSizeClasses[size]} rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center font-medium`}
           title={`+${overflowCount} more`}
         >
           +{overflowCount}

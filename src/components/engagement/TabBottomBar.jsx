@@ -13,7 +13,7 @@ const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount =
   };
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40">
       <div className="flex justify-around">
         {detailTabs.map((tab) => {
           const IconComponent = TabIcons[tab.icon];
@@ -28,8 +28,8 @@ const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount =
                 relative flex flex-col items-center justify-center py-2 px-4 flex-1
                 transition-colors duration-150
                 ${isActive 
-                  ? 'text-blue-600 border-t-2 border-blue-600 -mt-[2px]' 
-                  : 'text-gray-500'
+                  ? 'text-blue-600 dark:text-blue-400 border-t-2 border-blue-600 dark:border-blue-400 -mt-[2px]' 
+                  : 'text-gray-500 dark:text-gray-400'
                 }
               `}
             >
@@ -43,8 +43,8 @@ const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount =
                     flex items-center justify-center
                     text-[10px] font-medium rounded-full px-1
                     ${tab.id === 'history' && badgeValue > 0
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                      ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }
                   `}
                 >

@@ -54,7 +54,7 @@ const NoteCard = ({
         <div className="flex justify-end gap-2 mt-2">
           <button
             onClick={onCancelEdit}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
           >
             Cancel
           </button>
@@ -73,7 +73,7 @@ const NoteCard = ({
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3 group hover:border-gray-300 transition-colors">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
           <span>{formatNoteDate(note.createdAt)}</span>
           <span>·</span>
           <span
@@ -155,13 +155,13 @@ const AddNoteInput = ({ onAdd, phaseType }) => {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Add a note..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white dark:bg-gray-900"
         rows={3}
       />
       <div className="flex justify-end gap-2 mt-2">
         <button
           onClick={() => { setText(''); setIsExpanded(false); }}
-          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
         >
           Cancel
         </button>
@@ -240,7 +240,7 @@ const PhaseNotesSection = ({
       </button>
 
       {isExpanded && (
-        <div className="p-4 space-y-3 bg-white">
+        <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
           {hasNotes ? (
             notes.map((note) => (
               <React.Fragment key={note.id}>
@@ -261,7 +261,7 @@ const PhaseNotesSection = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => setShowDeleteConfirm(null)}
-                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
                       >
                         Cancel
                       </button>

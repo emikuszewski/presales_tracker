@@ -10,7 +10,7 @@ import { getAvatarColorClasses, formatDealSizeFromParts } from '../utils';
 const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Owners *
       </label>
       <div className="flex flex-wrap gap-2">
@@ -26,8 +26,8 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
               onClick={() => onToggle(member.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
                 isSelected
-                  ? 'border-gray-900 bg-gray-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-800'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               {/* Avatar */}
@@ -39,13 +39,13 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
               </div>
               
               {/* Name */}
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {member.name}
               </span>
               
               {/* Checkmark for selected */}
               {isSelected && (
-                <svg className="w-4 h-4 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 text-gray-900 dark:text-gray-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -54,7 +54,7 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
         })}
       </div>
       {selectedOwnerIds.length === 0 && (
-        <p className="text-sm text-red-500 mt-1">Select at least one owner</p>
+        <p className="text-sm text-red-500 dark:text-red-400 mt-1">Select at least one owner</p>
       )}
     </div>
   );
@@ -94,29 +94,29 @@ const DealSizeInput = ({ value, onChange }) => {
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
         Deal Size
       </label>
       <div className="flex">
         <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">$</span>
           <input
             type="text"
             inputMode="decimal"
             value={amount}
             onChange={handleAmountChange}
             placeholder="50"
-            className="w-full pl-7 pr-3 py-2 border border-r-0 border-gray-300 rounded-l-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full pl-7 pr-3 py-2 border border-r-0 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-l-lg text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent"
           />
         </div>
-        <div className="flex border border-gray-300 rounded-r-lg overflow-hidden">
+        <div className="flex border border-gray-300 dark:border-gray-600 rounded-r-lg overflow-hidden">
           <button
             type="button"
             onClick={() => handleUnitChange('k')}
             className={`px-3 py-2 text-sm font-medium transition-colors ${
               unit === 'k' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
             }`}
           >
             K
@@ -124,17 +124,17 @@ const DealSizeInput = ({ value, onChange }) => {
           <button
             type="button"
             onClick={() => handleUnitChange('M')}
-            className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
+            className={`px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600 ${
               unit === 'M' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
             }`}
           >
             M
           </button>
         </div>
       </div>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
         {value ? `Formatted: ${value}` : 'e.g., $50k or $1.5M'}
       </p>
     </div>
@@ -255,25 +255,25 @@ const NewEngagementView = ({
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onBack}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
         >
-          <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+          <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
-        <h1 className="text-2xl font-medium text-gray-900">New Engagement</h1>
+        <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">New Engagement</h1>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-5">
         {/* Error message */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
             {error}
           </div>
         )}
 
         {/* Company */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Company *
           </label>
           <input
@@ -281,14 +281,14 @@ const NewEngagementView = ({
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             placeholder="Acme Corp"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
             autoFocus
           />
         </div>
 
         {/* Contact Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Contact Name *
           </label>
           <input
@@ -296,19 +296,19 @@ const NewEngagementView = ({
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
             placeholder="John Smith"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
 
         {/* Industry */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Industry *
           </label>
           <select
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent"
           >
             <option value="">Select industry...</option>
             {industries.map(ind => (
@@ -337,14 +337,14 @@ const NewEngagementView = ({
           <button
             type="button"
             onClick={onBack}
-            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Creating...' : 'Create Engagement'}
           </button>

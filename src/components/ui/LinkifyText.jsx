@@ -146,7 +146,7 @@ const LinkifyText = React.memo(({ text, className = '' }) => {
             href={part.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
             title={part.fullUrl}
             onClick={(e) => e.stopPropagation()}
           >

@@ -38,7 +38,7 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
             {ALL_STATUSES.map(status => {
               const label = engagementStatusLabels[status];
               const isSelected = status === currentStatus;
@@ -47,9 +47,9 @@ const EngagementStatusDropdown = ({ currentStatus, onStatusChange }) => {
                 <button
                   key={status}
                   onClick={() => handleSelect(status)}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 ${isSelected ? 'bg-gray-50 font-medium' : ''}`}
+                  className={`w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2 ${isSelected ? 'bg-gray-50 dark:bg-gray-800 font-medium' : ''}`}
                 >
-                  <span className={getEngagementStatusBadgeClasses(status).replace('bg-', 'text-').split(' ')[1] || 'text-gray-600'}>
+                  <span className={getEngagementStatusBadgeClasses(status).replace('bg-', 'text-').split(' ')[1] || 'text-gray-600 dark:text-gray-400'}>
                     <EngagementStatusIcon status={status} className="w-4 h-4" />
                   </span>
                   {label}

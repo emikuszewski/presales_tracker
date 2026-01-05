@@ -68,7 +68,7 @@ const IntegrationLinksIndicator = ({ engagement }) => {
           <button
             key={integration.key}
             onClick={(e) => handleIconClick(e, integration.url)}
-            className="inline-flex items-center justify-center w-7 h-7 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center justify-center w-7 h-7 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             title={integration.title}
           >
             <IconComponent className="w-3.5 h-3.5" />

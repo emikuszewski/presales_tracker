@@ -89,7 +89,7 @@ const FilterPanel = ({
   return (
     <div 
       ref={panelRef}
-      className="bg-gray-50 rounded-xl p-5 mb-4 border border-gray-100"
+      className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 mb-4 border border-gray-100 dark:border-gray-700"
       style={{
         animation: 'filterPanelSlideDown 0.15s ease-out'
       }}
@@ -98,14 +98,14 @@ const FilterPanel = ({
       <div className="flex items-start gap-8 mb-5">
         {/* Status (Active/Archived) */}
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Status</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Status</p>
           <div className="flex gap-2">
             <button
               onClick={() => handleStatusClick(false)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 !showArchived && !showEverything
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Active
@@ -114,8 +114,8 @@ const FilterPanel = ({
               onClick={() => handleStatusClick(true)}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 showArchived && !showEverything
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Archived
@@ -125,14 +125,14 @@ const FilterPanel = ({
 
         {/* View (Owner selector) */}
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">View</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">View</p>
           <div className="flex gap-2 items-center">
             <button
               onClick={() => handleViewClick('mine')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 filterOwner === 'mine' && !showEverything
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Mine
@@ -141,13 +141,13 @@ const FilterPanel = ({
               onClick={() => handleViewClick('all')}
               className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                 filterOwner === 'all' && !showEverything
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               All Team
             </button>
-            <div className="w-px h-6 bg-gray-200 mx-1"></div>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1"></div>
             {/* Team member avatars */}
             {teamMembers.map(member => {
               const isSelected = filterOwner === member.id && !showEverything;
@@ -160,11 +160,11 @@ const FilterPanel = ({
                   className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
                     isSelected
                       ? isSystemUser
-                        ? 'bg-blue-500 text-white ring-2 ring-offset-2 ring-blue-500'
-                        : 'bg-gray-900 text-white ring-2 ring-offset-2 ring-gray-900'
+                        ? 'bg-blue-500 text-white ring-2 ring-offset-2 dark:ring-offset-gray-800 ring-blue-500'
+                        : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 ring-2 ring-offset-2 dark:ring-offset-gray-800 ring-gray-900 dark:ring-gray-100'
                       : isSystemUser
-                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+                        : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
                   }`}
                   title={`${member.name}${isSystemUser ? ' (Shared Pool)' : ''}`}
                 >
@@ -178,14 +178,14 @@ const FilterPanel = ({
 
       {/* Row 2: Phase */}
       <div className="mb-5">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Phase</p>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Phase</p>
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setFilterPhase('all')}
             className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
               filterPhase === 'all' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
             }`}
           >
             All
@@ -196,8 +196,8 @@ const FilterPanel = ({
               onClick={() => setFilterPhase(phase.id)}
               className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
                 filterPhase === phase.id 
-                  ? 'bg-gray-900 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' 
+                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               {phase.label}
@@ -208,7 +208,7 @@ const FilterPanel = ({
 
       {/* Row 3: Quick Filters */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Filters</p>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Quick Filters</p>
         <div className="flex gap-2">
           {/* Needs Attention */}
           <button
@@ -216,12 +216,12 @@ const FilterPanel = ({
             className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-2 ${
               filterStale 
                 ? 'bg-amber-500 text-white' 
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
             }`}
           >
-            <ClockIcon className={`w-4 h-4 ${filterStale ? 'text-white' : 'text-amber-500'}`} />
+            <ClockIcon className={`w-4 h-4 ${filterStale ? 'text-white' : 'text-amber-500 dark:text-amber-400'}`} />
             Needs Attention
-            <span className={filterStale ? 'text-amber-100' : 'text-amber-600 font-semibold'}>{staleCount}</span>
+            <span className={filterStale ? 'text-amber-100' : 'text-amber-600 dark:text-amber-400 font-semibold'}>{staleCount}</span>
           </button>
 
           {/* Everything */}
@@ -230,12 +230,12 @@ const FilterPanel = ({
             className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors flex items-center gap-2 ${
               showEverything 
                 ? 'bg-blue-500 text-white' 
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
             }`}
           >
-            <GlobeIcon className={`w-4 h-4 ${showEverything ? 'text-white' : 'text-blue-500'}`} />
+            <GlobeIcon className={`w-4 h-4 ${showEverything ? 'text-white' : 'text-blue-500 dark:text-blue-400'}`} />
             Everything
-            <span className={showEverything ? 'text-blue-100' : 'text-blue-600 font-semibold'}>{totalEverythingCount}</span>
+            <span className={showEverything ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400 font-semibold'}>{totalEverythingCount}</span>
           </button>
         </div>
       </div>

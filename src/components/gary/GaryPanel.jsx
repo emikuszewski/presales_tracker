@@ -230,8 +230,8 @@ function GaryMessage({ content, onCopy, onRetry, isLast, isGary = true }) {
     <div className={`group flex ${isGary ? 'justify-start' : 'justify-end'}`}>
       <div className={`relative max-w-[85%] px-3 py-2 ${
         isGary 
-          ? 'bg-gray-100 text-gray-800 rounded-2xl rounded-tl-md' 
-          : 'bg-gray-900 text-white rounded-2xl rounded-tr-md'
+          ? 'bg-gray-100 dark:bg-blue-900/30 text-gray-800 dark:text-gray-200 rounded-2xl rounded-tl-md' 
+          : 'bg-gray-900 dark:bg-gray-700 text-white rounded-2xl rounded-tr-md'
       }`}>
         <div className="text-sm whitespace-pre-wrap">
           {parts?.map((part, i) => {
@@ -240,7 +240,7 @@ function GaryMessage({ content, onCopy, onRetry, isLast, isGary = true }) {
                 <a 
                   key={i} 
                   href={part.href} 
-                  className={`underline ${isGary ? 'text-blue-600 hover:text-blue-800' : 'text-blue-300 hover:text-blue-100'}`}
+                  className={`underline ${isGary ? 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300' : 'text-blue-300 hover:text-blue-100'}`}
                 >
                   {part.text}
                 </a>
@@ -255,7 +255,7 @@ function GaryMessage({ content, onCopy, onRetry, isLast, isGary = true }) {
           <div className="absolute -bottom-6 left-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="p-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="Copy"
             >
               {copied ? 'Copied' : 'Copy'}
@@ -263,7 +263,7 @@ function GaryMessage({ content, onCopy, onRetry, isLast, isGary = true }) {
             {isLast && onRetry && (
               <button
                 onClick={onRetry}
-                className="p-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 title="Retry"
               >
                 Retry
@@ -282,14 +282,14 @@ function GaryMessage({ content, onCopy, onRetry, isLast, isGary = true }) {
 function GaryThinking({ phrase }) {
   return (
     <div className="flex justify-start">
-      <div className="bg-gray-100 rounded-2xl rounded-tl-md px-3 py-2">
+      <div className="bg-gray-100 dark:bg-blue-900/30 rounded-2xl rounded-tl-md px-3 py-2">
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="text-sm text-gray-500 italic">{phrase}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 italic">{phrase}</span>
         </div>
       </div>
     </div>
@@ -302,9 +302,9 @@ function GaryThinking({ phrase }) {
 function GaryOpinion({ text }) {
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%] bg-gray-100 border-l-3 border-amber-500 rounded-r-2xl px-3 py-2" style={{ borderLeftWidth: '3px' }}>
-        <div className="text-xs text-amber-600 font-medium mb-1">Gary's Take</div>
-        <p className="text-sm text-gray-700">{text}</p>
+      <div className="max-w-[85%] bg-gray-100 dark:bg-blue-900/30 border-l-3 border-amber-500 dark:border-amber-400 rounded-r-2xl px-3 py-2" style={{ borderLeftWidth: '3px' }}>
+        <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">Gary's Take</div>
+        <p className="text-sm text-gray-700 dark:text-gray-300">{text}</p>
       </div>
     </div>
   );
@@ -315,14 +315,14 @@ function GaryOpinion({ text }) {
  */
 function ProactiveInsight({ insight, onDismiss }) {
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+    <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
-          <p className="text-sm text-gray-700">{insight}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{insight}</p>
         </div>
         <button
           onClick={onDismiss}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           title="Dismiss"
         >
           <CloseIcon className="w-4 h-4" />
@@ -911,36 +911,36 @@ export default function GaryPanel({
     <div 
       className={`
         fixed top-0 right-0 bottom-0 z-30
-        w-80 bg-white border-l border-gray-200 shadow-xl
+        w-80 bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-gray-700 shadow-xl
         flex flex-col
         transform transition-transform duration-300 ease-out
         ${isOpen ? 'translate-x-0' : 'translate-x-full'}
       `}
     >
       {/* Header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-100">
+      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-3">
           {/* Gary's avatar - coffee cup */}
-          <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
             <span className="text-lg">☕</span>
           </div>
           <div className="flex-1">
-            <span className="text-sm font-medium text-gray-900">Gary</span>
-            <p className="text-xs text-gray-500">Just some guy who works here</p>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Gary</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Just some guy who works here</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Close Gary"
           >
-            <CloseIcon className="w-4 h-4 text-gray-500" />
+            <CloseIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
         
         {/* Context indicator */}
         {currentEngagement && (
-          <div className="mt-2 px-2 py-1 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500">
+          <div className="mt-2 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               <span className="font-medium">Viewing:</span> {currentEngagement.company}
             </p>
           </div>
@@ -961,10 +961,10 @@ export default function GaryPanel({
           {/* Empty state */}
           {!hasMessages && !proactiveInsight && (
             <div className="text-center py-8">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">☕</span>
               </div>
-              <p className="text-sm text-gray-600">What do you need?</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">What do you need?</p>
             </div>
           )}
           
@@ -982,7 +982,7 @@ export default function GaryPanel({
           {/* Streaming response */}
           {streamingText && (
             <div className="flex justify-start">
-              <div className="max-w-[85%] px-3 py-2 bg-gray-100 text-gray-800 rounded-2xl rounded-tl-md">
+              <div className="max-w-[85%] px-3 py-2 bg-gray-100 dark:bg-blue-900/30 text-gray-800 dark:text-gray-200 rounded-2xl rounded-tl-md">
                 <p className="text-sm whitespace-pre-wrap">{streamingText}</p>
               </div>
             </div>
@@ -998,7 +998,7 @@ export default function GaryPanel({
       </div>
 
       {/* Input Area */}
-      <div className="flex-shrink-0 border-t border-gray-100 p-3">
+      <div className="flex-shrink-0 border-t border-gray-100 dark:border-gray-800 p-3">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
@@ -1009,13 +1009,13 @@ export default function GaryPanel({
             placeholder="Ask Gary something..."
             disabled={isLoading}
             maxLength={INPUT_CHAR_LIMIT}
-            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none disabled:opacity-50 disabled:bg-gray-50"
+            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 focus:border-transparent outline-none disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
           {isLoading ? (
             <button
               type="button"
               onClick={handleStop}
-              className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="p-2 bg-red-600 dark:bg-red-500 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
               aria-label="Stop"
               title="Stop"
             >
@@ -1028,7 +1028,7 @@ export default function GaryPanel({
             <button
               type="submit"
               disabled={!input.trim()}
-              className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg hover:bg-gray-800 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Send message"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1043,7 +1043,7 @@ export default function GaryPanel({
           <div className="mt-2 text-center">
             <button 
               onClick={handleClearChat}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               Start fresh
             </button>
