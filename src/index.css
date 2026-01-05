@@ -3,6 +3,17 @@
 @tailwind utilities;
 
 /* ============================================
+   GLOBAL DARK MODE - Body Background
+   ============================================ */
+html.dark {
+  background-color: #030712; /* gray-950 */
+}
+
+html.dark body {
+  background-color: #030712; /* gray-950 */
+}
+
+/* ============================================
    AMPLIFY UI CUSTOMIZATIONS - Light Mode
    ============================================ */
 [data-amplify-authenticator] {
