@@ -48,6 +48,9 @@ export {
   // User icons
   UserIcon,
   UsersIcon,
+  // Theme icons
+  SunIcon,
+  MoonIcon,
   // TabIcons map for TabSidebar/TabBottomBar
   TabIcons
 } from './icons';
