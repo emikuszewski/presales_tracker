@@ -54,7 +54,9 @@ export function useTheme() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  return { theme, toggleTheme };
+  const isDark = theme === 'dark';
+
+  return { theme, isDark, toggleTheme };
 }
 
 export default useTheme;
