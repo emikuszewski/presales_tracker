@@ -4,7 +4,7 @@ import { data } from './data/resource';
 import { embedContentFunction } from './functions/embed-content/resource';
 import { Stack } from 'aws-cdk-lib';
 import { Policy, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
-import { StartingPosition, EventSourceMapping } from 'aws-cdk-lib/aws-lambda';
+import { StartingPosition, EventSourceMapping, Function } from 'aws-cdk-lib/aws-lambda';
 
 // Define the backend with all resources
 const backend = defineBackend({
@@ -23,8 +23,8 @@ const phaseNoteTable = backend.data.resources.tables['PhaseNote'];
 const activityTable = backend.data.resources.tables['Activity'];
 const commentTable = backend.data.resources.tables['Comment'];
 
-// Get the Lambda function
-const embedLambda = backend.embedContentFunction.resources.lambda;
+// Get the Lambda function (cast to Function for full CDK access)
+const embedLambda = backend.embedContentFunction.resources.lambda as Function;
 
 // Add environment variables for table names
 embedLambda.addEnvironment('ENGAGEMENT_TABLE_NAME', engagementTable.tableName);
