@@ -6,28 +6,59 @@ import {
   ToolResultContentBlock,
 } from '@aws-amplify/backend-ai/conversation/runtime';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, GetCommand, ScanCommandOutput } from '@aws-sdk/lib-dynamodb';
 
 // Initialize clients
 const bedrockClient = new BedrockRuntimeClient({ region: 'us-east-1' });
-const dynamoClient = new DynamoDBClient({});
+const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 // Model ID for Titan Embeddings
 const EMBEDDING_MODEL_ID = 'amazon.titan-embed-text-v2:0';
-
-// Table name environment variables (set in backend.ts)
-const ENGAGEMENT_TABLE = process.env.ENGAGEMENT_TABLE_NAME || '';
-const PHASE_NOTE_TABLE = process.env.PHASE_NOTE_TABLE_NAME || '';
-const ACTIVITY_TABLE = process.env.ACTIVITY_TABLE_NAME || '';
-const COMMENT_TABLE = process.env.COMMENT_TABLE_NAME || '';
 
 // Number of results to return
 const TOP_K = 10;
 
 // Minimum similarity threshold (0-1)
 const MIN_SIMILARITY = 0.3;
+
+// Cache for discovered table names
+let tableCache: {
+  engagement: string;
+  phaseNote: string;
+  activity: string;
+  comment: string;
+} | null = null;
+
+/**
+ * Discover table names by listing DynamoDB tables
+ */
+async function discoverTableNames(): Promise<typeof tableCache> {
+  if (tableCache) return tableCache;
+  
+  try {
+    const result = await dynamoClient.send(new ListTablesCommand({}));
+    const tables = result.TableNames || [];
+    
+    const engagement = tables.find(t => t.startsWith('Engagement-'));
+    const phaseNote = tables.find(t => t.startsWith('PhaseNote-'));
+    const activity = tables.find(t => t.startsWith('Activity-'));
+    const comment = tables.find(t => t.startsWith('Comment-'));
+    
+    if (engagement && phaseNote && activity && comment) {
+      tableCache = { engagement, phaseNote, activity, comment };
+      console.log('Discovered tables:', tableCache);
+      return tableCache;
+    }
+    
+    console.error('Could not find all required tables. Found:', { engagement, phaseNote, activity, comment });
+    return null;
+  } catch (error) {
+    console.error('Error discovering tables:', error);
+    return null;
+  }
+}
 
 /**
  * Generate embedding for search query using Bedrock Titan
@@ -169,12 +200,15 @@ async function searchTable(
 /**
  * Get engagement details for enriching results
  */
-async function getEngagementDetails(engagementId: string): Promise<{ company: string; industry: string } | null> {
-  if (!ENGAGEMENT_TABLE || !engagementId) return null;
+async function getEngagementDetails(
+  engagementTable: string,
+  engagementId: string
+): Promise<{ company: string; industry: string } | null> {
+  if (!engagementTable || !engagementId) return null;
   
   try {
     const result = await docClient.send(new GetCommand({
-      TableName: ENGAGEMENT_TABLE,
+      TableName: engagementTable,
       Key: { id: engagementId },
       ProjectionExpression: 'company, industry',
     }));
@@ -195,12 +229,15 @@ async function getEngagementDetails(engagementId: string): Promise<{ company: st
 /**
  * Get activity details to find engagement for comments
  */
-async function getActivityEngagementId(activityId: string): Promise<string | undefined> {
-  if (!ACTIVITY_TABLE || !activityId) return undefined;
+async function getActivityEngagementId(
+  activityTable: string,
+  activityId: string
+): Promise<string | undefined> {
+  if (!activityTable || !activityId) return undefined;
   
   try {
     const result = await docClient.send(new GetCommand({
-      TableName: ACTIVITY_TABLE,
+      TableName: activityTable,
       Key: { id: activityId },
       ProjectionExpression: 'engagementId',
     }));
@@ -219,6 +256,19 @@ async function getActivityEngagementId(activityId: string): Promise<string | und
 async function executeSearch(query: string): Promise<ToolResultContentBlock> {
   console.log('Search tool called with query:', query);
   
+  // Discover table names
+  const tables = await discoverTableNames();
+  if (!tables) {
+    return { 
+      text: JSON.stringify({
+        results: [],
+        totalFound: 0,
+        query,
+        error: 'Could not discover table names',
+      }),
+    };
+  }
+  
   // Generate embedding for the query
   const queryEmbedding = await generateQueryEmbedding(query);
   if (!queryEmbedding) {
@@ -234,10 +284,10 @@ async function executeSearch(query: string): Promise<ToolResultContentBlock> {
   
   // Search all tables in parallel
   const [phaseNoteResults, activityResults, commentResults, engagementResults] = await Promise.all([
-    searchTable(PHASE_NOTE_TABLE, 'PhaseNote', queryEmbedding),
-    searchTable(ACTIVITY_TABLE, 'Activity', queryEmbedding),
-    searchTable(COMMENT_TABLE, 'Comment', queryEmbedding),
-    searchTable(ENGAGEMENT_TABLE, 'Engagement', queryEmbedding),
+    searchTable(tables.phaseNote, 'PhaseNote', queryEmbedding),
+    searchTable(tables.activity, 'Activity', queryEmbedding),
+    searchTable(tables.comment, 'Comment', queryEmbedding),
+    searchTable(tables.engagement, 'Engagement', queryEmbedding),
   ]);
   
   // Combine all results
@@ -260,12 +310,12 @@ async function executeSearch(query: string): Promise<ToolResultContentBlock> {
       
       // For comments, we need to look up the activity to get engagementId
       if (result.type === 'Comment' && result.engagementId) {
-        engagementId = await getActivityEngagementId(result.engagementId);
+        engagementId = await getActivityEngagementId(tables.activity, result.engagementId);
       }
       
       // If we don't have company info, fetch it from engagement
       if (!company && engagementId) {
-        const engagementDetails = await getEngagementDetails(engagementId);
+        const engagementDetails = await getEngagementDetails(tables.engagement, engagementId);
         if (engagementDetails) {
           company = engagementDetails.company;
         }
