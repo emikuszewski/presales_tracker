@@ -3,6 +3,7 @@ import {
   ConversationTurnEvent,
   handleConversationTurnEvent,
   ExecutableTool,
+  ToolResultContentBlock,
 } from '@aws-amplify/backend-ai/conversation/runtime';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -215,27 +216,19 @@ async function getActivityEngagementId(activityId: string): Promise<string | und
 /**
  * Execute semantic search across all content
  */
-async function executeSearch(query: string): Promise<{
-  results: Array<{
-    type: string;
-    company: string;
-    phase?: string;
-    activityType?: string;
-    content: string;
-    relevanceScore: number;
-  }>;
-  totalFound: number;
-  query: string;
-}> {
+async function executeSearch(query: string): Promise<ToolResultContentBlock> {
   console.log('Search tool called with query:', query);
   
   // Generate embedding for the query
   const queryEmbedding = await generateQueryEmbedding(query);
   if (!queryEmbedding) {
     return { 
-      results: [],
-      totalFound: 0,
-      query,
+      text: JSON.stringify({
+        results: [],
+        totalFound: 0,
+        query,
+        error: 'Failed to process search query',
+      }),
     };
   }
   
@@ -292,9 +285,11 @@ async function executeSearch(query: string): Promise<{
   console.log(`Found ${enrichedResults.length} results`);
   
   return {
-    results: enrichedResults,
-    totalFound: enrichedResults.length,
-    query,
+    text: JSON.stringify({
+      results: enrichedResults,
+      totalFound: enrichedResults.length,
+      query,
+    }),
   };
 }
 
@@ -316,9 +311,9 @@ const searchEngagementContentTool: ExecutableTool = {
       required: ['query'],
     } as const,
   },
-  execute: async (input: Record<string, unknown>) => {
-    const query = input.query as string;
-    return await executeSearch(query);
+  execute: async (input: unknown): Promise<ToolResultContentBlock> => {
+    const typedInput = input as { query: string };
+    return await executeSearch(typedInput.query);
   },
 };
 
