@@ -276,12 +276,13 @@ const useEngagementList = function(params) {
    * @param {Object} overrides - Optional overrides to merge with newEngagement (e.g., { dealSize: '$100K' })
    */
   const handleCreateEngagement = useCallback(async function(overrides) {
-    if (!currentUser || !newEngagement.company || !newEngagement.contactName) {
-      return;
-    }
-
     // Merge overrides with newEngagement
     const engagementData = Object.assign({}, newEngagement, overrides || {});
+
+    // Validate using merged data (supports both controlled form and direct data passing)
+    if (!currentUser || !engagementData.company || !engagementData.contactName) {
+      return;
+    }
 
     try {
       const dataClient = typeof client === 'function' ? client() : client;
