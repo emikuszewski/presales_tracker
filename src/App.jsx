@@ -475,12 +475,10 @@ function PresalesTracker() {
           {/* New Engagement - Must come before :id route */}
           <Route path="/engagement/new" element={
             <NewEngagementView
-              newEngagement={newEngagement}
-              setNewEngagement={setNewEngagement}
               teamMembers={teamMembers}
-              salesReps={salesReps}
-              onSubmit={handleCreateEngagement}
+              currentUser={currentUser}
               onBack={() => navigateTo('list')}
+              onCreate={handleCreateEngagement}
             />
           } />
 
