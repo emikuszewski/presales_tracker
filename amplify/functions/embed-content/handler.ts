@@ -117,6 +117,34 @@ function formatPhase(phase: string | null): string {
 }
 
 /**
+ * Format status enum to readable string
+ */
+function formatStatus(status: string | null): string {
+  if (!status) return 'Active';
+  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Parse competitors JSON string to readable format
+ */
+function formatCompetitors(competitors: string | null, otherCompetitorName: string | null): string {
+  if (!competitors) return '';
+  try {
+    const parsed = JSON.parse(competitors);
+    if (Array.isArray(parsed)) {
+      return parsed.map(c => {
+        if (c === 'OTHER' && otherCompetitorName) return otherCompetitorName;
+        return c.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase());
+      }).join(', ');
+    }
+  } catch {
+    if (competitors === 'OTHER' && otherCompetitorName) return otherCompetitorName;
+    return competitors;
+  }
+  return '';
+}
+
+/**
  * Build content string for embedding based on model type
  */
 async function buildContentForEmbedding(
@@ -181,23 +209,58 @@ async function buildContentForEmbedding(
     }
     
     case 'Engagement': {
+      // Extract all relevant fields for rich embedding
+      const company = getStringValue(record.company) || 'Unknown';
+      const industry = formatIndustry(getStringValue(record.industry));
+      const currentPhase = formatPhase(getStringValue(record.currentPhase));
+      const status = formatStatus(getStringValue(record.engagementStatus));
+      const contactName = getStringValue(record.contactName);
+      const contactEmail = getStringValue(record.contactEmail);
+      const contactPhone = getStringValue(record.contactPhone);
+      const partnerName = getStringValue(record.partnerName);
       const competitorNotes = getStringValue(record.competitorNotes);
       const closedReason = getStringValue(record.closedReason);
+      const competitors = getStringValue(record.competitors);
+      const otherCompetitorName = getStringValue(record.otherCompetitorName);
       
-      // Only embed if there's actual content
-      if ((!competitorNotes || competitorNotes.trim().length === 0) && 
-          (!closedReason || closedReason.trim().length === 0)) {
+      // Check if there's any meaningful content to embed
+      // We embed if there's contact info, partner, competitor notes, or closed reason
+      const hasContent = contactName || partnerName || competitorNotes || closedReason;
+      
+      if (!hasContent) {
         return null;
       }
       
-      const company = getStringValue(record.company) || 'Unknown';
-      const industry = formatIndustry(getStringValue(record.industry));
-      
+      // Build rich content block for embedding
       const parts = [];
       parts.push(`Company: ${company}`);
       parts.push(`Industry: ${industry}`);
-      if (competitorNotes) parts.push(`Competitor Notes: ${competitorNotes}`);
-      if (closedReason) parts.push(`Closed Reason: ${closedReason}`);
+      parts.push(`Phase: ${currentPhase}`);
+      parts.push(`Status: ${status}`);
+      
+      if (contactName) {
+        let contactLine = `Contact: ${contactName}`;
+        if (contactEmail) contactLine += ` (${contactEmail})`;
+        if (contactPhone) contactLine += ` - ${contactPhone}`;
+        parts.push(contactLine);
+      }
+      
+      if (partnerName) {
+        parts.push(`Partner: ${partnerName}`);
+      }
+      
+      const competitorStr = formatCompetitors(competitors, otherCompetitorName);
+      if (competitorStr) {
+        parts.push(`Competitors: ${competitorStr}`);
+      }
+      
+      if (competitorNotes) {
+        parts.push(`Competitor Notes: ${competitorNotes}`);
+      }
+      
+      if (closedReason) {
+        parts.push(`Closed Reason: ${closedReason}`);
+      }
       
       return parts.join('\n');
     }
@@ -206,14 +269,36 @@ async function buildContentForEmbedding(
 
 /**
  * Check if Engagement's embeddable fields changed (for MODIFY events)
+ * Now includes contactName, partnerName in addition to competitorNotes, closedReason
  */
 function engagementFieldsChanged(oldImage: any, newImage: any): boolean {
   const oldCompetitorNotes = getStringValue(oldImage?.competitorNotes) || '';
   const newCompetitorNotes = getStringValue(newImage?.competitorNotes) || '';
   const oldClosedReason = getStringValue(oldImage?.closedReason) || '';
   const newClosedReason = getStringValue(newImage?.closedReason) || '';
+  const oldContactName = getStringValue(oldImage?.contactName) || '';
+  const newContactName = getStringValue(newImage?.contactName) || '';
+  const oldContactEmail = getStringValue(oldImage?.contactEmail) || '';
+  const newContactEmail = getStringValue(newImage?.contactEmail) || '';
+  const oldContactPhone = getStringValue(oldImage?.contactPhone) || '';
+  const newContactPhone = getStringValue(newImage?.contactPhone) || '';
+  const oldPartnerName = getStringValue(oldImage?.partnerName) || '';
+  const newPartnerName = getStringValue(newImage?.partnerName) || '';
+  const oldCompetitors = getStringValue(oldImage?.competitors) || '';
+  const newCompetitors = getStringValue(newImage?.competitors) || '';
+  const oldOtherCompetitorName = getStringValue(oldImage?.otherCompetitorName) || '';
+  const newOtherCompetitorName = getStringValue(newImage?.otherCompetitorName) || '';
   
-  return oldCompetitorNotes !== newCompetitorNotes || oldClosedReason !== newClosedReason;
+  return (
+    oldCompetitorNotes !== newCompetitorNotes ||
+    oldClosedReason !== newClosedReason ||
+    oldContactName !== newContactName ||
+    oldContactEmail !== newContactEmail ||
+    oldContactPhone !== newContactPhone ||
+    oldPartnerName !== newPartnerName ||
+    oldCompetitors !== newCompetitors ||
+    oldOtherCompetitorName !== newOtherCompetitorName
+  );
 }
 
 /**
