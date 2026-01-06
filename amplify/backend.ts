@@ -1,6 +1,6 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
-import { data } from './data/resource';
+import { data, chatHandler } from './data/resource';
 import { embedContentFunction } from './functions/embed-content/resource';
 import { Stack } from 'aws-cdk-lib';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
@@ -11,6 +11,7 @@ import { Function } from 'aws-cdk-lib/aws-lambda';
 const backend = defineBackend({
   auth,
   data,
+  chatHandler,
   embedContentFunction,
 });
 
@@ -24,20 +25,19 @@ const phaseNoteTable = backend.data.resources.tables['PhaseNote'];
 const activityTable = backend.data.resources.tables['Activity'];
 const commentTable = backend.data.resources.tables['Comment'];
 
-// Get the Lambda function (cast to Function for full CDK access)
+// Get the embed Lambda function
 const embedLambda = backend.embedContentFunction.resources.lambda as Function;
 
-// Add environment variables for table names
+// Add environment variables for table names to embed function
 embedLambda.addEnvironment('ENGAGEMENT_TABLE_NAME', engagementTable.tableName);
 embedLambda.addEnvironment('PHASE_NOTE_TABLE_NAME', phaseNoteTable.tableName);
 embedLambda.addEnvironment('ACTIVITY_TABLE_NAME', activityTable.tableName);
 embedLambda.addEnvironment('COMMENT_TABLE_NAME', commentTable.tableName);
 
 // ===========================================
-// IAM PERMISSIONS - Using wildcards to avoid circular dependencies
+// EMBED FUNCTION IAM PERMISSIONS
 // ===========================================
 
-// Add all permissions directly to Lambda role to avoid circular dependencies
 embedLambda.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
@@ -46,7 +46,7 @@ embedLambda.addToRolePolicy(
   })
 );
 
-// DynamoDB read/write permissions (using wildcards to break cycle)
+// DynamoDB read/write permissions for embed function
 embedLambda.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
@@ -66,7 +66,7 @@ embedLambda.addToRolePolicy(
   })
 );
 
-// DynamoDB Streams permissions (using wildcards to break cycle)
+// DynamoDB Streams permissions for embed function
 embedLambda.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
@@ -86,10 +86,53 @@ embedLambda.addToRolePolicy(
 );
 
 // ===========================================
+// CHAT HANDLER CONFIGURATION
+// ===========================================
+
+// Get the chat handler Lambda function
+const chatLambda = backend.chatHandler.resources.lambda as Function;
+
+// Add environment variables for table names to chat handler
+chatLambda.addEnvironment('ENGAGEMENT_TABLE_NAME', engagementTable.tableName);
+chatLambda.addEnvironment('PHASE_NOTE_TABLE_NAME', phaseNoteTable.tableName);
+chatLambda.addEnvironment('ACTIVITY_TABLE_NAME', activityTable.tableName);
+chatLambda.addEnvironment('COMMENT_TABLE_NAME', commentTable.tableName);
+
+// ===========================================
+// CHAT HANDLER IAM PERMISSIONS
+// ===========================================
+
+// Bedrock permission for Titan Embeddings (query embedding)
+chatLambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ['bedrock:InvokeModel'],
+    resources: ['arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0'],
+  })
+);
+
+// DynamoDB read permissions for chat handler (semantic search)
+chatLambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      'dynamodb:GetItem',
+      'dynamodb:Query',
+      'dynamodb:Scan',
+    ],
+    resources: [
+      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Engagement-*`,
+      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/PhaseNote-*`,
+      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Activity-*`,
+      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Comment-*`,
+    ],
+  })
+);
+
+// ===========================================
 // DYNAMODB STREAM EVENT SOURCE MAPPINGS
 // ===========================================
 
-// PhaseNote stream -> embedding function
 new EventSourceMapping(
   Stack.of(embedLambda),
   'PhaseNoteStreamMapping',
@@ -102,7 +145,6 @@ new EventSourceMapping(
   }
 );
 
-// Activity stream -> embedding function
 new EventSourceMapping(
   Stack.of(embedLambda),
   'ActivityStreamMapping',
@@ -115,7 +157,6 @@ new EventSourceMapping(
   }
 );
 
-// Comment stream -> embedding function
 new EventSourceMapping(
   Stack.of(embedLambda),
   'CommentStreamMapping',
@@ -128,7 +169,6 @@ new EventSourceMapping(
   }
 );
 
-// Engagement stream -> embedding function
 new EventSourceMapping(
   Stack.of(embedLambda),
   'EngagementStreamMapping',
