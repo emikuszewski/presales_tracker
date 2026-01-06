@@ -2,10 +2,11 @@
 import {
   ConversationTurnEvent,
   handleConversationTurnEvent,
+  ExecutableTool,
 } from '@aws-amplify/backend-ai/conversation/runtime';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand, GetCommand, ScanCommandOutput } from '@aws-sdk/lib-dynamodb';
 
 // Initialize clients
 const bedrockClient = new BedrockRuntimeClient({ region: 'us-east-1' });
@@ -101,7 +102,7 @@ async function searchTable(
     let lastEvaluatedKey: Record<string, any> | undefined = undefined;
     
     do {
-      const scanResult = await docClient.send(new ScanCommand({
+      const scanResult: ScanCommandOutput = await docClient.send(new ScanCommand({
         TableName: tableName,
         ProjectionExpression: type === 'Engagement' 
           ? 'id, embedding, company, industry, competitorNotes, closedReason'
@@ -298,14 +299,14 @@ async function executeSearch(query: string): Promise<{
 }
 
 /**
- * The semantic search tool definition using JSON Schema
+ * The semantic search tool definition
  */
-const searchEngagementContentTool = {
+const searchEngagementContentTool: ExecutableTool = {
   name: 'search_engagement_content',
   description: 'Searches through all notes, activities, comments, and engagement details across the entire pipeline to find content matching a query. Use when user asks about specific topics, technologies, competitors, objections, or wants to find which deals discussed something specific.',
   inputSchema: {
     json: {
-      type: 'object' as const,
+      type: 'object',
       properties: {
         query: {
           type: 'string',
@@ -313,10 +314,11 @@ const searchEngagementContentTool = {
         },
       },
       required: ['query'],
-    },
+    } as const,
   },
-  execute: async (input: { query: string }) => {
-    return await executeSearch(input.query);
+  execute: async (input: Record<string, unknown>) => {
+    const query = input.query as string;
+    return await executeSearch(query);
   },
 };
 
