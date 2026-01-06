@@ -6,4 +6,5 @@ export const embedContentFunction = defineFunction({
   timeoutSeconds: 60,
   memoryMB: 256,
   runtime: 20,
+  resourceGroupName: 'data',
 });
