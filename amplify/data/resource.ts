@@ -1,5 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { defineConversationHandlerFunction } from '@aws-amplify/backend-ai';
+import { defineConversationHandlerFunction } from '@aws-amplify/backend-ai/conversation';
 
 // Define the custom chat handler with Gary's search capabilities
 export const chatHandler = defineConversationHandlerFunction({
