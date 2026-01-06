@@ -1,17 +1,11 @@
 /// <reference types="node" />
 import {
   ConversationTurnEvent,
-  ExecutableTool,
   handleConversationTurnEvent,
-  createExecutableTool,
 } from '@aws-amplify/backend-ai/conversation/runtime';
-import { generateClient } from 'aws-amplify/api';
-import { Amplify } from 'aws-amplify';
-import { Schema } from './resource';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { z } from 'zod';
 
 // Initialize clients
 const bedrockClient = new BedrockRuntimeClient({ region: 'us-east-1' });
@@ -98,12 +92,13 @@ async function searchTable(
   tableName: string,
   type: 'PhaseNote' | 'Activity' | 'Comment' | 'Engagement',
   queryEmbedding: number[],
-  contentField: string,
 ): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
   
+  if (!tableName) return results;
+  
   try {
-    let lastEvaluatedKey: any = undefined;
+    let lastEvaluatedKey: Record<string, any> | undefined = undefined;
     
     do {
       const scanResult = await docClient.send(new ScanCommand({
@@ -117,7 +112,7 @@ async function searchTable(
           : 'id, embedding, activityId, #txt',
         ExpressionAttributeNames: type === 'Activity' 
           ? { '#typ': 'type' }
-          : type === 'Comment' || type === 'PhaseNote'
+          : (type === 'Comment' || type === 'PhaseNote')
           ? { '#txt': 'text' }
           : undefined,
         ExclusiveStartKey: lastEvaluatedKey,
@@ -127,31 +122,31 @@ async function searchTable(
         if (!item.embedding) continue;
         
         try {
-          const embedding = JSON.parse(item.embedding);
+          const embedding = JSON.parse(item.embedding as string);
           const similarity = cosineSimilarity(queryEmbedding, embedding);
           
           if (similarity >= MIN_SIMILARITY) {
             let content = '';
             if (type === 'Engagement') {
-              const parts = [];
+              const parts: string[] = [];
               if (item.competitorNotes) parts.push(`Competitor Notes: ${item.competitorNotes}`);
               if (item.closedReason) parts.push(`Closed Reason: ${item.closedReason}`);
               content = parts.join('\n');
             } else if (type === 'Activity') {
-              content = item.description || '';
+              content = (item.description as string) || '';
             } else {
-              content = item.text || '';
+              content = (item.text as string) || '';
             }
             
             results.push({
               type,
-              id: item.id,
+              id: item.id as string,
               content,
               similarity,
-              company: item.company,
-              phase: item.phaseType,
-              activityType: item.type,
-              engagementId: item.engagementId || item.activityId,
+              company: item.company as string | undefined,
+              phase: item.phaseType as string | undefined,
+              activityType: item.type as string | undefined,
+              engagementId: (item.engagementId || item.activityId) as string | undefined,
             });
           }
         } catch (e) {
@@ -184,8 +179,8 @@ async function getEngagementDetails(engagementId: string): Promise<{ company: st
     
     if (result.Item) {
       return {
-        company: result.Item.company || 'Unknown',
-        industry: result.Item.industry || 'Unknown',
+        company: (result.Item.company as string) || 'Unknown',
+        industry: (result.Item.industry as string) || 'Unknown',
       };
     }
   } catch (error) {
@@ -198,8 +193,8 @@ async function getEngagementDetails(engagementId: string): Promise<{ company: st
 /**
  * Get activity details to find engagement for comments
  */
-async function getActivityEngagementId(activityId: string): Promise<string | null> {
-  if (!ACTIVITY_TABLE || !activityId) return null;
+async function getActivityEngagementId(activityId: string): Promise<string | undefined> {
+  if (!ACTIVITY_TABLE || !activityId) return undefined;
   
   try {
     const result = await docClient.send(new GetCommand({
@@ -208,94 +203,122 @@ async function getActivityEngagementId(activityId: string): Promise<string | nul
       ProjectionExpression: 'engagementId',
     }));
     
-    return result.Item?.engagementId || null;
+    return result.Item?.engagementId as string | undefined;
   } catch (error) {
     console.error('Error fetching activity:', error);
   }
   
-  return null;
+  return undefined;
 }
 
 /**
- * The semantic search tool definition
+ * Execute semantic search across all content
  */
-const searchEngagementContentTool = createExecutableTool(
-  'search_engagement_content',
-  'Searches through all notes, activities, comments, and engagement details across the entire pipeline to find content matching a query. Use when user asks about specific topics, technologies, competitors, objections, or wants to find which deals discussed something specific.',
-  {
-    query: z.string().describe('The search query - what to look for across all engagement content'),
-  },
-  async (input) => {
-    console.log('Search tool called with query:', input.query);
-    
-    // Generate embedding for the query
-    const queryEmbedding = await generateQueryEmbedding(input.query);
-    if (!queryEmbedding) {
-      return { 
-        results: [],
-        error: 'Failed to process search query',
-      };
-    }
-    
-    // Search all tables in parallel
-    const [phaseNoteResults, activityResults, commentResults, engagementResults] = await Promise.all([
-      searchTable(PHASE_NOTE_TABLE, 'PhaseNote', queryEmbedding, 'text'),
-      searchTable(ACTIVITY_TABLE, 'Activity', queryEmbedding, 'description'),
-      searchTable(COMMENT_TABLE, 'Comment', queryEmbedding, 'text'),
-      searchTable(ENGAGEMENT_TABLE, 'Engagement', queryEmbedding, 'competitorNotes'),
-    ]);
-    
-    // Combine all results
-    let allResults = [
-      ...phaseNoteResults,
-      ...activityResults,
-      ...commentResults,
-      ...engagementResults,
-    ];
-    
-    // Sort by similarity and take top K
-    allResults.sort((a, b) => b.similarity - a.similarity);
-    allResults = allResults.slice(0, TOP_K);
-    
-    // Enrich results with engagement details
-    const enrichedResults = await Promise.all(
-      allResults.map(async (result) => {
-        let company = result.company;
-        let engagementId = result.engagementId;
-        
-        // For comments, we need to look up the activity to get engagementId
-        if (result.type === 'Comment' && result.engagementId) {
-          engagementId = await getActivityEngagementId(result.engagementId);
-        }
-        
-        // If we don't have company info, fetch it from engagement
-        if (!company && engagementId) {
-          const engagementDetails = await getEngagementDetails(engagementId);
-          if (engagementDetails) {
-            company = engagementDetails.company;
-          }
-        }
-        
-        return {
-          type: result.type,
-          company: company || 'Unknown',
-          phase: result.phase,
-          activityType: result.activityType,
-          content: result.content,
-          relevanceScore: Math.round(result.similarity * 100),
-        };
-      })
-    );
-    
-    console.log(`Found ${enrichedResults.length} results`);
-    
-    return {
-      results: enrichedResults,
-      totalFound: enrichedResults.length,
-      query: input.query,
+async function executeSearch(query: string): Promise<{
+  results: Array<{
+    type: string;
+    company: string;
+    phase?: string;
+    activityType?: string;
+    content: string;
+    relevanceScore: number;
+  }>;
+  totalFound: number;
+  query: string;
+}> {
+  console.log('Search tool called with query:', query);
+  
+  // Generate embedding for the query
+  const queryEmbedding = await generateQueryEmbedding(query);
+  if (!queryEmbedding) {
+    return { 
+      results: [],
+      totalFound: 0,
+      query,
     };
   }
-);
+  
+  // Search all tables in parallel
+  const [phaseNoteResults, activityResults, commentResults, engagementResults] = await Promise.all([
+    searchTable(PHASE_NOTE_TABLE, 'PhaseNote', queryEmbedding),
+    searchTable(ACTIVITY_TABLE, 'Activity', queryEmbedding),
+    searchTable(COMMENT_TABLE, 'Comment', queryEmbedding),
+    searchTable(ENGAGEMENT_TABLE, 'Engagement', queryEmbedding),
+  ]);
+  
+  // Combine all results
+  let allResults = [
+    ...phaseNoteResults,
+    ...activityResults,
+    ...commentResults,
+    ...engagementResults,
+  ];
+  
+  // Sort by similarity and take top K
+  allResults.sort((a, b) => b.similarity - a.similarity);
+  allResults = allResults.slice(0, TOP_K);
+  
+  // Enrich results with engagement details
+  const enrichedResults = await Promise.all(
+    allResults.map(async (result) => {
+      let company = result.company;
+      let engagementId = result.engagementId;
+      
+      // For comments, we need to look up the activity to get engagementId
+      if (result.type === 'Comment' && result.engagementId) {
+        engagementId = await getActivityEngagementId(result.engagementId);
+      }
+      
+      // If we don't have company info, fetch it from engagement
+      if (!company && engagementId) {
+        const engagementDetails = await getEngagementDetails(engagementId);
+        if (engagementDetails) {
+          company = engagementDetails.company;
+        }
+      }
+      
+      return {
+        type: result.type,
+        company: company || 'Unknown',
+        phase: result.phase,
+        activityType: result.activityType,
+        content: result.content,
+        relevanceScore: Math.round(result.similarity * 100),
+      };
+    })
+  );
+  
+  console.log(`Found ${enrichedResults.length} results`);
+  
+  return {
+    results: enrichedResults,
+    totalFound: enrichedResults.length,
+    query,
+  };
+}
+
+/**
+ * The semantic search tool definition using JSON Schema
+ */
+const searchEngagementContentTool = {
+  name: 'search_engagement_content',
+  description: 'Searches through all notes, activities, comments, and engagement details across the entire pipeline to find content matching a query. Use when user asks about specific topics, technologies, competitors, objections, or wants to find which deals discussed something specific.',
+  inputSchema: {
+    json: {
+      type: 'object' as const,
+      properties: {
+        query: {
+          type: 'string',
+          description: 'The search query - what to look for across all engagement content',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  execute: async (input: { query: string }) => {
+    return await executeSearch(input.query);
+  },
+};
 
 /**
  * Main handler for conversation events
@@ -303,9 +326,7 @@ const searchEngagementContentTool = createExecutableTool(
 export const handler = async (event: ConversationTurnEvent) => {
   console.log('Chat handler invoked');
   
-  const tools: ExecutableTool[] = [searchEngagementContentTool];
-  
   await handleConversationTurnEvent(event, {
-    tools,
+    tools: [searchEngagementContentTool],
   });
 };
