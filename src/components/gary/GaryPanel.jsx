@@ -505,6 +505,7 @@ export default function GaryPanel({
   /**
    * Build engagement index for Gary
    * One line per engagement, capped at MAX_ENGAGEMENTS_IN_INDEX
+   * Now includes contact, partner, and sales rep info
    */
   const buildEngagementIndex = useCallback(() => {
     if (!engagements || engagements.length === 0) {
@@ -525,7 +526,27 @@ export default function GaryPanel({
       const competitorStr = competitors.length > 0 ? competitors.join(', ') : 'none';
       const archived = e.isArchived ? ' [ARCHIVED]' : '';
       
-      return `- ${company} | ${industry} | ${phase} | ${dealSize} | ${status} | Last: ${lastActivity} | Owners: ${owners} | Competitors: ${competitorStr} | ID: ${e.id}${archived}`;
+      // New fields: contact, partner, sales rep
+      const contact = e.contactName || '';
+      const partner = e.partnerName || '';
+      const salesRep = e.salesRepName || '';
+      
+      // Build line with optional fields (omit empty ones to keep compact)
+      let line = `- ${company} | ${industry} | ${phase} | ${dealSize} | ${status} | Last: ${lastActivity} | Owners: ${owners} | Competitors: ${competitorStr}`;
+      
+      if (contact) {
+        line += ` | Contact: ${contact}`;
+      }
+      if (partner) {
+        line += ` | Partner: ${partner}`;
+      }
+      if (salesRep) {
+        line += ` | Sales Rep: ${salesRep}`;
+      }
+      
+      line += ` | ID: ${e.id}${archived}`;
+      
+      return line;
     });
     
     const header = total > MAX_ENGAGEMENTS_IN_INDEX 
@@ -537,6 +558,7 @@ export default function GaryPanel({
 
   /**
    * Build detailed context for current engagement
+   * Now includes full contact details
    */
   const buildCurrentEngagementDetail = useCallback(() => {
     if (!currentEngagement) return '';
@@ -552,8 +574,25 @@ export default function GaryPanel({
     parts.push(`Industry: ${formatIndustry(e.industry)}`);
     parts.push(`Owners: ${getOwnerNames(e)}`);
     
-    if (e.salesRep?.name) {
-      parts.push(`Sales Rep: ${e.salesRep.name}`);
+    // Contact information
+    if (e.contactName) {
+      parts.push(`Contact Name: ${e.contactName}`);
+    }
+    if (e.contactEmail) {
+      parts.push(`Contact Email: ${e.contactEmail}`);
+    }
+    if (e.contactPhone) {
+      parts.push(`Contact Phone: ${e.contactPhone}`);
+    }
+    
+    // Sales rep
+    if (e.salesRep?.name || e.salesRepName) {
+      parts.push(`Sales Rep: ${e.salesRep?.name || e.salesRepName}`);
+    }
+    
+    // Partner
+    if (e.partnerName) {
+      parts.push(`Partner: ${e.partnerName}`);
     }
     
     const competitors = parseCompetitors(e.competitors, e.otherCompetitorName);
@@ -561,10 +600,6 @@ export default function GaryPanel({
     
     if (e.competitorNotes) {
       parts.push(`Competitor Notes: "${e.competitorNotes}"`);
-    }
-    
-    if (e.partnerName) {
-      parts.push(`Partner: ${e.partnerName}`);
     }
     
     parts.push(`Last Activity: ${formatDate(e.lastActivity || e.updatedAt)}`);
