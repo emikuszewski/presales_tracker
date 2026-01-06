@@ -86,21 +86,12 @@ embedLambda.addToRolePolicy(
 );
 
 // ===========================================
-// CHAT HANDLER CONFIGURATION
-// ===========================================
-
-// Get the chat handler Lambda function
-const chatLambda = backend.chatHandler.resources.lambda as Function;
-
-// Add environment variables for table names to chat handler
-chatLambda.addEnvironment('ENGAGEMENT_TABLE_NAME', engagementTable.tableName);
-chatLambda.addEnvironment('PHASE_NOTE_TABLE_NAME', phaseNoteTable.tableName);
-chatLambda.addEnvironment('ACTIVITY_TABLE_NAME', activityTable.tableName);
-chatLambda.addEnvironment('COMMENT_TABLE_NAME', commentTable.tableName);
-
-// ===========================================
 // CHAT HANDLER IAM PERMISSIONS
+// Note: We use wildcard ARNs to avoid circular dependency
+// The chatHandler will discover table names at runtime
 // ===========================================
+
+const chatLambda = backend.chatHandler.resources.lambda as Function;
 
 // Bedrock permission for Titan Embeddings (query embedding)
 chatLambda.addToRolePolicy(
@@ -111,7 +102,17 @@ chatLambda.addToRolePolicy(
   })
 );
 
-// DynamoDB read permissions for chat handler (semantic search)
+// DynamoDB permissions for chat handler (semantic search + table discovery)
+chatLambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      'dynamodb:ListTables',
+    ],
+    resources: ['*'],
+  })
+);
+
 chatLambda.addToRolePolicy(
   new PolicyStatement({
     effect: Effect.ALLOW,
@@ -121,10 +122,10 @@ chatLambda.addToRolePolicy(
       'dynamodb:Scan',
     ],
     resources: [
-      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Engagement-*`,
-      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/PhaseNote-*`,
-      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Activity-*`,
-      `arn:aws:dynamodb:${Stack.of(chatLambda).region}:${Stack.of(chatLambda).account}:table/Comment-*`,
+      `arn:aws:dynamodb:us-east-1:${Stack.of(chatLambda).account}:table/Engagement-*`,
+      `arn:aws:dynamodb:us-east-1:${Stack.of(chatLambda).account}:table/PhaseNote-*`,
+      `arn:aws:dynamodb:us-east-1:${Stack.of(chatLambda).account}:table/Activity-*`,
+      `arn:aws:dynamodb:us-east-1:${Stack.of(chatLambda).account}:table/Comment-*`,
     ],
   })
 );
