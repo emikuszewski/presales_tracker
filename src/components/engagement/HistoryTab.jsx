@@ -29,21 +29,21 @@ const HistoryEntry = ({ entry, getOwnerInfo, isUnread }) => {
   const user = getOwnerInfo(entry.userId);
   
   return (
-    <div className={`flex items-start gap-3 py-3 px-3 rounded-lg transition-colors ${isUnread ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-      <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm">
+    <div className={`flex items-start gap-3 py-3 px-3 rounded-lg transition-colors ${isUnread ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+      <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-sm">
         {getChangeIcon(entry.changeType)}
       </div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium ${user.isSystemUser ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}`} title={user.name}>
+          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium ${user.isSystemUser ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`} title={user.name}>
             {user.initials}
           </div>
-          <span className="font-medium text-gray-900 text-sm">{user.name}</span>
-          {isUnread && <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">New</span>}
+          <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{user.name}</span>
+          {isUnread && <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">New</span>}
         </div>
-        <p className="text-sm text-gray-700 mt-0.5">{entry.description}</p>
-        <span className="text-xs text-gray-400 mt-1 block">{formatDateTime(entry.createdAt)}</span>
+        <p className="text-sm text-gray-700 dark:text-gray-300 mt-0.5">{entry.description}</p>
+        <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 block">{formatDateTime(entry.createdAt)}</span>
       </div>
     </div>
   );
@@ -67,8 +67,8 @@ const HistoryTab = ({ engagement, getOwnerInfo, lastViewedAt, currentUserId, onM
       <div className="p-4">
         <div className="text-center py-12">
           <div className="text-4xl mb-3">📜</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No history yet</h3>
-          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Changes to this engagement will appear here.</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No history yet</h3>
+          <p className="text-gray-500 dark:text-gray-400">Changes to this engagement will appear here.</p>
         </div>
       </div>
     );
@@ -76,7 +76,7 @@ const HistoryTab = ({ engagement, getOwnerInfo, lastViewedAt, currentUserId, onM
 
   return (
     <div className="p-4">
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
+      <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-400">
         Showing all changes made to this engagement, newest first.
       </div>
       <div className="space-y-1">
