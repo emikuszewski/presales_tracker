@@ -5,11 +5,11 @@ import { WarningIcon, PlusIcon, CloseIcon, LinkIcon } from '../ui';
 
 const StatusBadge = ({ status }) => {
   const styles = {
-    PENDING: 'bg-gray-100 text-gray-600',
-    IN_PROGRESS: 'bg-blue-100 text-blue-700',
-    COMPLETE: 'bg-green-100 text-green-700',
-    BLOCKED: 'bg-amber-100 text-amber-700',
-    SKIPPED: 'bg-gray-100 text-gray-400 italic'
+    PENDING: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
+    IN_PROGRESS: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
+    COMPLETE: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
+    BLOCKED: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+    SKIPPED: 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 italic'
   };
   
   const labels = {
@@ -76,20 +76,20 @@ const InlineNoteInput = ({ phaseType, onAdd, onCancel }) => {
   };
 
   return (
-    <div className="mt-3 bg-gray-50 rounded-lg p-3">
+    <div className="mt-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
       <textarea
         ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Add a note..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white dark:bg-gray-900"
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
         rows={3}
       />
       <div className="flex justify-end gap-2 mt-2">
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
+          className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
         >
           Cancel
         </button>
@@ -124,11 +124,11 @@ const NotePreview = ({ note, getOwnerInfo, onClick }) => {
       className="w-full text-left group"
     >
       {/* Note text - 2 lines max with ellipsis */}
-      <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-gray-900 transition-colors">
+      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
         "{note.text}"
       </p>
       {/* Attribution */}
-      <p className="text-xs text-gray-400 mt-1">
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
         — {firstName}, {relativeTime}
       </p>
     </button>
@@ -196,11 +196,11 @@ const PhaseCard = ({
   const hasNotes = notesCount > 0;
 
   return (
-    <div className={`bg-white rounded-lg border ${isBlocked ? 'border-amber-300' : 'border-gray-200'} p-4`}>
+    <div className={`bg-white dark:bg-gray-900 rounded-lg border ${isBlocked ? 'border-amber-300 dark:border-amber-600' : 'border-gray-200 dark:border-gray-700'} p-4`}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className={`font-medium ${isSkipped ? 'text-gray-400 line-through' : isPending ? 'text-gray-400' : 'text-gray-900'}`}>
+          <h3 className={`font-medium ${isSkipped ? 'text-gray-400 dark:text-gray-500 line-through' : isPending ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
             {phaseInfo.label}
           </h3>
           
@@ -219,12 +219,12 @@ const PhaseCard = ({
                   className="fixed inset-0 z-10" 
                   onClick={() => setShowStatusDropdown(false)} 
                 />
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
                   {allStatuses.map(status => (
                     <button
                       key={status}
                       onClick={() => handleStatusSelect(status)}
-                      className={`w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 ${phase.status === status ? 'bg-gray-50 font-medium' : ''}`}
+                      className={`w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${phase.status === status ? 'bg-gray-50 dark:bg-gray-700 font-medium' : ''}`}
                     >
                       <StatusBadge status={status} />
                     </button>
@@ -236,14 +236,14 @@ const PhaseCard = ({
           
           {/* Blocked indicator icon */}
           {isBlocked && (
-            <span className="text-amber-500" title="This phase is blocked">
+            <span className="text-amber-500 dark:text-amber-400" title="This phase is blocked">
               <WarningIcon className="w-4 h-4" />
             </span>
           )}
         </div>
         
         {phase.completedDate && (
-          <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{formatDate(phase.completedDate)}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(phase.completedDate)}</span>
         )}
       </div>
 
@@ -261,7 +261,7 @@ const PhaseCard = ({
             {/* Add note button [+] */}
             <button
               onClick={handleAddNoteClick}
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+              className="flex-shrink-0 p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               title="Add note"
             >
               <PlusIcon className="w-5 h-5" />
@@ -270,7 +270,7 @@ const PhaseCard = ({
         ) : (
           <button
             onClick={handleAddNoteClick}
-            className="w-full py-3 text-sm text-gray-500 hover:text-blue-600 hover:bg-gray-50 rounded-lg flex items-center justify-center gap-1 transition-colors border border-dashed border-gray-200 hover:border-blue-300"
+            className="w-full py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg flex items-center justify-center gap-1 transition-colors border border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
           >
             <PlusIcon className="w-4 h-4" />
             Add note
@@ -292,18 +292,18 @@ const PhaseCard = ({
         <div className="mb-3">
           <div className="flex flex-wrap gap-2">
             {phase.links.map((link, idx) => (
-              <div key={idx} className="flex items-center gap-1 bg-gray-50 rounded px-2 py-1 group">
+              <div key={idx} className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 rounded px-2 py-1 group">
                 <a 
                   href={link.url} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   {link.title}
                 </a>
                 <button
                   onClick={() => onRemoveLink(phaseType, idx)}
-                  className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                  className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
                   title="Remove link"
                 >
                   <CloseIcon className="w-3 h-3" />
@@ -321,7 +321,7 @@ const PhaseCard = ({
           {!showAddLink && !isSkipped && (
             <button 
               onClick={() => setShowAddLink(true)} 
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
             >
               <LinkIcon className="w-4 h-4" />
               Add Link
@@ -333,7 +333,7 @@ const PhaseCard = ({
         {notesCount > 0 && (
           <button 
             onClick={() => onNotesClick(phaseType)} 
-            className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
           >
             📝 {notesCount} note{notesCount !== 1 ? 's' : ''} →
           </button>
@@ -342,21 +342,21 @@ const PhaseCard = ({
 
       {/* Add link form */}
       {showAddLink && (
-        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="Link title"
               value={linkTitle}
               onChange={(e) => setLinkTitle(e.target.value)}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
             <input
               type="url"
               placeholder="https://..."
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
             <div className="flex gap-2">
               <button
@@ -368,7 +368,7 @@ const PhaseCard = ({
               </button>
               <button
                 onClick={() => { setShowAddLink(false); setLinkTitle(''); setLinkUrl(''); }}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-200"
+                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 Cancel
               </button>
