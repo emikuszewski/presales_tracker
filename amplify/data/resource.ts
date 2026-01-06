@@ -132,6 +132,8 @@ const schema = a.schema({
     activities: a.hasMany('Activity', 'engagementId'),
     changeLogs: a.hasMany('ChangeLog', 'engagementId'),
     phaseNotes: a.hasMany('PhaseNote', 'engagementId'),
+    // Semantic search embedding for competitorNotes and closedReason
+    embedding: a.string(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase model
@@ -171,6 +173,8 @@ const schema = a.schema({
     text: a.string().required(),
     authorId: a.id().required(),
     author: a.belongsTo('TeamMember', 'authorId'),
+    // Semantic search embedding for text content
+    embedding: a.string(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Activity model
@@ -189,6 +193,8 @@ const schema = a.schema({
     ]),
     description: a.string().required(),
     comments: a.hasMany('Comment', 'activityId'),
+    // Semantic search embedding for description content
+    embedding: a.string(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase 2: Comment model
@@ -198,6 +204,8 @@ const schema = a.schema({
     authorId: a.id().required(),
     author: a.belongsTo('TeamMember', 'authorId'),
     text: a.string().required(),
+    // Semantic search embedding for text content
+    embedding: a.string(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Phase 3: Change log for history tracking
