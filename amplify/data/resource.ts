@@ -11,6 +11,7 @@ export const chatHandler = defineConversationHandlerFunction({
       region: 'us-east-1',
     },
   ],
+  resourceGroupName: 'data',
 });
 
 // System prompt for Gary - defined separately to avoid escaping issues
