@@ -32,6 +32,7 @@ export {
   RefreshIcon,
   RestoreIcon,
   SearchIcon,
+  ShareIcon,
   TrashIcon,
   WarningIcon,
   // Navigation icons
