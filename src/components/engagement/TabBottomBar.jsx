@@ -2,7 +2,7 @@ import React from 'react';
 import { detailTabs } from '../../constants';
 import { TabIcons } from '../ui';
 
-const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0, notesCount = 0 }) => {
+const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount = 0, notesCount = 0, hiddenTabs = [] }) => {
   const getBadgeValue = (tabId) => {
     switch (tabId) {
       case 'activity': return activityCount;
@@ -12,10 +12,13 @@ const TabBottomBar = ({ activeTab, onTabChange, activityCount = 0, unreadCount =
     }
   };
 
+  // Filter out hidden tabs
+  const visibleTabs = detailTabs.filter((tab) => hiddenTabs.indexOf(tab.id) === -1);
+
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40">
       <div className="flex justify-around">
-        {detailTabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const IconComponent = TabIcons[tab.icon];
           const isActive = activeTab === tab.id;
           const badgeValue = getBadgeValue(tab.id);
