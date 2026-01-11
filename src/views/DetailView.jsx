@@ -11,13 +11,15 @@ import {
   OwnersModal,
   IntegrationsModal,
   CompetitionModal,
+  ShareModal,
   CompetitorChips,
   EngagementStatusIcon,
   RefreshIcon,
   CheckIcon,
   ChevronLeftIcon,
   PlusIcon,
-  UserIcon
+  UserIcon,
+  ShareIcon
 } from '../components';
 import { phaseLabels, engagementStatusLabels, phaseStatusLabels } from '../constants';
 import { 
@@ -29,6 +31,9 @@ import {
 
 // Import tab components and extracted engagement components
 import { TabSidebar, TabBottomBar, ProgressTab, ActivityTab, HistoryTab, NotesTab, OverflowMenu, EngagementStatusDropdown } from '../components/engagement';
+
+// Import share links hook
+import { useShareLinks } from '../hooks';
 
 /**
  * Refresh button with loading/success states
@@ -77,7 +82,7 @@ const RefreshButton = ({ onClick, disabled, refreshState }) => {
 /**
  * Closed Engagement Banner
  */
-const ClosedBanner = ({ status, closedReason, onEditReason }) => {
+const ClosedBanner = ({ status, closedReason, onEditReason, readOnly = false }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(closedReason || '');
   const bannerClasses = getClosedBannerClasses(status);
@@ -103,7 +108,7 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
             {engagementStatusLabels[status]}
           </span>
         </div>
-        {!isEditing && (
+        {!isEditing && !readOnly && (
           <button
             onClick={() => setIsEditing(true)}
             className={`text-sm ${bannerClasses.text} hover:underline`}
@@ -150,10 +155,11 @@ const ClosedBanner = ({ status, closedReason, onEditReason }) => {
 /**
  * Competition indicator for header
  */
-const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => {
+const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick, readOnly = false }) => {
   const hasCompetitors = competitors && competitors.length > 0;
   
   if (!hasCompetitors) {
+    if (readOnly) return null;
     return (
       <button
         onClick={onClick}
@@ -162,6 +168,17 @@ const CompetitionIndicator = ({ competitors, otherCompetitorName, onClick }) => 
         <PlusIcon className="w-3.5 h-3.5" />
         Competition
       </button>
+    );
+  }
+
+  if (readOnly) {
+    return (
+      <CompetitorChips 
+        competitors={competitors}
+        otherCompetitorName={otherCompetitorName}
+        maxDisplay={3}
+        size="xs"
+      />
     );
   }
 
@@ -192,7 +209,10 @@ const DetailView = ({
   onModalStateChange,
   activeTab,
   onTabChange,
-  onRefresh
+  onRefresh,
+  readOnly = false,
+  client,
+  logChangeAsync
 }) => {
   const [searchParams] = useSearchParams();
   const scrollToActivityFromUrl = searchParams.get('scrollToActivity');
@@ -206,16 +226,43 @@ const DetailView = ({
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const [refreshState, setRefreshState] = useState('idle');
   const refreshTimeoutRef = useRef(null);
+
+  // Share links hook
+  const {
+    shareLinks,
+    loading: shareLinksLoading,
+    error: shareLinksError,
+    canCreateMore,
+    maxLinks,
+    fetchShareLinks,
+    createShareLink,
+    revokeShareLink
+  } = useShareLinks({
+    client: client,
+    engagementId: engagement?.id,
+    currentUser: currentUser,
+    logChangeAsync: logChangeAsync
+  });
+
+  // Determine if user can share (is owner or admin)
+  const canShare = useMemo(() => {
+    if (!currentUser || !engagement) return false;
+    if (currentUser.isAdmin) return true;
+    const ownerIds = engagement.ownerIds || [];
+    return ownerIds.indexOf(currentUser.id) !== -1;
+  }, [currentUser, engagement]);
 
   const hasOpenModal = 
     showEditDetailsModal || 
     showOwnersModal || 
     showIntegrationsModal || 
     showCompetitionModal || 
-    showArchiveConfirm;
+    showArchiveConfirm ||
+    showShareModal;
 
   useEffect(() => {
     if (onModalStateChange) {
@@ -420,21 +467,40 @@ const DetailView = ({
               </span>
             </div>
 
-            <EngagementStatusDropdown 
-              currentStatus={engagementStatus}
-              onStatusChange={handleStatusChange}
-            />
+            {readOnly ? (
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
+                engagementStatus === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                engagementStatus === 'WON' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
+                engagementStatus === 'LOST' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' :
+                'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              }`}>
+                <EngagementStatusIcon status={engagementStatus} className="w-3.5 h-3.5" />
+                {engagementStatusLabels[engagementStatus] || engagementStatus}
+              </span>
+            ) : (
+              <EngagementStatusDropdown 
+                currentStatus={engagementStatus}
+                onStatusChange={handleStatusChange}
+              />
+            )}
 
             <CompetitionIndicator
               competitors={engagement.competitors}
               otherCompetitorName={engagement.otherCompetitorName}
               onClick={() => setShowCompetitionModal(true)}
+              readOnly={readOnly}
             />
 
             {engagement.salesRepName && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
                 <UserIcon className="w-3.5 h-3.5" />
                 {engagement.salesRepName}
+              </span>
+            )}
+
+            {readOnly && (
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                read-only
               </span>
             )}
           </div>
@@ -507,13 +573,25 @@ const DetailView = ({
               refreshState={refreshState}
             />
 
-            <OverflowMenu
-              isArchived={engagement.isArchived}
-              onEditDetails={() => setShowEditDetailsModal(true)}
-              onManageOwners={() => setShowOwnersModal(true)}
-              onEditIntegrations={() => setShowIntegrationsModal(true)}
-              onArchive={handleArchive}
-            />
+            {!readOnly && canShare && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                title="Share engagement"
+              >
+                <ShareIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            )}
+
+            {!readOnly && (
+              <OverflowMenu
+                isArchived={engagement.isArchived}
+                onEditDetails={() => setShowEditDetailsModal(true)}
+                onManageOwners={() => setShowOwnersModal(true)}
+                onEditIntegrations={() => setShowIntegrationsModal(true)}
+                onArchive={handleArchive}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -523,6 +601,7 @@ const DetailView = ({
           status={engagementStatus}
           closedReason={engagement.closedReason}
           onEditReason={handleClosedReasonUpdate}
+          readOnly={readOnly}
         />
       )}
 
@@ -534,6 +613,7 @@ const DetailView = ({
             activityCount={activityCount}
             unreadCount={unreadCount}
             notesCount={notesCount}
+            hiddenTabs={readOnly ? ['history'] : []}
           />
         </div>
 
@@ -541,12 +621,13 @@ const DetailView = ({
           {activeTab === 'progress' && (
             <ProgressTab
               engagement={engagement}
-              onStatusChange={handlePhaseStatusChange}
-              onAddLink={detail?.phase?.addLink}
-              onRemoveLink={detail?.phase?.removeLink}
+              onStatusChange={readOnly ? null : handlePhaseStatusChange}
+              onAddLink={readOnly ? null : detail?.phase?.addLink}
+              onRemoveLink={readOnly ? null : detail?.phase?.removeLink}
               onNotesClick={handlePhaseNotesClick}
-              onAddNote={detail?.note?.add}
+              onAddNote={readOnly ? null : detail?.note?.add}
               getOwnerInfo={getOwnerInfo}
+              readOnly={readOnly}
             />
           )}
           
@@ -554,12 +635,13 @@ const DetailView = ({
             <ActivityTab
               engagement={engagement}
               getOwnerInfo={getOwnerInfo}
-              onAddActivity={detail?.activity?.add}
-              onAddComment={detail?.activity?.addComment}
-              onDeleteComment={detail?.activity?.deleteComment}
-              onEditActivity={detail?.activity?.edit}
-              onDeleteActivity={detail?.activity?.delete}
+              onAddActivity={readOnly ? null : detail?.activity?.add}
+              onAddComment={readOnly ? null : detail?.activity?.addComment}
+              onDeleteComment={readOnly ? null : detail?.activity?.deleteComment}
+              onEditActivity={readOnly ? null : detail?.activity?.edit}
+              onDeleteActivity={readOnly ? null : detail?.activity?.delete}
               highlightId={highlightedActivityId}
+              readOnly={readOnly}
             />
           )}
           
@@ -577,10 +659,11 @@ const DetailView = ({
             <NotesTab
               engagement={engagement}
               getOwnerInfo={getOwnerInfo}
-              onAddNote={detail?.note?.add}
-              onEditNote={detail?.note?.edit}
-              onDeleteNote={detail?.note?.delete}
+              onAddNote={readOnly ? null : detail?.note?.add}
+              onEditNote={readOnly ? null : detail?.note?.edit}
+              onDeleteNote={readOnly ? null : detail?.note?.delete}
               scrollToPhase={scrollToPhase}
+              readOnly={readOnly}
             />
           )}
         </div>
@@ -593,6 +676,7 @@ const DetailView = ({
           activityCount={activityCount}
           unreadCount={unreadCount}
           notesCount={notesCount}
+          hiddenTabs={readOnly ? ['history'] : []}
         />
       </div>
 
@@ -655,6 +739,20 @@ const DetailView = ({
           </button>
         </div>
       </Modal>
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareLinks={shareLinks}
+        loading={shareLinksLoading}
+        error={shareLinksError}
+        canCreateMore={canCreateMore}
+        maxLinks={maxLinks}
+        onCreateLink={createShareLink}
+        onRevokeLink={revokeShareLink}
+        onFetchLinks={fetchShareLinks}
+        getOwnerInfo={getOwnerInfo}
+      />
     </div>
   );
 };
