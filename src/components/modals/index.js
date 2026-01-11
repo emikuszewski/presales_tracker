@@ -7,3 +7,4 @@ export { default as IntegrationsModal } from './IntegrationsModal';
 export { default as OwnersModal } from './OwnersModal';
 export { default as CompetitionModal } from './CompetitionModal';
 export { default as ConflictModal } from './ConflictModal';
+export { default as ShareModal } from './ShareModal';
