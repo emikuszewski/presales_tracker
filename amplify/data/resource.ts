@@ -40,6 +40,7 @@ const schema = a.schema({
     comments: a.hasMany('Comment', 'authorId'),
     changeLogs: a.hasMany('ChangeLog', 'userId'),
     phaseNotes: a.hasMany('PhaseNote', 'authorId'),
+    shareLinksCreated: a.hasMany('ShareLink', 'createdById'),
   }).authorization(allow => [allow.authenticated()]),
 
   // Sales Rep / Account Executive model
@@ -149,6 +150,7 @@ const schema = a.schema({
     activities: a.hasMany('Activity', 'engagementId'),
     changeLogs: a.hasMany('ChangeLog', 'engagementId'),
     phaseNotes: a.hasMany('PhaseNote', 'engagementId'),
+    shareLinks: a.hasMany('ShareLink', 'engagementId'),
     embedding: a.string(),
   }).authorization(allow => [allow.authenticated()]),
 
@@ -247,7 +249,9 @@ const schema = a.schema({
       'STATUS_CHANGED',
       'COMPETITORS_UPDATED',
       'SALES_REP_CHANGED',
-      'PARTNER_UPDATED'
+      'PARTNER_UPDATED',
+      'SHARE_LINK_CREATED',
+      'SHARE_LINK_REVOKED'
     ]),
     description: a.string().required(),
     previousValue: a.string(),
@@ -259,6 +263,20 @@ const schema = a.schema({
     engagementId: a.id().required(),
     visitorId: a.id().required(),
     lastViewedAt: a.datetime().required(),
+  }).authorization(allow => [allow.authenticated()]),
+
+  // Share Link model for read-only engagement sharing
+  ShareLink: a.model({
+    engagementId: a.id().required(),
+    engagement: a.belongsTo('Engagement', 'engagementId'),
+    token: a.string().required(),
+    createdById: a.id().required(),
+    createdBy: a.belongsTo('TeamMember', 'createdById'),
+    expiresAt: a.datetime(),
+    isActive: a.boolean().default(true),
+    label: a.string(),
+    viewCount: a.integer().default(0),
+    lastViewedAt: a.datetime(),
   }).authorization(allow => [allow.authenticated()]),
 
   // Deletion Audit Log
