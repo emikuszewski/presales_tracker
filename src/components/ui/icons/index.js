@@ -16,6 +16,7 @@ export { default as PlusIcon } from './PlusIcon';
 export { default as RefreshIcon } from './RefreshIcon';
 export { default as RestoreIcon } from './RestoreIcon';
 export { default as SearchIcon } from './SearchIcon';
+export { default as ShareIcon } from './ShareIcon';
 export { default as TrashIcon } from './TrashIcon';
 export { default as WarningIcon } from './WarningIcon';
 
