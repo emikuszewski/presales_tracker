@@ -15,7 +15,8 @@ import {
   ListView,
   DetailView,
   NewEngagementView,
-  SalesRepsView
+  SalesRepsView,
+  ShareView
 } from './views';
 
 // Import custom hooks
@@ -27,6 +28,7 @@ import {
   useEngagementDetail,
   useVisibilityRefresh,
   useSalesRepsOperations,
+  useShareLinks,
   useGary
 } from './hooks';
 
@@ -45,6 +47,7 @@ function PresalesTracker() {
     const pathname = location.pathname;
     if (pathname === '/engagement/new') return 'new';
     if (pathname.startsWith('/engagement/')) return 'detail';
+    if (pathname.startsWith('/share/')) return 'share';
     if (pathname === '/admin/team') return 'admin';
     if (pathname === '/admin/engagements') return 'engagements-admin';
     if (pathname === '/admin/salesreps') return 'salesreps';
@@ -499,11 +502,22 @@ function PresalesTracker() {
                 activeTab={detailActiveTab}
                 onTabChange={setDetailActiveTab}
                 onRefresh={() => refreshSingleEngagement(engagementIdFromUrl)}
+                client={client}
+                logChangeAsync={logChangeAsync}
               />
             ) : (
               // Engagement not found - redirect to list
               <Navigate to="/" replace />
             )
+          } />
+
+          {/* Shared Engagement (Read-Only) */}
+          <Route path="/share/:token" element={
+            <ShareView
+              currentUser={currentUser}
+              allTeamMembers={allTeamMembers}
+              salesReps={salesReps}
+            />
           } />
 
           {/* Admin Views */}
@@ -553,30 +567,34 @@ function PresalesTracker() {
         onDismiss={handleConflictDismiss}
       />
 
-      {/* Gary - Floating Button */}
-      <GaryButton
-        onClick={openGary}
-        isVisible={!isGaryOpen}
-        hasNotification={garyHasNotification}
-      />
+      {/* Gary - Floating Button (hidden on share view) */}
+      {view !== 'share' && (
+        <GaryButton
+          onClick={openGary}
+          isVisible={!isGaryOpen}
+          hasNotification={garyHasNotification}
+        />
+      )}
 
-      {/* Gary - Sidebar Panel */}
-      <GaryPanel
-        isOpen={isGaryOpen}
-        onClose={closeGary}
-        currentEngagement={selectedEngagement}
-        currentUser={currentUser}
-        engagements={filteredEngagements}
-        filters={{
-          filterPhase,
-          filterOwner,
-          filterStale,
-          showArchived,
-          showEverything,
-          searchQuery
-        }}
-        getOwnerInfo={getOwnerInfo}
-      />
+      {/* Gary - Sidebar Panel (hidden on share view) */}
+      {view !== 'share' && (
+        <GaryPanel
+          isOpen={isGaryOpen}
+          onClose={closeGary}
+          currentEngagement={selectedEngagement}
+          currentUser={currentUser}
+          engagements={filteredEngagements}
+          filters={{
+            filterPhase,
+            filterOwner,
+            filterStale,
+            showArchived,
+            showEverything,
+            searchQuery
+          }}
+          getOwnerInfo={getOwnerInfo}
+        />
+      )}
     </div>
   );
 }
