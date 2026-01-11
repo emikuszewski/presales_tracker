@@ -5,3 +5,4 @@ export { default as ListView } from './ListView';
 export { default as DetailView } from './DetailView';
 export { default as NewEngagementView } from './NewEngagementView';
 export { default as SalesRepsView } from './SalesRepsView';
+export { default as ShareView } from './ShareView';
