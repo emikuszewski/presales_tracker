@@ -30,6 +30,7 @@ export {
   RefreshIcon,
   RestoreIcon,
   SearchIcon,
+  ShareIcon,
   TrashIcon,
   WarningIcon,
   // Navigation icons
@@ -55,7 +56,8 @@ export {
   EditDetailsModal, 
   OwnersModal,
   CompetitionModal,
-  ConflictModal
+  ConflictModal,
+  ShareModal
 } from './modals';
 // Layout components
 export { AvatarMenu, FilterPanel } from './layout';
