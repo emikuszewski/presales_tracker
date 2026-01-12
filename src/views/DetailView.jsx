@@ -11,7 +11,6 @@ import {
   OwnersModal,
   IntegrationsModal,
   CompetitionModal,
-  ShareModal,
   CompetitorChips,
   EngagementStatusIcon,
   RefreshIcon,
@@ -19,7 +18,8 @@ import {
   ChevronLeftIcon,
   PlusIcon,
   UserIcon,
-  ShareIcon
+  ShareIcon,
+  WarningIcon
 } from '../components';
 import { phaseLabels, engagementStatusLabels, phaseStatusLabels } from '../constants';
 import { 
@@ -71,6 +71,90 @@ const RefreshButton = ({ onClick, disabled, refreshState }) => {
     <button
       onClick={onClick}
       disabled={disabled || isLoading || isSuccess}
+      className={buttonClasses}
+      title={getTitle()}
+    >
+      {renderIcon()}
+    </button>
+  );
+};
+
+/**
+ * Share button with loading/success/error states
+ * One-click: copies share link to clipboard
+ */
+const ShareButton = ({ onShare, disabled }) => {
+  const [shareState, setShareState] = useState('idle'); // idle | loading | success | error
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleClick = async () => {
+    if (shareState !== 'idle' || disabled) return;
+
+    setShareState('loading');
+
+    try {
+      const result = await onShare();
+
+      if (result.success && result.url) {
+        // Copy to clipboard
+        await navigator.clipboard.writeText(result.url);
+        setShareState('success');
+      } else {
+        setShareState('error');
+      }
+    } catch (err) {
+      console.error('[ShareButton] Error:', err);
+      setShareState('error');
+    }
+
+    // Reset after 2 seconds
+    timeoutRef.current = setTimeout(() => {
+      setShareState('idle');
+    }, 2000);
+  };
+
+  const getTitle = () => {
+    switch (shareState) {
+      case 'loading': return 'Creating link...';
+      case 'success': return 'Copied!';
+      case 'error': return 'Failed - try again';
+      default: return 'Copy share link';
+    }
+  };
+
+  const renderIcon = () => {
+    switch (shareState) {
+      case 'loading':
+        return (
+          <div className="w-5 h-5 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full animate-spin" />
+        );
+      case 'success':
+        return <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400" />;
+      case 'error':
+        return <WarningIcon className="w-5 h-5 text-red-500 dark:text-red-400" />;
+      default:
+        return <ShareIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
+    }
+  };
+
+  const buttonClasses = `p-1.5 rounded-lg transition-colors ${
+    shareState !== 'idle' || disabled
+      ? 'cursor-not-allowed'
+      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+  }`;
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={shareState !== 'idle' || disabled}
       className={buttonClasses}
       title={getTitle()}
     >
@@ -226,22 +310,12 @@ const DetailView = ({
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showCompetitionModal, setShowCompetitionModal] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   const [refreshState, setRefreshState] = useState('idle');
   const refreshTimeoutRef = useRef(null);
 
   // Share links hook
-  const {
-    shareLinks,
-    loading: shareLinksLoading,
-    error: shareLinksError,
-    canCreateMore,
-    maxLinks,
-    fetchShareLinks,
-    createShareLink,
-    revokeShareLink
-  } = useShareLinks({
+  const { getOrCreateLink } = useShareLinks({
     client: client,
     engagementId: engagement?.id,
     currentUser: currentUser,
@@ -261,8 +335,7 @@ const DetailView = ({
     showOwnersModal || 
     showIntegrationsModal || 
     showCompetitionModal || 
-    showArchiveConfirm ||
-    showShareModal;
+    showArchiveConfirm;
 
   useEffect(() => {
     if (onModalStateChange) {
@@ -368,14 +441,14 @@ const DetailView = ({
 
   const handleArchive = useCallback(() => {
     if (engagement.isArchived) {
-      onToggleArchive(engagement.id, false);
+      onToggleArchive(engagement.id);
     } else {
       setShowArchiveConfirm(true);
     }
   }, [engagement, onToggleArchive]);
 
   const handleConfirmArchive = useCallback(() => {
-    onToggleArchive(engagement.id, true);
+    onToggleArchive(engagement.id);
     setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
 
@@ -574,13 +647,10 @@ const DetailView = ({
             />
 
             {!readOnly && canShare && (
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Share engagement"
-              >
-                <ShareIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </button>
+              <ShareButton
+                onShare={getOrCreateLink}
+                disabled={hasOpenModal}
+              />
             )}
 
             {!readOnly && (
@@ -739,20 +809,6 @@ const DetailView = ({
           </button>
         </div>
       </Modal>
-
-      <ShareModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        shareLinks={shareLinks}
-        loading={shareLinksLoading}
-        error={shareLinksError}
-        canCreateMore={canCreateMore}
-        maxLinks={maxLinks}
-        onCreateLink={createShareLink}
-        onRevokeLink={revokeShareLink}
-        onFetchLinks={fetchShareLinks}
-        getOwnerInfo={getOwnerInfo}
-      />
     </div>
   );
 };
