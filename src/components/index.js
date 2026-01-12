@@ -56,8 +56,7 @@ export {
   EditDetailsModal, 
   OwnersModal,
   CompetitionModal,
-  ConflictModal,
-  ShareModal
+  ConflictModal
 } from './modals';
 // Layout components
 export { AvatarMenu, FilterPanel } from './layout';
