@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { nanoid } from 'nanoid';
 
 /**
- * Hook for Share Link CRUD operations
- * Handles create, revoke, list, and validation
+ * Hook for Share Link operations
+ * Simplified to provide one-click sharing with automatic link management
  */
 const useShareLinks = function(params) {
   const client = params.client;
@@ -11,28 +11,28 @@ const useShareLinks = function(params) {
   const currentUser = params.currentUser;
   const logChangeAsync = params.logChangeAsync;
 
-  const [shareLinks, setShareLinks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Cache to avoid refetching on every click
+  const linksCache = useRef([]);
 
   // Maximum active links per engagement
   const MAX_ACTIVE_LINKS = 10;
+  const DEFAULT_EXPIRY_DAYS = 90;
 
   /**
    * Fetch all share links for an engagement
+   * @returns {Promise<Array>} Array of share links
    */
   const fetchShareLinks = useCallback(async function() {
     if (!engagementId) return [];
-
-    setLoading(true);
-    setError(null);
 
     try {
       const dataClient = typeof client === 'function' ? client() : client;
 
       if (!dataClient || !dataClient.models || !dataClient.models.ShareLink) {
         console.warn('[ShareLinks] ShareLink model not available');
-        setLoading(false);
         return [];
       }
 
@@ -45,67 +45,40 @@ const useShareLinks = function(params) {
         const sorted = result.data.sort(function(a, b) {
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
-        setShareLinks(sorted);
-        setLoading(false);
+        linksCache.current = sorted;
         return sorted;
       }
 
-      setLoading(false);
       return [];
     } catch (err) {
       console.error('[ShareLinks] Error fetching share links:', err);
-      setError(err.message);
-      setLoading(false);
       return [];
     }
   }, [client, engagementId]);
 
   /**
    * Create a new share link
-   * @param {Object} options - { label?: string, expiresInDays?: number | null }
    * @returns {Promise<Object|null>} The created share link or null on error
    */
-  const createShareLink = useCallback(async function(options) {
+  const createShareLink = useCallback(async function() {
     if (!engagementId || !currentUser) {
-      setError('Missing engagement or user');
       return null;
     }
-
-    const label = options?.label || null;
-    const expiresInDays = options?.expiresInDays;
-
-    // Check active link count
-    const activeLinks = shareLinks.filter(function(link) {
-      return link.isActive;
-    });
-
-    if (activeLinks.length >= MAX_ACTIVE_LINKS) {
-      setError('Maximum of ' + MAX_ACTIVE_LINKS + ' active share links reached');
-      return null;
-    }
-
-    setLoading(true);
-    setError(null);
 
     try {
       const dataClient = typeof client === 'function' ? client() : client;
 
       if (!dataClient || !dataClient.models || !dataClient.models.ShareLink) {
-        setError('ShareLink model not available');
-        setLoading(false);
         return null;
       }
 
       // Generate unique token
       const token = nanoid(21);
 
-      // Calculate expiration date
-      let expiresAt = null;
-      if (expiresInDays !== null && expiresInDays !== undefined) {
-        const expDate = new Date();
-        expDate.setDate(expDate.getDate() + expiresInDays);
-        expiresAt = expDate.toISOString();
-      }
+      // Calculate expiration date (90 days)
+      const expDate = new Date();
+      expDate.setDate(expDate.getDate() + DEFAULT_EXPIRY_DAYS);
+      const expiresAt = expDate.toISOString();
 
       const inputData = {
         engagementId: engagementId,
@@ -113,7 +86,7 @@ const useShareLinks = function(params) {
         createdById: currentUser.id,
         expiresAt: expiresAt,
         isActive: true,
-        label: label ? label.trim() : null,
+        label: null,
         viewCount: 0,
         lastViewedAt: null
       };
@@ -121,37 +94,23 @@ const useShareLinks = function(params) {
       const result = await dataClient.models.ShareLink.create(inputData);
 
       if (result.data) {
-        // Add to local state
-        setShareLinks(function(prev) {
-          return [result.data].concat(prev);
-        });
+        // Update cache
+        linksCache.current = [result.data].concat(linksCache.current);
 
         // Log the change
         if (logChangeAsync) {
-          const description = label
-            ? 'Created share link: ' + label.trim()
-            : 'Created share link';
-          logChangeAsync(engagementId, 'SHARE_LINK_CREATED', description);
+          logChangeAsync(engagementId, 'SHARE_LINK_CREATED', 'Created share link');
         }
 
-        setLoading(false);
         return result.data;
       }
 
-      if (result.errors) {
-        setError('Error creating share link');
-        console.error('[ShareLinks] Create errors:', result.errors);
-      }
-
-      setLoading(false);
       return null;
     } catch (err) {
       console.error('[ShareLinks] Error creating share link:', err);
-      setError(err.message);
-      setLoading(false);
       return null;
     }
-  }, [client, engagementId, currentUser, shareLinks, logChangeAsync]);
+  }, [client, engagementId, currentUser, logChangeAsync]);
 
   /**
    * Revoke (deactivate) a share link
@@ -161,16 +120,8 @@ const useShareLinks = function(params) {
   const revokeShareLink = useCallback(async function(shareLinkId) {
     if (!shareLinkId) return false;
 
-    setLoading(true);
-    setError(null);
-
     try {
       const dataClient = typeof client === 'function' ? client() : client;
-
-      // Find the link to get its label for logging
-      const linkToRevoke = shareLinks.find(function(link) {
-        return link.id === shareLinkId;
-      });
 
       const result = await dataClient.models.ShareLink.update({
         id: shareLinkId,
@@ -178,43 +129,94 @@ const useShareLinks = function(params) {
       });
 
       if (result.data) {
-        // Update local state
-        setShareLinks(function(prev) {
-          return prev.map(function(link) {
-            if (link.id === shareLinkId) {
-              return Object.assign({}, link, { isActive: false });
-            }
-            return link;
-          });
+        // Update cache
+        linksCache.current = linksCache.current.map(function(link) {
+          if (link.id === shareLinkId) {
+            return Object.assign({}, link, { isActive: false });
+          }
+          return link;
         });
-
-        // Log the change
-        if (logChangeAsync && linkToRevoke) {
-          const description = linkToRevoke.label
-            ? 'Revoked share link: ' + linkToRevoke.label
-            : 'Revoked share link';
-          logChangeAsync(engagementId, 'SHARE_LINK_REVOKED', description);
-        }
-
-        setLoading(false);
         return true;
       }
 
-      setLoading(false);
       return false;
     } catch (err) {
       console.error('[ShareLinks] Error revoking share link:', err);
-      setError(err.message);
-      setLoading(false);
       return false;
     }
-  }, [client, engagementId, shareLinks, logChangeAsync]);
+  }, [client]);
+
+  /**
+   * Get or create a share link - the main function for one-click sharing
+   * - If active unexpired link exists, reuse it
+   * - If at limit, revoke oldest and create new
+   * - Otherwise create new
+   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   */
+  const getOrCreateLink = useCallback(async function() {
+    if (!engagementId || !currentUser) {
+      return { success: false, error: 'Not authorized' };
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch current links
+      const links = await fetchShareLinks();
+      
+      // Find active unexpired links
+      const now = new Date();
+      const activeLinks = links.filter(function(link) {
+        if (!link.isActive) return false;
+        if (link.expiresAt && new Date(link.expiresAt) < now) return false;
+        return true;
+      });
+
+      // If we have an active link, reuse it
+      if (activeLinks.length > 0) {
+        const existingLink = activeLinks[0]; // Most recent
+        const shareUrl = window.location.origin + '/share/' + existingLink.token;
+        setLoading(false);
+        return { success: true, url: shareUrl };
+      }
+
+      // Check if at limit - if so, revoke oldest active (even if expired check passed, there might be edge cases)
+      const allActiveLinks = links.filter(function(link) {
+        return link.isActive;
+      });
+
+      if (allActiveLinks.length >= MAX_ACTIVE_LINKS) {
+        // Revoke the oldest one (last in the sorted array since it's newest first)
+        const oldestLink = allActiveLinks[allActiveLinks.length - 1];
+        await revokeShareLink(oldestLink.id);
+      }
+
+      // Create new link
+      const newLink = await createShareLink();
+
+      if (newLink) {
+        const shareUrl = window.location.origin + '/share/' + newLink.token;
+        setLoading(false);
+        return { success: true, url: shareUrl };
+      }
+
+      setLoading(false);
+      setError('Failed to create share link');
+      return { success: false, error: 'Failed to create share link' };
+    } catch (err) {
+      console.error('[ShareLinks] Error in getOrCreateLink:', err);
+      setLoading(false);
+      setError('Failed to create share link');
+      return { success: false, error: 'Failed to create share link' };
+    }
+  }, [engagementId, currentUser, fetchShareLinks, revokeShareLink, createShareLink]);
 
   /**
    * Validate a share token and get the associated engagement ID
    * Also increments view count
    * @param {string} token - The share token to validate
-   * @returns {Promise<Object|null>} { engagementId, isValid, reason? } or null on error
+   * @returns {Promise<Object>} { engagementId, isValid, reason? }
    */
   const validateToken = useCallback(async function(token) {
     if (!token) {
@@ -275,28 +277,10 @@ const useShareLinks = function(params) {
     }
   }, [client]);
 
-  /**
-   * Get active share links count
-   */
-  const activeCount = shareLinks.filter(function(link) {
-    return link.isActive;
-  }).length;
-
-  /**
-   * Check if user can create more links
-   */
-  const canCreateMore = activeCount < MAX_ACTIVE_LINKS;
-
   return {
-    shareLinks: shareLinks,
     loading: loading,
     error: error,
-    activeCount: activeCount,
-    canCreateMore: canCreateMore,
-    maxLinks: MAX_ACTIVE_LINKS,
-    fetchShareLinks: fetchShareLinks,
-    createShareLink: createShareLink,
-    revokeShareLink: revokeShareLink,
+    getOrCreateLink: getOrCreateLink,
     validateToken: validateToken
   };
 };
