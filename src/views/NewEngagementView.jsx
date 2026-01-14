@@ -16,7 +16,6 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
       <div className="flex flex-wrap gap-2">
         {teamMembers.map(member => {
           const isSelected = selectedOwnerIds.includes(member.id);
-          const isSystemUser = member.isSystemUser === true;
           const colorClasses = getAvatarColorClasses(member);
           
           return (
@@ -32,10 +31,7 @@ const OwnerToggleGroup = ({ teamMembers, selectedOwnerIds, onToggle }) => {
             >
               {/* Avatar */}
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${colorClasses}`}>
-                {isSystemUser 
-                  ? member.name.split(' ').map(n => n[0]).join('').substring(0, 2)
-                  : member.name.split(' ').map(n => n[0]).join('').substring(0, 2)
-                }
+                {member.initials}
               </div>
               
               {/* Name */}
