@@ -197,7 +197,7 @@ const useEngagementList = function(params) {
 
     const phases = engagement.phases ? Object.keys(engagement.phases).length : 0;
     const activities = engagement.activities ? engagement.activities.length : 0;
-    const comments = 0;
+    let comments = 0;
     if (engagement.activities) {
       engagement.activities.forEach(function(a) {
         if (a.comments) comments += a.comments.length;
