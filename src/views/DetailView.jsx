@@ -441,14 +441,14 @@ const DetailView = ({
 
   const handleArchive = useCallback(() => {
     if (engagement.isArchived) {
-      onToggleArchive(engagement.id);
+      onToggleArchive(engagement.id, false);
     } else {
       setShowArchiveConfirm(true);
     }
   }, [engagement, onToggleArchive]);
 
   const handleConfirmArchive = useCallback(() => {
-    onToggleArchive(engagement.id);
+    onToggleArchive(engagement.id, true);
     setShowArchiveConfirm(false);
   }, [engagement, onToggleArchive]);
 
