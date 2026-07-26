@@ -1,0 +1,73 @@
+// Application configuration constants
+
+// Admin email - hardcoded for Phase 1
+export const ADMIN_EMAIL = 'edward.mikuszewski@plainid.com';
+
+// Allowed domain for sign-up
+export const ALLOWED_DOMAIN = 'plainid.com';
+
+// Phase 3: Stale threshold in business days
+export const STALE_THRESHOLD_BUSINESS_DAYS = 14;
+
+// System user configuration for SE Team (shared pool for unassigned engagements)
+export const SYSTEM_SE_TEAM = {
+  EMAIL: 'se-team@system.local',
+  NAME: 'SE Team',
+  INITIALS: 'SE'
+};
+
+// Phase configuration with labels
+export const phaseConfig = [
+  { id: "DISCOVER", label: "Discover" },
+  { id: "DESIGN", label: "Design" },
+  { id: "DEMONSTRATE", label: "Demonstrate" },
+  { id: "VALIDATE", label: "Validate" },
+  { id: "ENABLE", label: "Enable" }
+];
+
+// Activity type options
+export const activityTypes = ['MEETING', 'DEMO', 'DOCUMENT', 'EMAIL', 'SUPPORT', 'WORKSHOP', 'CALL'];
+
+// Industry options
+export const industries = ['FINANCIAL_SERVICES', 'HEALTHCARE', 'TECHNOLOGY', 'RETAIL', 'MANUFACTURING', 'GOVERNMENT'];
+
+// Tab configuration for detail view
+export const detailTabs = [
+  { id: 'progress', label: 'Progress', icon: 'chart' },
+  { id: 'activity', label: 'Activity', icon: 'chat' },
+  { id: 'history', label: 'History', icon: 'clock' },
+  { id: 'notes', label: 'Notes', icon: 'document' }
+];
+
+// Competitor configuration (alphabetical order)
+// logoType: 'svg' = real logo, 'simplified' = simplified svg, 'initials' = text fallback
+export const competitorConfig = [
+  { id: 'AMIDA', label: 'Amida', logoType: 'initials', initials: 'Am' },
+  { id: 'ASERTO', label: 'Aserto', logoType: 'initials', initials: 'As' },
+  { id: 'AWS_VERIFIED_PERMISSIONS', label: 'AWS Verified Permissions', logoType: 'svg' },
+  { id: 'AXIOMATICS', label: 'Axiomatics', logoType: 'initials', initials: 'Ax' },
+  { id: 'CERBOS', label: 'Cerbos', logoType: 'initials', initials: 'Cb' },
+  { id: 'CYBERARK', label: 'CyberArk', logoType: 'simplified' },
+  { id: 'FORGEROCK', label: 'ForgeRock', logoType: 'simplified' },
+  { id: 'IMMUTA', label: 'Immuta', logoType: 'svg' },
+  { id: 'KEYCLOAK', label: 'Keycloak', logoType: 'svg' },
+  { id: 'MICROSOFT_ENTRA', label: 'Microsoft Entra', logoType: 'svg' },
+  { id: 'NEXTLABS', label: 'NextLabs', logoType: 'initials', initials: 'NL' },
+  { id: 'OKTA', label: 'Okta', logoType: 'svg' },
+  { id: 'ONE_IDENTITY', label: 'One Identity', logoType: 'initials', initials: '1I' },
+  { id: 'OPA', label: 'OPA', logoType: 'initials', initials: 'OP' },
+  { id: 'ORY', label: 'Ory', logoType: 'simplified' },
+  { id: 'PERMIT_IO', label: 'Permit.io', logoType: 'initials', initials: 'Pe' },
+  { id: 'PING_IDENTITY', label: 'Ping Identity', logoType: 'svg' },
+  { id: 'SAILPOINT', label: 'SailPoint', logoType: 'simplified' },
+  { id: 'SAVIYNT', label: 'Saviynt', logoType: 'initials', initials: 'Sv' },
+  { id: 'STYRA', label: 'Styra', logoType: 'initials', initials: 'St' },
+  { id: 'ZANZIBAR', label: 'Zanzibar', logoType: 'initials', initials: 'Za' },
+  { id: 'OTHER', label: 'Other', logoType: 'initials', initials: '?' }
+];
+
+// Quick lookup map for competitor config
+export const competitorConfigMap = competitorConfig.reduce((acc, comp) => {
+  acc[comp.id] = comp;
+  return acc;
+}, {});
